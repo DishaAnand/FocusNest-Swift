@@ -15,6 +15,16 @@ public struct CircularProgressView: View {
         self.showDot = showDot
     }
 
+    // Calculate dot position on the circle's circumference
+    // Angle starts at 12 o'clock (-90°) and goes clockwise
+    private var dotOffset: CGSize {
+        let angle = 2 * Double.pi * progress - Double.pi / 2 // Start at top, go clockwise
+        let radius = size / 2
+        let x = radius * cos(angle)
+        let y = radius * sin(angle)
+        return CGSize(width: x, height: y)
+    }
+
     public var body: some View {
         ZStack {
             Circle()
@@ -23,14 +33,11 @@ public struct CircularProgressView: View {
                 .trim(from: 0, to: CGFloat(min(progress, 1.0)))
                 .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-                .animation(.easeInOut(duration: 0.3), value: progress)
             if showDot && progress > 0 {
                 Circle()
                     .fill(color)
                     .frame(width: lineWidth + 4, height: lineWidth + 4)
-                    .offset(y: -size / 2)
-                    .rotationEffect(.degrees(360 * progress - 90))
-                    .animation(.easeInOut(duration: 0.3), value: progress)
+                    .offset(dotOffset)
                     .shadow(color: color.opacity(0.5), radius: 4, x: 0, y: 0)
             }
         }

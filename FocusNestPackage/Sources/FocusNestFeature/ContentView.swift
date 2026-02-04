@@ -51,6 +51,9 @@ public struct ContentView: View {
         .onOpenURL { url in
             handleDeepLink(url)
         }
+        .onReceive(NotificationCenter.default.publisher(for: .switchToTimerTab)) { _ in
+            selectedTab = .timer
+        }
     }
 
     private func handleDeepLink(_ url: URL) {

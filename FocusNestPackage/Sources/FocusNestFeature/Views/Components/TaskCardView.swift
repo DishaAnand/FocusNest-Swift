@@ -7,9 +7,10 @@ public struct TaskCardView: View {
     let onComplete: () -> Void
     let onDelete: () -> Void
     let onRename: () -> Void
+    let onStart: (() -> Void)?
 
-    public init(task: FocusTask, isSelected: Bool = false, onTap: @escaping () -> Void, onComplete: @escaping () -> Void, onDelete: @escaping () -> Void, onRename: @escaping () -> Void) {
-        self.task = task; self.isSelected = isSelected; self.onTap = onTap; self.onComplete = onComplete; self.onDelete = onDelete; self.onRename = onRename
+    public init(task: FocusTask, isSelected: Bool = false, onTap: @escaping () -> Void, onComplete: @escaping () -> Void, onDelete: @escaping () -> Void, onRename: @escaping () -> Void, onStart: (() -> Void)? = nil) {
+        self.task = task; self.isSelected = isSelected; self.onTap = onTap; self.onComplete = onComplete; self.onDelete = onDelete; self.onRename = onRename; self.onStart = onStart
     }
 
     public var body: some View {
@@ -36,6 +37,21 @@ public struct TaskCardView: View {
                 }
             }
             Spacer()
+
+            // Start button for incomplete tasks
+            if !task.isCompleted, let onStart = onStart {
+                Button(action: onStart) {
+                    Text("Start")
+                        .font(Theme.captionFont.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, Theme.spacingM)
+                        .padding(.vertical, Theme.spacingXS)
+                        .background(Theme.focusColor)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+
             if isSelected {
                 Image(systemName: "checkmark.circle.fill").font(.title3).foregroundStyle(Theme.focusColor)
             }

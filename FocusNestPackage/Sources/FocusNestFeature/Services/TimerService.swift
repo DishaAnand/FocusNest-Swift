@@ -34,14 +34,29 @@ public final class TimerService: @unchecked Sendable {
     public var onTick: (() -> Void)?
 
     private var timer: Timer?
+    private var displayTimer: Timer? // High-frequency timer for smooth progress
     private var backgroundTaskId: UIBackgroundTaskIdentifier = .invalid
     private var backgroundEnterTime: Date?
     private var wasRunningBeforeBackground: Bool = false
     private let settings: UserSettings
 
-    public var progress: Double {
+    // For smooth progress calculation
+    private var sessionStartTime: Date?
+    private var pausedElapsedTime: TimeInterval = 0
+
+    /// Smooth progress for animation (updates at 60fps)
+    public private(set) var progress: Double = 0.0
+
+    private func calculateProgress() -> Double {
         guard totalDuration > 0 else { return 0.0 }
-        return 1.0 - (Double(remainingTime) / Double(totalDuration))
+        guard state == .running, let startTime = sessionStartTime else {
+            // When paused or idle, use integer-based progress
+            return 1.0 - (Double(remainingTime) / Double(totalDuration))
+        }
+        // Smooth progress based on precise elapsed time
+        let elapsed = pausedElapsedTime + Date().timeIntervalSince(startTime)
+        let smoothProgress = elapsed / Double(totalDuration)
+        return min(max(smoothProgress, 0.0), 1.0)
     }
 
     public var isRunning: Bool { state == .running }
@@ -71,23 +86,37 @@ public final class TimerService: @unchecked Sendable {
     public func cleanup() {
         timer?.invalidate()
         timer = nil
+        displayTimer?.invalidate()
+        displayTimer = nil
     }
 
     public func start() {
         guard state != .running else { return }
-        if state == .idle { remainingTime = totalDuration }
+        if state == .idle {
+            remainingTime = totalDuration
+            pausedElapsedTime = 0
+            progress = 0
+        }
+        sessionStartTime = Date()
         state = .running
         startTimer()
     }
 
     public func pause() {
         guard state == .running else { return }
+        // Accumulate elapsed time when pausing
+        if let startTime = sessionStartTime {
+            pausedElapsedTime += Date().timeIntervalSince(startTime)
+        }
+        sessionStartTime = nil
         state = .paused
         stopTimer()
+        updateProgress() // Freeze at current progress
     }
 
     public func resume() {
         guard state == .paused else { return }
+        sessionStartTime = Date() // Start fresh, pausedElapsedTime already has accumulated time
         state = .running
         startTimer()
     }
@@ -103,11 +132,16 @@ public final class TimerService: @unchecked Sendable {
     public func stop() {
         stopTimer()
         state = .idle
+        pausedElapsedTime = 0
+        sessionStartTime = nil
         resetToMode(mode)
+        progress = 0
     }
 
     public func skip() {
         stopTimer()
+        pausedElapsedTime = 0
+        sessionStartTime = nil
         advanceToNextMode()
     }
 
@@ -119,12 +153,17 @@ public final class TimerService: @unchecked Sendable {
         totalDuration = settings.focusDuration
         remainingTime = settings.focusDuration
         selectedTask = nil
+        pausedElapsedTime = 0
+        sessionStartTime = nil
+        progress = 0
     }
 
     public func setMode(_ newMode: TimerMode, duration: Int? = nil) {
         stopTimer()
         mode = newMode
         state = .idle
+        pausedElapsedTime = 0
+        sessionStartTime = nil
 
         switch newMode {
         case .focus: totalDuration = duration ?? settings.focusDuration
@@ -132,14 +171,26 @@ public final class TimerService: @unchecked Sendable {
         case .longBreak: totalDuration = duration ?? settings.longBreakDuration
         }
         remainingTime = totalDuration
+        progress = 0
     }
 
     private func startTimer() {
         timer?.invalidate()
+        displayTimer?.invalidate()
+
+        // 1-second timer for countdown display and completion check
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             guard let self else { return }
             Task { @MainActor [self] in
                 self.tick()
+            }
+        }
+
+        // 60fps timer for ultra-smooth progress animation
+        displayTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            Task { @MainActor [self] in
+                self.updateProgress()
             }
         }
     }
@@ -147,6 +198,12 @@ public final class TimerService: @unchecked Sendable {
     private func stopTimer() {
         timer?.invalidate()
         timer = nil
+        displayTimer?.invalidate()
+        displayTimer = nil
+    }
+
+    private func updateProgress() {
+        progress = calculateProgress()
     }
 
     private func tick() {

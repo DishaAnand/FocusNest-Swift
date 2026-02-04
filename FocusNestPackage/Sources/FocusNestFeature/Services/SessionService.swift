@@ -1,4 +1,5 @@
 import Foundation
+import FirebaseCore
 import FirebaseDatabase
 
 @MainActor
@@ -30,6 +31,17 @@ public final class SessionService: @unchecked Sendable {
     }
 
     public func configure() {
+        // Initialize Firebase if not already configured
+        if FirebaseApp.app() == nil {
+            // Only configure if GoogleService-Info.plist exists
+            if Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil {
+                FirebaseApp.configure()
+            } else {
+                // Firebase not available - buddy sessions won't work
+                print("⚠️ FocusNest: GoogleService-Info.plist not found. Buddy sessions disabled.")
+                return
+            }
+        }
         database = Database.database().reference()
         isFirebaseConfigured = true
         startListeningToServerTimeOffset()

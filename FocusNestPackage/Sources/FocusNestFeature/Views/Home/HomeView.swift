@@ -33,7 +33,15 @@ public struct HomeView: View {
                     ScrollView {
                         LazyVStack(spacing: Theme.spacingS) {
                             ForEach(currentTasks) { task in
-                                TaskCardView(task: task, isSelected: timerService.selectedTask?.id == task.id, onTap: { selectTask(task) }, onComplete: { toggleTaskCompletion(task) }, onDelete: { deleteTask(task) }, onRename: { startRenaming(task) })
+                                TaskCardView(
+                                    task: task,
+                                    isSelected: timerService.selectedTask?.id == task.id,
+                                    onTap: { selectTask(task) },
+                                    onComplete: { toggleTaskCompletion(task) },
+                                    onDelete: { deleteTask(task) },
+                                    onRename: { startRenaming(task) },
+                                    onStart: { startTaskTimer(task) }
+                                )
                             }
                         }
                         .padding(Theme.spacingM)
@@ -92,4 +100,15 @@ public struct HomeView: View {
         guard !trimmedTitle.isEmpty else { return }
         task.title = trimmedTitle; renameText = ""; taskToRename = nil
     }
+
+    private func startTaskTimer(_ task: FocusTask) {
+        timerService.selectedTask = task
+        // Post notification to switch to Timer tab
+        NotificationCenter.default.post(name: .switchToTimerTab, object: nil)
+    }
+}
+
+// Notification for tab switching
+public extension Notification.Name {
+    static let switchToTimerTab = Notification.Name("switchToTimerTab")
 }

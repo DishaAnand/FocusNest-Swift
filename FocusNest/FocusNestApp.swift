@@ -26,6 +26,9 @@ struct FocusNestApp: App {
                 .environment(soundService)
                 .environment(sessionService)
                 .preferredColorScheme(settings.theme.colorScheme)
+                .task {
+                    sessionService.configure()
+                }
         }
         .modelContainer(for: [FocusTask.self, FocusRecord.self])
     }

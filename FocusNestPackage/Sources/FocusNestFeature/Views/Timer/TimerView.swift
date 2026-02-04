@@ -81,6 +81,7 @@ public struct TimerView: View {
                 .padding(Theme.spacingL)
                 Spacer()
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(Theme.backgroundPrimary)
         .sheet(isPresented: $showTaskSelector) { TaskSelectorSheet(selectedTask: Bindable(timerService).selectedTask) }

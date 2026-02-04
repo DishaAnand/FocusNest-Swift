@@ -3,6 +3,7 @@ import SwiftData
 
 @MainActor
 public struct BuddySessionView: View {
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(SessionService.self) private var sessionService
     @Environment(UserSettings.self) private var settings
@@ -152,6 +153,7 @@ public struct BuddySessionView: View {
         try? await sessionService.leaveSession()
         sessionService.cleanup()
         resetState()
+        dismiss()
     }
 
     private func finishSession() {
@@ -182,16 +184,11 @@ enum BuddySessionStep { case setup, waiting, active, rating, completed }
 
 @MainActor
 private struct ActiveSessionTimerView: View {
+    @Environment(SessionService.self) private var sessionService
     let session: BuddySession
     let onComplete: () -> Void
-    @State private var remainingTime: Int
+    @State private var remainingTime: Int = 0
     @State private var timer: Timer?
-
-    init(session: BuddySession, onComplete: @escaping () -> Void) {
-        self.session = session
-        self.onComplete = onComplete
-        self._remainingTime = State(initialValue: session.remainingTime(currentTime: Date().timeIntervalSince1970))
-    }
 
     var body: some View {
         VStack(spacing: Theme.spacingM) {
@@ -199,9 +196,15 @@ private struct ActiveSessionTimerView: View {
             Text(String(format: "%02d:%02d", remainingTime / 60, remainingTime % 60)).font(Theme.timerFontSmall).monospacedDigit()
         }
         .onAppear {
-            timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
-                if remainingTime > 0 { remainingTime -= 1 }
-                else { timer?.invalidate(); onComplete() }
+            // Initial calculation using server time
+            remainingTime = session.remainingTime(currentTime: sessionService.serverTime)
+            // Recalculate every second using server time for accurate sync
+            timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [sessionService] _ in
+                Task { @MainActor in
+                    let remaining = session.remainingTime(currentTime: sessionService.serverTime)
+                    if remaining > 0 { remainingTime = remaining }
+                    else { timer?.invalidate(); onComplete() }
+                }
             }
         }
         .onDisappear { timer?.invalidate() }
