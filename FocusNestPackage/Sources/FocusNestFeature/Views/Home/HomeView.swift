@@ -10,6 +10,7 @@ public struct HomeView: View {
     @State private var selectedTab: TaskTab = .todo
     @State private var showAddTask = false
     @State private var showRenameTask = false
+    @State private var showBuddySession = false
     @State private var taskToRename: FocusTask?
     @State private var newTaskTitle = ""
     @State private var renameText = ""
@@ -41,7 +42,15 @@ public struct HomeView: View {
             }
             .background(Theme.backgroundPrimary)
             .navigationTitle("Tasks")
-            .toolbar { ToolbarItem(placement: .primaryAction) { Button { showAddTask = true } label: { Image(systemName: "plus.circle.fill").font(.title2).foregroundStyle(Theme.focusColor) } } }
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    HStack(spacing: Theme.spacingS) {
+                        Button { showBuddySession = true } label: { Image(systemName: "person.2.fill").font(.title2).foregroundStyle(Theme.focusColor) }
+                        Button { showAddTask = true } label: { Image(systemName: "plus.circle.fill").font(.title2).foregroundStyle(Theme.focusColor) }
+                    }
+                }
+            }
+            .sheet(isPresented: $showBuddySession) { BuddySessionView() }
             .alert("Add Task", isPresented: $showAddTask) {
                 TextField("Task title", text: $newTaskTitle)
                 Button("Cancel", role: .cancel) { newTaskTitle = "" }
