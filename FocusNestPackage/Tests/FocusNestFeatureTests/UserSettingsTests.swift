@@ -1,0 +1,235 @@
+import Testing
+import SwiftUI
+@testable import FocusNestFeature
+
+@Suite("UserSettings Tests")
+@MainActor
+struct UserSettingsTests {
+
+    // MARK: - Default Initialization Tests
+
+    @Test("Settings initialize with expected default values")
+    func settingsInitializeWithExpectedDefaults() async throws {
+        // Clear any stored values to test defaults
+        let defaults = UserDefaults.standard
+        defaults.removeObject(forKey: "focusDuration")
+        defaults.removeObject(forKey: "breakDuration")
+        defaults.removeObject(forKey: "longBreakDuration")
+        defaults.removeObject(forKey: "sessionsBeforeLongBreak")
+        defaults.removeObject(forKey: "soundEnabled")
+        defaults.removeObject(forKey: "vibrationEnabled")
+        defaults.removeObject(forKey: "autoStartBreaks")
+        defaults.removeObject(forKey: "autoStartFocus")
+        defaults.removeObject(forKey: "theme")
+        defaults.removeObject(forKey: "notificationsEnabled")
+
+        let settings = UserSettings()
+
+        // Duration defaults (in seconds)
+        #expect(settings.focusDuration == 25 * 60)  // 25 minutes
+        #expect(settings.breakDuration == 5 * 60)   // 5 minutes
+        #expect(settings.longBreakDuration == 15 * 60)  // 15 minutes
+        #expect(settings.sessionsBeforeLongBreak == 4)
+
+        // Boolean defaults
+        #expect(settings.soundEnabled == true)
+        #expect(settings.vibrationEnabled == true)
+        #expect(settings.autoStartBreaks == false)
+        #expect(settings.autoStartFocus == false)
+        #expect(settings.notificationsEnabled == true)
+
+        // Theme default
+        #expect(settings.theme == .system)
+    }
+
+    // MARK: - Duration Minutes Computed Property Tests
+
+    @Test("Focus duration minutes getter returns correct value")
+    func focusDurationMinutesGetterReturnsCorrectValue() async throws {
+        let settings = UserSettings()
+
+        settings.focusDuration = 25 * 60  // 25 minutes in seconds
+        #expect(settings.focusDurationMinutes == 25)
+
+        settings.focusDuration = 45 * 60  // 45 minutes in seconds
+        #expect(settings.focusDurationMinutes == 45)
+
+        settings.focusDuration = 60 * 60  // 60 minutes in seconds
+        #expect(settings.focusDurationMinutes == 60)
+    }
+
+    @Test("Focus duration minutes setter updates seconds correctly")
+    func focusDurationMinutesSetterUpdatesSecondsCorrectly() async throws {
+        let settings = UserSettings()
+
+        settings.focusDurationMinutes = 30
+        #expect(settings.focusDuration == 30 * 60)
+
+        settings.focusDurationMinutes = 50
+        #expect(settings.focusDuration == 50 * 60)
+
+        settings.focusDurationMinutes = 1
+        #expect(settings.focusDuration == 60)
+    }
+
+    @Test("Break duration minutes getter returns correct value")
+    func breakDurationMinutesGetterReturnsCorrectValue() async throws {
+        let settings = UserSettings()
+
+        settings.breakDuration = 5 * 60  // 5 minutes in seconds
+        #expect(settings.breakDurationMinutes == 5)
+
+        settings.breakDuration = 10 * 60  // 10 minutes in seconds
+        #expect(settings.breakDurationMinutes == 10)
+    }
+
+    @Test("Break duration minutes setter updates seconds correctly")
+    func breakDurationMinutesSetterUpdatesSecondsCorrectly() async throws {
+        let settings = UserSettings()
+
+        settings.breakDurationMinutes = 7
+        #expect(settings.breakDuration == 7 * 60)
+
+        settings.breakDurationMinutes = 15
+        #expect(settings.breakDuration == 15 * 60)
+    }
+
+    @Test("Long break duration minutes getter returns correct value")
+    func longBreakDurationMinutesGetterReturnsCorrectValue() async throws {
+        let settings = UserSettings()
+
+        settings.longBreakDuration = 15 * 60  // 15 minutes in seconds
+        #expect(settings.longBreakDurationMinutes == 15)
+
+        settings.longBreakDuration = 30 * 60  // 30 minutes in seconds
+        #expect(settings.longBreakDurationMinutes == 30)
+    }
+
+    @Test("Long break duration minutes setter updates seconds correctly")
+    func longBreakDurationMinutesSetterUpdatesSecondsCorrectly() async throws {
+        let settings = UserSettings()
+
+        settings.longBreakDurationMinutes = 20
+        #expect(settings.longBreakDuration == 20 * 60)
+
+        settings.longBreakDurationMinutes = 45
+        #expect(settings.longBreakDuration == 45 * 60)
+    }
+
+    @Test("Duration minutes handles edge cases")
+    func durationMinutesHandlesEdgeCases() async throws {
+        let settings = UserSettings()
+
+        // Zero minutes
+        settings.focusDurationMinutes = 0
+        #expect(settings.focusDuration == 0)
+        #expect(settings.focusDurationMinutes == 0)
+
+        // Large value
+        settings.focusDurationMinutes = 120  // 2 hours
+        #expect(settings.focusDuration == 7200)
+        #expect(settings.focusDurationMinutes == 120)
+    }
+
+    // MARK: - AppTheme Color Scheme Tests
+
+    @Test("System theme returns nil color scheme")
+    func systemThemeReturnsNilColorScheme() async throws {
+        let theme = AppTheme.system
+        #expect(theme.colorScheme == nil)
+    }
+
+    @Test("Light theme returns light color scheme")
+    func lightThemeReturnsLightColorScheme() async throws {
+        let theme = AppTheme.light
+        #expect(theme.colorScheme == .light)
+    }
+
+    @Test("Dark theme returns dark color scheme")
+    func darkThemeReturnsDarkColorScheme() async throws {
+        let theme = AppTheme.dark
+        #expect(theme.colorScheme == .dark)
+    }
+
+    @Test("All themes have correct display names")
+    func allThemesHaveCorrectDisplayNames() async throws {
+        #expect(AppTheme.system.displayName == "System")
+        #expect(AppTheme.light.displayName == "Light")
+        #expect(AppTheme.dark.displayName == "Dark")
+    }
+
+    @Test("AppTheme raw values are correct")
+    func appThemeRawValuesAreCorrect() async throws {
+        #expect(AppTheme.system.rawValue == "system")
+        #expect(AppTheme.light.rawValue == "light")
+        #expect(AppTheme.dark.rawValue == "dark")
+    }
+
+    @Test("AppTheme can be initialized from raw value")
+    func appThemeCanBeInitializedFromRawValue() async throws {
+        #expect(AppTheme(rawValue: "system") == .system)
+        #expect(AppTheme(rawValue: "light") == .light)
+        #expect(AppTheme(rawValue: "dark") == .dark)
+        #expect(AppTheme(rawValue: "invalid") == nil)
+    }
+
+    @Test("AppTheme CaseIterable contains all cases")
+    func appThemeCaseIterableContainsAllCases() async throws {
+        let allCases = AppTheme.allCases
+        #expect(allCases.count == 3)
+        #expect(allCases.contains(.system))
+        #expect(allCases.contains(.light))
+        #expect(allCases.contains(.dark))
+    }
+
+    // MARK: - UserDefaults Persistence Tests
+
+    @Test("Settings persist to UserDefaults")
+    func settingsPersistToUserDefaults() async throws {
+        let settings = UserSettings()
+
+        // Set custom values
+        settings.focusDuration = 35 * 60
+        settings.breakDuration = 8 * 60
+        settings.longBreakDuration = 20 * 60
+        settings.sessionsBeforeLongBreak = 3
+        settings.soundEnabled = false
+        settings.vibrationEnabled = false
+        settings.autoStartBreaks = true
+        settings.autoStartFocus = true
+        settings.theme = .dark
+        settings.notificationsEnabled = false
+
+        // Create new instance to verify persistence
+        let loadedSettings = UserSettings()
+
+        #expect(loadedSettings.focusDuration == 35 * 60)
+        #expect(loadedSettings.breakDuration == 8 * 60)
+        #expect(loadedSettings.longBreakDuration == 20 * 60)
+        #expect(loadedSettings.sessionsBeforeLongBreak == 3)
+        #expect(loadedSettings.soundEnabled == false)
+        #expect(loadedSettings.vibrationEnabled == false)
+        #expect(loadedSettings.autoStartBreaks == true)
+        #expect(loadedSettings.autoStartFocus == true)
+        #expect(loadedSettings.theme == .dark)
+        #expect(loadedSettings.notificationsEnabled == false)
+    }
+
+    @Test("Theme persists correctly to UserDefaults")
+    func themePersistsCorrectlyToUserDefaults() async throws {
+        let settings = UserSettings()
+
+        // Test each theme option persists
+        settings.theme = .light
+        var loadedSettings = UserSettings()
+        #expect(loadedSettings.theme == .light)
+
+        settings.theme = .dark
+        loadedSettings = UserSettings()
+        #expect(loadedSettings.theme == .dark)
+
+        settings.theme = .system
+        loadedSettings = UserSettings()
+        #expect(loadedSettings.theme == .system)
+    }
+}
