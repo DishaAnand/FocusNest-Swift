@@ -25,15 +25,18 @@ public enum Responsive {
         return size * factor
     }
 
+    /// Moderate scaling with factor control
+    /// Matches RN: `moderateScale(size, factor)`
+    /// For iPad: returns adjusted * 0.9
     public static func moderateScale(_ size: CGFloat, factor: CGFloat = 0.5) -> CGFloat {
         let width = UIScreen.main.bounds.width
         let scaledSize = scale(size)
+        let adjusted = size + (scaledSize - size) * factor
 
-        var adjustedFactor = factor
+        // RN multiplies final result by 0.9 for large screens
         if width >= largeScreenThreshold {
-            adjustedFactor *= 0.9
+            return adjusted * 0.9
         }
-
-        return size + (scaledSize - size) * adjustedFactor
+        return adjusted
     }
 }

@@ -17,6 +17,28 @@ public enum Theme {
     public static let errorColor = Color.red
     public static let awayColor = Color(red: 0.85, green: 0.55, blue: 0.55)
 
+    // MARK: - React Native Parity Colors (from colors.ts)
+    /// RN: COLORS.primary = #2A7F7F (teal)
+    public static let rnPrimary = Color(red: 0.165, green: 0.498, blue: 0.498)
+    /// RN: COLORS.background = #FBF9F4 (off-white)
+    public static let rnBackground = Color(red: 0.984, green: 0.976, blue: 0.957)
+    /// RN: COLORS.secondaryLight = #E0F0F0
+    public static let secondaryLight = Color(red: 0.878, green: 0.941, blue: 0.941)
+    /// RN: COLORS.secondaryDark = #4D7070
+    public static let secondaryDark = Color(red: 0.302, green: 0.439, blue: 0.439)
+    /// RN: COLORS.card = #FFFFFF
+    public static let cardBackground = Color.white
+    /// RN: COLORS.text = #0F172A (near-black)
+    public static let rnText = Color(red: 0.059, green: 0.090, blue: 0.165)
+    /// RN: COLORS.muted = #2F6F6A (teal for headings)
+    public static let mutedColor = Color(red: 0.184, green: 0.435, blue: 0.416)
+    /// RN: COLORS.primary2 = #FF7A73 (coral - for Start/Cancel buttons)
+    public static let coralColor = Color(red: 1.0, green: 0.478, blue: 0.451)
+    /// RN: COLORS.border = rgba(0,0,0,0.06)
+    public static let borderColor = Color.black.opacity(0.06)
+    /// RN: COLORS.shadow = rgba(0,0,0,0.08)
+    public static let shadowColor = Color.black.opacity(0.08)
+
     // MARK: - Background Colors
     public static let backgroundPrimary = Color(uiColor: .systemBackground)
     public static let backgroundSecondary = Color(uiColor: .secondarySystemBackground)
