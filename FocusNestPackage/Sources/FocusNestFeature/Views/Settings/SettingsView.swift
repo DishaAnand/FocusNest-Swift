@@ -38,7 +38,7 @@ public struct SettingsView: View {
                     }
                 }
                 Section("About") {
-                    HStack { Text("Version"); Spacer(); Text("1.0.0").foregroundStyle(Theme.textSecondary) }
+                    HStack { Text("Version"); Spacer(); Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0").foregroundStyle(Theme.textSecondary) }
                     Button("Reset All Settings") { showingResetAlert = true }.foregroundStyle(Theme.errorColor)
                 }
             }
