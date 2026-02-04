@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-@testable import FocusNestFeature
+@testable import FocusHavenFeature
 
 @Suite("BuddySession Tests - Matching RN sessionService.ts")
 struct BuddySessionTests {

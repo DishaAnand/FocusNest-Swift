@@ -408,13 +408,13 @@ This template includes a **declarative entitlements system** that AI agents can 
 
 ## How It Works
 
-- **Entitlements File**: `Config/FocusNest.entitlements` contains all app capabilities
+- **Entitlements File**: `Config/FocusHaven.entitlements` contains all app capabilities
 - **XCConfig Integration**: `CODE_SIGN_ENTITLEMENTS` setting in `Config/Shared.xcconfig` points to the entitlements file
 - **AI-Friendly**: Agents can edit the XML file directly to add/remove capabilities
 
 ## Adding Entitlements
 
-To add capabilities to your app, edit `Config/FocusNest.entitlements`:
+To add capabilities to your app, edit `Config/FocusHaven.entitlements`:
 
 ## Common Entitlements
 
@@ -698,7 +698,7 @@ final class Task {
 
 // In your app
 @main
-struct FocusNestApp: App {
+struct FocusHavenApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()

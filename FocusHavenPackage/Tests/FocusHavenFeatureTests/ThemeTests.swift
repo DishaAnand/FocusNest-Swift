@@ -1,6 +1,6 @@
 import Testing
 import SwiftUI
-@testable import FocusNestFeature
+@testable import FocusHavenFeature
 
 @Suite("Theme Tests - Matching RN theme.ts & useChartColors.ts")
 struct ThemeTests {

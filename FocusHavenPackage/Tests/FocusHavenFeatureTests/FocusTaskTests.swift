@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-@testable import FocusNestFeature
+@testable import FocusHavenFeature
 
 @Suite("FocusTask Model Tests - Matching RN tasks.ts")
 struct FocusTaskTests {

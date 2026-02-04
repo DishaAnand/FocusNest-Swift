@@ -1,6 +1,6 @@
 import Testing
 import SwiftUI
-@testable import FocusNestFeature
+@testable import FocusHavenFeature
 
 @Suite("UserSettings Tests - Matching RN settings.ts")
 @MainActor

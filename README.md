@@ -1,4 +1,4 @@
-# FocusNest - iOS App
+# FocusHaven - iOS App
 
 A modern iOS application using a **workspace + SPM package** architecture for clean separation between app shell and feature code.
 
@@ -30,25 +30,25 @@ These rules files are **starting points** - feel free to:
 ## Project Architecture
 
 ```
-FocusNest/
-├── FocusNest.xcworkspace/              # Open this file in Xcode
-├── FocusNest.xcodeproj/                # App shell project
-├── FocusNest/                          # App target (minimal)
+FocusHaven/
+├── FocusHaven.xcworkspace/              # Open this file in Xcode
+├── FocusHaven.xcodeproj/                # App shell project
+├── FocusHaven/                          # App target (minimal)
 │   ├── Assets.xcassets/                # App-level assets (icons, colors)
-│   ├── FocusNestApp.swift              # App entry point
-│   └── FocusNest.xctestplan            # Test configuration
-├── FocusNestPackage/                   # 🚀 Primary development area
+│   ├── FocusHavenApp.swift              # App entry point
+│   └── FocusHaven.xctestplan            # Test configuration
+├── FocusHavenPackage/                   # 🚀 Primary development area
 │   ├── Package.swift                   # Package configuration
-│   ├── Sources/FocusNestFeature/       # Your feature code
-│   └── Tests/FocusNestFeatureTests/    # Unit tests
-└── FocusNestUITests/                   # UI automation tests
+│   ├── Sources/FocusHavenFeature/       # Your feature code
+│   └── Tests/FocusHavenFeatureTests/    # Unit tests
+└── FocusHavenUITests/                   # UI automation tests
 ```
 
 ## Key Architecture Points
 
 ### Workspace + SPM Structure
-- **App Shell**: `FocusNest/` contains minimal app lifecycle code
-- **Feature Code**: `FocusNestPackage/Sources/FocusNestFeature/` is where most development happens
+- **App Shell**: `FocusHaven/` contains minimal app lifecycle code
+- **Feature Code**: `FocusHavenPackage/Sources/FocusHavenFeature/` is where most development happens
 - **Separation**: Business logic lives in the SPM package, app target just imports and displays it
 
 ### Buildable Folders (Xcode 16)
@@ -59,7 +59,7 @@ FocusNest/
 ## Development Notes
 
 ### Code Organization
-Most development happens in `FocusNestPackage/Sources/FocusNestFeature/` - organize your code as you prefer.
+Most development happens in `FocusHavenPackage/Sources/FocusHavenFeature/` - organize your code as you prefer.
 
 ### Public API Requirements
 Types exposed to the app target need `public` access:
@@ -74,23 +74,23 @@ public struct NewView: View {
 ```
 
 ### Adding Dependencies
-Edit `FocusNestPackage/Package.swift` to add SPM dependencies:
+Edit `FocusHavenPackage/Package.swift` to add SPM dependencies:
 ```swift
 dependencies: [
     .package(url: "https://github.com/example/SomePackage", from: "1.0.0")
 ],
 targets: [
     .target(
-        name: "FocusNestFeature",
+        name: "FocusHavenFeature",
         dependencies: ["SomePackage"]
     ),
 ]
 ```
 
 ### Test Structure
-- **Unit Tests**: `FocusNestPackage/Tests/FocusNestFeatureTests/` (Swift Testing framework)
-- **UI Tests**: `FocusNestUITests/` (XCUITest framework)
-- **Test Plan**: `FocusNest.xctestplan` coordinates all tests
+- **Unit Tests**: `FocusHavenPackage/Tests/FocusHavenFeatureTests/` (Swift Testing framework)
+- **UI Tests**: `FocusHavenUITests/` (XCUITest framework)
+- **Test Plan**: `FocusHaven.xctestplan` coordinates all tests
 
 ## Configuration
 
@@ -103,19 +103,19 @@ Build settings are managed through **XCConfig files** in `Config/`:
 
 ### Entitlements Management
 App capabilities are managed through a **declarative entitlements file**:
-- `Config/FocusNest.entitlements` - All app entitlements and capabilities
+- `Config/FocusHaven.entitlements` - All app entitlements and capabilities
 - AI agents can safely edit this XML file to add HealthKit, CloudKit, Push Notifications, etc.
 - No need to modify complex Xcode project files
 
 ### Asset Management
-- **App-Level Assets**: `FocusNest/Assets.xcassets/` (app icon, accent color)
+- **App-Level Assets**: `FocusHaven/Assets.xcassets/` (app icon, accent color)
 - **Feature Assets**: Add `Resources/` folder to SPM package if needed
 
 ### SPM Package Resources
 To include assets in your feature package:
 ```swift
 .target(
-    name: "FocusNestFeature",
+    name: "FocusHavenFeature",
     dependencies: [],
     resources: [.process("Resources")]
 )

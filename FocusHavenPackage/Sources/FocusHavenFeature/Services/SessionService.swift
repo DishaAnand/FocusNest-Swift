@@ -38,7 +38,7 @@ public final class SessionService: @unchecked Sendable {
                 FirebaseApp.configure()
             } else {
                 // Firebase not available - buddy sessions won't work
-                print("⚠️ FocusNest: GoogleService-Info.plist not found. Buddy sessions disabled.")
+                print("⚠️ FocusHaven: GoogleService-Info.plist not found. Buddy sessions disabled.")
                 return
             }
         }

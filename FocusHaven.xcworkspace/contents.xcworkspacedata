@@ -2,9 +2,9 @@
 <Workspace
    version = "1.0">
    <FileRef
-      location = "group:FocusNestPackage">
+      location = "group:FocusHavenPackage">
    </FileRef>
    <FileRef
-      location = "container:FocusNest.xcodeproj">
+      location = "container:FocusHaven.xcodeproj">
    </FileRef>
 </Workspace>

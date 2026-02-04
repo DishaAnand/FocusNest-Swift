@@ -244,7 +244,7 @@ Added `.frame(maxWidth: .infinity, maxHeight: .infinity)` to TimerView.swift out
 
 ### ✅ Priority 3: Fix Firebase Initialization - DONE
 
-1. Added `sessionService.configure()` call in FocusNestApp via `.task`
+1. Added `sessionService.configure()` call in FocusHavenApp via `.task`
 2. Updated `configure()` to safely handle missing GoogleService-Info.plist
 3. Added `FirebaseApp.configure()` call when plist is available
 

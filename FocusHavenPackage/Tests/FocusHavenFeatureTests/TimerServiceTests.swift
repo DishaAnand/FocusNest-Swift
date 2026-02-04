@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-@testable import FocusNestFeature
+@testable import FocusHavenFeature
 
 @Suite("TimerService Tests")
 @MainActor

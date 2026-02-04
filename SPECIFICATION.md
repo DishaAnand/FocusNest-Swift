@@ -1,8 +1,8 @@
-# FocusNest - Complete Feature Specification
+# FocusHaven - Complete Feature Specification
 
 ## Overview
 
-FocusNest is a native iOS Pomodoro timer application with collaborative "buddy sessions" via Firebase.
+FocusHaven is a native iOS Pomodoro timer application with collaborative "buddy sessions" via Firebase.
 
 ## Platform Requirements
 
@@ -307,11 +307,11 @@ Handling:
 
 ```bash
 # Build for simulator
-xcodebuild -workspace FocusNest.xcworkspace -scheme FocusNest -destination 'platform=iOS Simulator,name=iPhone 15' build
+xcodebuild -workspace FocusHaven.xcworkspace -scheme FocusHaven -destination 'platform=iOS Simulator,name=iPhone 15' build
 
 # Run tests
-xcodebuild -workspace FocusNest.xcworkspace -scheme FocusNestFeature test
+xcodebuild -workspace FocusHaven.xcworkspace -scheme FocusHavenFeature test
 
 # Clean
-xcodebuild -workspace FocusNest.xcworkspace -scheme FocusNest clean
+xcodebuild -workspace FocusHaven.xcworkspace -scheme FocusHaven clean
 ```

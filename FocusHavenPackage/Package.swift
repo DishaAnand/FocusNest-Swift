@@ -4,12 +4,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "FocusNestFeature",
+    name: "FocusHavenFeature",
     platforms: [.iOS(.v17), .macOS(.v10_15)],
     products: [
         .library(
-            name: "FocusNestFeature",
-            targets: ["FocusNestFeature"]
+            name: "FocusHavenFeature",
+            targets: ["FocusHavenFeature"]
         ),
     ],
     dependencies: [
@@ -17,16 +17,16 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "FocusNestFeature",
+            name: "FocusHavenFeature",
             dependencies: [
                 .product(name: "FirebaseDatabase", package: "firebase-ios-sdk")
             ],
             resources: [.process("Resources")]
         ),
         .testTarget(
-            name: "FocusNestFeatureTests",
+            name: "FocusHavenFeatureTests",
             dependencies: [
-                "FocusNestFeature"
+                "FocusHavenFeature"
             ]
         ),
     ]

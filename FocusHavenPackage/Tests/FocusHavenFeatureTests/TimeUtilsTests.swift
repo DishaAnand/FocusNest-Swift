@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-@testable import FocusNestFeature
+@testable import FocusHavenFeature
 
 @Suite("TimeUtils Tests - Matching RN time.ts")
 struct TimeUtilsTests {

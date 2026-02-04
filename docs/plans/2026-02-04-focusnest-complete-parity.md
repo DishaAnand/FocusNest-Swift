@@ -1,8 +1,8 @@
-# FocusNest Complete Parity Implementation Plan
+# FocusHaven Complete Parity Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Achieve 100% feature parity with React Native FocusNest, fix all bugs, and ensure comprehensive test coverage.
+**Goal:** Achieve 100% feature parity with React Native FocusHaven, fix all bugs, and ensure comprehensive test coverage.
 
 **Architecture:** SwiftUI + SwiftData + Firebase Realtime Database. MV pattern (no ViewModels). All UI code uses @MainActor isolation.
 
@@ -28,15 +28,15 @@
 ### Task 1: Fix Timer Screen Centering
 
 **Files:**
-- Modify: `/Users/nizamulkazi/FocusNest/FocusNestPackage/Sources/FocusNestFeature/Views/Timer/TimerView.swift`
-- Test: `/Users/nizamulkazi/FocusNest/FocusNestPackage/Tests/FocusNestFeatureTests/TimerViewTests.swift`
+- Modify: `/Users/nizamulkazi/FocusHaven/FocusHavenPackage/Sources/FocusHavenFeature/Views/Timer/TimerView.swift`
+- Test: `/Users/nizamulkazi/FocusHaven/FocusHavenPackage/Tests/FocusHavenFeatureTests/TimerViewTests.swift`
 
 **Step 1: Write failing test for timer centering**
 
 ```swift
 import Testing
 import SwiftUI
-@testable import FocusNestFeature
+@testable import FocusHavenFeature
 
 @Suite("TimerView Layout Tests")
 @MainActor
@@ -57,7 +57,7 @@ struct TimerViewLayoutTests {
 
 **Step 2: Run test to verify it compiles**
 
-Run: `xcodebuild test -workspace FocusNest.xcworkspace -scheme FocusNestFeature -destination 'platform=iOS Simulator,name=iPhone 15'`
+Run: `xcodebuild test -workspace FocusHaven.xcworkspace -scheme FocusHavenFeature -destination 'platform=iOS Simulator,name=iPhone 15'`
 Expected: Test compiles (may pass as placeholder)
 
 **Step 3: Fix TimerView layout - replace ScrollView with centered VStack**
@@ -142,13 +142,13 @@ public var body: some View {
 
 **Step 4: Build and verify**
 
-Run: `xcodebuild build -workspace FocusNest.xcworkspace -scheme FocusNest -destination 'platform=iOS Simulator,name=iPhone 15'`
+Run: `xcodebuild build -workspace FocusHaven.xcworkspace -scheme FocusHaven -destination 'platform=iOS Simulator,name=iPhone 15'`
 Expected: BUILD SUCCEEDED
 
 **Step 5: Commit**
 
 ```bash
-git add FocusNestPackage/Sources/FocusNestFeature/Views/Timer/TimerView.swift
+git add FocusHavenPackage/Sources/FocusHavenFeature/Views/Timer/TimerView.swift
 git commit -m "fix: center timer content vertically using Spacer
 
 - Replace ScrollView with VStack + Spacer for proper centering
@@ -163,15 +163,15 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ### Task 2: Fix Theme Application
 
 **Files:**
-- Modify: `/Users/nizamulkazi/FocusNest/FocusNest/FocusNestApp.swift`
-- Modify: `/Users/nizamulkazi/FocusNest/FocusNestPackage/Sources/FocusNestFeature/Models/UserSettings.swift`
-- Test: `/Users/nizamulkazi/FocusNest/FocusNestPackage/Tests/FocusNestFeatureTests/UserSettingsTests.swift`
+- Modify: `/Users/nizamulkazi/FocusHaven/FocusHaven/FocusHavenApp.swift`
+- Modify: `/Users/nizamulkazi/FocusHaven/FocusHavenPackage/Sources/FocusHavenFeature/Models/UserSettings.swift`
+- Test: `/Users/nizamulkazi/FocusHaven/FocusHavenPackage/Tests/FocusHavenFeatureTests/UserSettingsTests.swift`
 
 **Step 1: Write failing test for theme**
 
 ```swift
 import Testing
-@testable import FocusNestFeature
+@testable import FocusHavenFeature
 
 @Suite("UserSettings Tests")
 @MainActor
@@ -194,19 +194,19 @@ struct UserSettingsTests {
 
 **Step 2: Run test**
 
-Run: `swift test --package-path FocusNestPackage`
+Run: `swift test --package-path FocusHavenPackage`
 Expected: Test passes (colorScheme already exists)
 
-**Step 3: Apply theme in FocusNestApp.swift**
+**Step 3: Apply theme in FocusHavenApp.swift**
 
 ```swift
 import SwiftUI
 import SwiftData
-import FocusNestFeature
+import FocusHavenFeature
 
 @main
 @MainActor
-struct FocusNestApp: App {
+struct FocusHavenApp: App {
     @State private var settings = UserSettings()
     @State private var timerService: TimerService
     @State private var notificationService = NotificationService()
@@ -236,13 +236,13 @@ struct FocusNestApp: App {
 
 **Step 4: Build and verify**
 
-Run: `xcodebuild build -workspace FocusNest.xcworkspace -scheme FocusNest -destination 'platform=iOS Simulator,name=iPhone 15'`
+Run: `xcodebuild build -workspace FocusHaven.xcworkspace -scheme FocusHaven -destination 'platform=iOS Simulator,name=iPhone 15'`
 Expected: BUILD SUCCEEDED
 
 **Step 5: Commit**
 
 ```bash
-git add FocusNest/FocusNestApp.swift
+git add FocusHaven/FocusHavenApp.swift
 git commit -m "fix: apply theme setting to app via preferredColorScheme
 
 - Theme selection now actually changes app appearance
@@ -257,7 +257,7 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ### Task 3: Add Buddy Session Entry Point
 
 **Files:**
-- Modify: `/Users/nizamulkazi/FocusNest/FocusNestPackage/Sources/FocusNestFeature/Views/Home/HomeView.swift`
+- Modify: `/Users/nizamulkazi/FocusHaven/FocusHavenPackage/Sources/FocusHavenFeature/Views/Home/HomeView.swift`
 
 **Step 1: Write failing test**
 
@@ -303,13 +303,13 @@ Add toolbar button in navigationTitle modifier:
 
 **Step 3: Build and verify**
 
-Run: `xcodebuild build -workspace FocusNest.xcworkspace -scheme FocusNest -destination 'platform=iOS Simulator,name=iPhone 15'`
+Run: `xcodebuild build -workspace FocusHaven.xcworkspace -scheme FocusHaven -destination 'platform=iOS Simulator,name=iPhone 15'`
 Expected: BUILD SUCCEEDED
 
 **Step 4: Commit**
 
 ```bash
-git add FocusNestPackage/Sources/FocusNestFeature/Views/Home/HomeView.swift
+git add FocusHavenPackage/Sources/FocusHavenFeature/Views/Home/HomeView.swift
 git commit -m "feat: add buddy session entry point to HomeView
 
 - Add person.2.fill button in toolbar
@@ -326,14 +326,14 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ### Task 4: Enforce Sound Settings
 
 **Files:**
-- Modify: `/Users/nizamulkazi/FocusNest/FocusNestPackage/Sources/FocusNestFeature/Services/SoundService.swift`
-- Modify: `/Users/nizamulkazi/FocusNest/FocusNestPackage/Sources/FocusNestFeature/Views/Timer/TimerView.swift`
+- Modify: `/Users/nizamulkazi/FocusHaven/FocusHavenPackage/Sources/FocusHavenFeature/Services/SoundService.swift`
+- Modify: `/Users/nizamulkazi/FocusHaven/FocusHavenPackage/Sources/FocusHavenFeature/Views/Timer/TimerView.swift`
 
 **Step 1: Write failing test**
 
 ```swift
 import Testing
-@testable import FocusNestFeature
+@testable import FocusHavenFeature
 
 @Suite("SoundService Tests")
 @MainActor
@@ -456,14 +456,14 @@ if settings.vibrationEnabled { soundService.successHaptic(settings: settings) }
 
 **Step 4: Build and verify**
 
-Run: `xcodebuild build -workspace FocusNest.xcworkspace -scheme FocusNest -destination 'platform=iOS Simulator,name=iPhone 15'`
+Run: `xcodebuild build -workspace FocusHaven.xcworkspace -scheme FocusHaven -destination 'platform=iOS Simulator,name=iPhone 15'`
 Expected: BUILD SUCCEEDED
 
 **Step 5: Commit**
 
 ```bash
-git add FocusNestPackage/Sources/FocusNestFeature/Services/SoundService.swift
-git add FocusNestPackage/Sources/FocusNestFeature/Views/Timer/TimerView.swift
+git add FocusHavenPackage/Sources/FocusHavenFeature/Services/SoundService.swift
+git add FocusHavenPackage/Sources/FocusHavenFeature/Views/Timer/TimerView.swift
 git commit -m "fix: enforce sound and vibration settings
 
 - SoundService now requires UserSettings parameter
@@ -480,15 +480,15 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ### Task 5: Fix Streak Calculation Bug
 
 **Files:**
-- Modify: `/Users/nizamulkazi/FocusNest/FocusNestPackage/Sources/FocusNestFeature/Views/Progress/ProgressView.swift`
-- Test: `/Users/nizamulkazi/FocusNest/FocusNestPackage/Tests/FocusNestFeatureTests/StreakCalculationTests.swift`
+- Modify: `/Users/nizamulkazi/FocusHaven/FocusHavenPackage/Sources/FocusHavenFeature/Views/Progress/ProgressView.swift`
+- Test: `/Users/nizamulkazi/FocusHaven/FocusHavenPackage/Tests/FocusHavenFeatureTests/StreakCalculationTests.swift`
 
 **Step 1: Write failing test**
 
 ```swift
 import Testing
 import Foundation
-@testable import FocusNestFeature
+@testable import FocusHavenFeature
 
 @Suite("Streak Calculation Tests")
 struct StreakCalculationTests {
@@ -567,7 +567,7 @@ func calculateStreak(records: [FocusRecord], calendar: Calendar) -> Int {
 
 **Step 2: Run test to see if streak logic is correct**
 
-Run: `swift test --package-path FocusNestPackage --filter StreakCalculation`
+Run: `swift test --package-path FocusHavenPackage --filter StreakCalculation`
 Expected: May fail depending on current implementation
 
 **Step 3: Fix streak calculation in ProgressView.swift**
@@ -600,13 +600,13 @@ private var currentStreak: Int {
 
 **Step 4: Build and verify**
 
-Run: `xcodebuild build -workspace FocusNest.xcworkspace -scheme FocusNest -destination 'platform=iOS Simulator,name=iPhone 15'`
+Run: `xcodebuild build -workspace FocusHaven.xcworkspace -scheme FocusHaven -destination 'platform=iOS Simulator,name=iPhone 15'`
 Expected: BUILD SUCCEEDED
 
 **Step 5: Commit**
 
 ```bash
-git add FocusNestPackage/Sources/FocusNestFeature/Views/Progress/ProgressView.swift
+git add FocusHavenPackage/Sources/FocusHavenFeature/Views/Progress/ProgressView.swift
 git commit -m "fix: simplify streak calculation logic
 
 - Remove confusing special case for today
@@ -623,14 +623,14 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ### Task 6: Create TimerService Tests
 
 **Files:**
-- Create: `/Users/nizamulkazi/FocusNest/FocusNestPackage/Tests/FocusNestFeatureTests/TimerServiceTests.swift`
+- Create: `/Users/nizamulkazi/FocusHaven/FocusHavenPackage/Tests/FocusHavenFeatureTests/TimerServiceTests.swift`
 
 **Step 1: Write comprehensive tests**
 
 ```swift
 import Testing
 import Foundation
-@testable import FocusNestFeature
+@testable import FocusHavenFeature
 
 @Suite("TimerService Tests")
 @MainActor
@@ -805,13 +805,13 @@ struct TimerServiceTests {
 
 **Step 2: Run tests**
 
-Run: `swift test --package-path FocusNestPackage --filter TimerService`
+Run: `swift test --package-path FocusHavenPackage --filter TimerService`
 Expected: All tests pass
 
 **Step 3: Commit**
 
 ```bash
-git add FocusNestPackage/Tests/FocusNestFeatureTests/TimerServiceTests.swift
+git add FocusHavenPackage/Tests/FocusHavenFeatureTests/TimerServiceTests.swift
 git commit -m "test: add comprehensive TimerService tests
 
 - Test initialization with correct defaults
@@ -831,14 +831,14 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ### Task 7: Create FocusTask Model Tests
 
 **Files:**
-- Create: `/Users/nizamulkazi/FocusNest/FocusNestPackage/Tests/FocusNestFeatureTests/FocusTaskTests.swift`
+- Create: `/Users/nizamulkazi/FocusHaven/FocusHavenPackage/Tests/FocusHavenFeatureTests/FocusTaskTests.swift`
 
 **Step 1: Write model tests**
 
 ```swift
 import Testing
 import Foundation
-@testable import FocusNestFeature
+@testable import FocusHavenFeature
 
 @Suite("FocusTask Model Tests")
 struct FocusTaskTests {
@@ -900,13 +900,13 @@ struct FocusTaskTests {
 
 **Step 2: Run tests**
 
-Run: `swift test --package-path FocusNestPackage --filter FocusTask`
+Run: `swift test --package-path FocusHavenPackage --filter FocusTask`
 Expected: All tests pass
 
 **Step 3: Commit**
 
 ```bash
-git add FocusNestPackage/Tests/FocusNestFeatureTests/FocusTaskTests.swift
+git add FocusHavenPackage/Tests/FocusHavenFeatureTests/FocusTaskTests.swift
 git commit -m "test: add FocusTask model tests
 
 - Test initialization defaults
@@ -922,14 +922,14 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ### Task 8: Create UserSettings Tests
 
 **Files:**
-- Create: `/Users/nizamulkazi/FocusNest/FocusNestPackage/Tests/FocusNestFeatureTests/UserSettingsTests.swift`
+- Create: `/Users/nizamulkazi/FocusHaven/FocusHavenPackage/Tests/FocusHavenFeatureTests/UserSettingsTests.swift`
 
 **Step 1: Write settings tests**
 
 ```swift
 import Testing
 import SwiftUI
-@testable import FocusNestFeature
+@testable import FocusHavenFeature
 
 @Suite("UserSettings Tests")
 @MainActor
@@ -993,13 +993,13 @@ struct UserSettingsTests {
 
 **Step 2: Run tests**
 
-Run: `swift test --package-path FocusNestPackage --filter UserSettings`
+Run: `swift test --package-path FocusHavenPackage --filter UserSettings`
 Expected: All tests pass
 
 **Step 3: Commit**
 
 ```bash
-git add FocusNestPackage/Tests/FocusNestFeatureTests/UserSettingsTests.swift
+git add FocusHavenPackage/Tests/FocusHavenFeatureTests/UserSettingsTests.swift
 git commit -m "test: add UserSettings tests
 
 - Test default initialization
@@ -1017,7 +1017,7 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ### Task 9: Add Missing Responsive Scaling
 
 **Files:**
-- Create: `/Users/nizamulkazi/FocusNest/FocusNestPackage/Sources/FocusNestFeature/Utils/Responsive.swift`
+- Create: `/Users/nizamulkazi/FocusHaven/FocusHavenPackage/Sources/FocusHavenFeature/Utils/Responsive.swift`
 
 **Step 1: Create responsive utilities matching React Native**
 
@@ -1065,13 +1065,13 @@ public enum Responsive {
 
 **Step 2: Build and verify**
 
-Run: `xcodebuild build -workspace FocusNest.xcworkspace -scheme FocusNest -destination 'platform=iOS Simulator,name=iPhone 15'`
+Run: `xcodebuild build -workspace FocusHaven.xcworkspace -scheme FocusHaven -destination 'platform=iOS Simulator,name=iPhone 15'`
 Expected: BUILD SUCCEEDED
 
 **Step 3: Commit**
 
 ```bash
-git add FocusNestPackage/Sources/FocusNestFeature/Utils/Responsive.swift
+git add FocusHavenPackage/Sources/FocusHavenFeature/Utils/Responsive.swift
 git commit -m "feat: add responsive scaling utilities
 
 - Matches React Native responsive.ts functionality
@@ -1088,7 +1088,7 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ### Task 10: Add Version from Bundle
 
 **Files:**
-- Modify: `/Users/nizamulkazi/FocusNest/FocusNestPackage/Sources/FocusNestFeature/Views/Settings/SettingsView.swift`
+- Modify: `/Users/nizamulkazi/FocusHaven/FocusHavenPackage/Sources/FocusHavenFeature/Views/Settings/SettingsView.swift`
 
 **Step 1: Update version display**
 
@@ -1105,13 +1105,13 @@ HStack {
 
 **Step 2: Build and verify**
 
-Run: `xcodebuild build -workspace FocusNest.xcworkspace -scheme FocusNest -destination 'platform=iOS Simulator,name=iPhone 15'`
+Run: `xcodebuild build -workspace FocusHaven.xcworkspace -scheme FocusHaven -destination 'platform=iOS Simulator,name=iPhone 15'`
 Expected: BUILD SUCCEEDED
 
 **Step 3: Commit**
 
 ```bash
-git add FocusNestPackage/Sources/FocusNestFeature/Views/Settings/SettingsView.swift
+git add FocusHavenPackage/Sources/FocusHavenFeature/Views/Settings/SettingsView.swift
 git commit -m "fix: read version from bundle instead of hardcoding
 
 - Uses CFBundleShortVersionString from Info.plist
@@ -1134,8 +1134,8 @@ After completing all tasks, verify:
 - [ ] Vibration toggle actually disables haptics
 - [ ] Streak shows correct consecutive days
 - [ ] Buddy session can be started from home screen
-- [ ] All tests pass: `swift test --package-path FocusNestPackage`
-- [ ] App builds: `xcodebuild build -workspace FocusNest.xcworkspace -scheme FocusNest`
+- [ ] All tests pass: `swift test --package-path FocusHavenPackage`
+- [ ] App builds: `xcodebuild build -workspace FocusHaven.xcworkspace -scheme FocusHaven`
 - [ ] App runs on simulator without crashes
 
 ---

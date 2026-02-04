@@ -1,10 +1,10 @@
 import SwiftUI
 import SwiftData
-import FocusNestFeature
+import FocusHavenFeature
 
 @main
 @MainActor
-struct FocusNestApp: App {
+struct FocusHavenApp: App {
     @State private var settings = UserSettings()
     @State private var timerService: TimerService
     @State private var notificationService = NotificationService()

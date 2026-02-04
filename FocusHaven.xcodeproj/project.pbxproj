@@ -7,17 +7,17 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		AAA00001 /* FocusNestApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA00002 /* FocusNestApp.swift */; };
+		AAA00001 /* FocusHavenApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA00002 /* FocusHavenApp.swift */; };
 		AAA00003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AAA00004 /* Assets.xcassets */; };
-		AAA00005 /* FocusNestFeature in Frameworks */ = {isa = PBXBuildFile; productRef = AAA00006 /* FocusNestFeature */; };
+		AAA00005 /* FocusHavenFeature in Frameworks */ = {isa = PBXBuildFile; productRef = AAA00006 /* FocusHavenFeature */; };
 		AAA00007 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = AAA00008 /* GoogleService-Info.plist */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		AAA00002 /* FocusNestApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusNestApp.swift; sourceTree = "<group>"; };
+		AAA00002 /* FocusHavenApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusHavenApp.swift; sourceTree = "<group>"; };
 		AAA00004 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AAA00008 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
-		AAA00010 /* FocusNest.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FocusNest.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AAA00010 /* FocusHaven.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FocusHaven.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -25,7 +25,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AAA00005 /* FocusNestFeature in Frameworks */,
+				AAA00005 /* FocusHavenFeature in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -35,26 +35,26 @@
 		AAA00030 = {
 			isa = PBXGroup;
 			children = (
-				AAA00031 /* FocusNest */,
+				AAA00031 /* FocusHaven */,
 				AAA00032 /* Products */,
 				AAA00033 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
-		AAA00031 /* FocusNest */ = {
+		AAA00031 /* FocusHaven */ = {
 			isa = PBXGroup;
 			children = (
-				AAA00002 /* FocusNestApp.swift */,
+				AAA00002 /* FocusHavenApp.swift */,
 				AAA00004 /* Assets.xcassets */,
 				AAA00008 /* GoogleService-Info.plist */,
 			);
-			path = FocusNest;
+			path = FocusHaven;
 			sourceTree = "<group>";
 		};
 		AAA00032 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				AAA00010 /* FocusNest.app */,
+				AAA00010 /* FocusHaven.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -69,9 +69,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		AAA00040 /* FocusNest */ = {
+		AAA00040 /* FocusHaven */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = AAA00050 /* Build configuration list for PBXNativeTarget "FocusNest" */;
+			buildConfigurationList = AAA00050 /* Build configuration list for PBXNativeTarget "FocusHaven" */;
 			buildPhases = (
 				AAA00041 /* Sources */,
 				AAA00020 /* Frameworks */,
@@ -81,12 +81,12 @@
 			);
 			dependencies = (
 			);
-			name = FocusNest;
+			name = FocusHaven;
 			packageProductDependencies = (
-				AAA00006 /* FocusNestFeature */,
+				AAA00006 /* FocusHavenFeature */,
 			);
-			productName = FocusNest;
-			productReference = AAA00010 /* FocusNest.app */;
+			productName = FocusHaven;
+			productReference = AAA00010 /* FocusHaven.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -104,7 +104,7 @@
 					};
 				};
 			};
-			buildConfigurationList = AAA00061 /* Build configuration list for PBXProject "FocusNest" */;
+			buildConfigurationList = AAA00061 /* Build configuration list for PBXProject "FocusHaven" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -114,13 +114,13 @@
 			);
 			mainGroup = AAA00030;
 			packageReferences = (
-				AAA00070 /* XCLocalSwiftPackageReference "FocusNestPackage" */,
+				AAA00070 /* XCLocalSwiftPackageReference "FocusHavenPackage" */,
 			);
 			productRefGroup = AAA00032 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				AAA00040 /* FocusNest */,
+				AAA00040 /* FocusHaven */,
 			);
 		};
 /* End PBXProject section */
@@ -142,7 +142,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AAA00001 /* FocusNestApp.swift in Sources */,
+				AAA00001 /* FocusHavenApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -275,7 +275,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = ZK8JN58JHS;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -303,7 +303,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = ZK8JN58JHS;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -327,7 +327,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		AAA00050 /* Build configuration list for PBXNativeTarget "FocusNest" */ = {
+		AAA00050 /* Build configuration list for PBXNativeTarget "FocusHaven" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				AAA00082 /* Debug */,
@@ -336,7 +336,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		AAA00061 /* Build configuration list for PBXProject "FocusNest" */ = {
+		AAA00061 /* Build configuration list for PBXProject "FocusHaven" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				AAA00080 /* Debug */,
@@ -348,16 +348,16 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		AAA00070 /* XCLocalSwiftPackageReference "FocusNestPackage" */ = {
+		AAA00070 /* XCLocalSwiftPackageReference "FocusHavenPackage" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = FocusNestPackage;
+			relativePath = FocusHavenPackage;
 		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		AAA00006 /* FocusNestFeature */ = {
+		AAA00006 /* FocusHavenFeature */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = FocusNestFeature;
+			productName = FocusHavenFeature;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

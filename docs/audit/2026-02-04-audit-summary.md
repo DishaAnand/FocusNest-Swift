@@ -1,4 +1,4 @@
-# FocusNest RN → Swift Audit Summary
+# FocusHaven RN → Swift Audit Summary
 
 > Audit Date: 2026-02-04
 > Total RN Files Audited: 35+
@@ -27,27 +27,27 @@
 ### 1. ✅ Timer Not Centered (Screens)
 **Problem:** Timer ring was not horizontally/vertically centered due to GeometryReader default alignment.
 **Fix:** Added `.frame(maxWidth: .infinity, maxHeight: .infinity)` to outer VStack in TimerView.swift.
-**File:** `FocusNestPackage/Sources/FocusNestFeature/Views/Timer/TimerView.swift:83`
+**File:** `FocusHavenPackage/Sources/FocusHavenFeature/Views/Timer/TimerView.swift:83`
 
 ### 2. ✅ Cancel Button Doesn't Dismiss (Screens)
 **Problem:** BuddySessionView's Cancel button reset state but didn't dismiss the sheet.
 **Fix:** Added `@Environment(\.dismiss)` and `dismiss()` call in `cancelSession()`.
-**File:** `FocusNestPackage/Sources/FocusNestFeature/Views/BuddySession/BuddySessionView.swift:7,156`
+**File:** `FocusHavenPackage/Sources/FocusHavenFeature/Views/BuddySession/BuddySessionView.swift:7,156`
 
 ### 3. ✅ Firebase Not Initialized (Screens)
 **Problem:** `sessionService.configure()` never called; crashed on launch when added.
 **Fix:** Added `FirebaseApp.configure()` with safe fallback if GoogleService-Info.plist missing.
-**File:** `FocusNestPackage/Sources/FocusNestFeature/Services/SessionService.swift:34-45`
+**File:** `FocusHavenPackage/Sources/FocusHavenFeature/Services/SessionService.swift:34-45`
 
 ### 4. ✅ Buddy Timer Uses Local Time (Screens)
 **Problem:** ActiveSessionTimerView used `Date().timeIntervalSince1970` instead of server time.
 **Fix:** Updated to use `sessionService.serverTime` for proper sync between devices.
-**File:** `FocusNestPackage/Sources/FocusNestFeature/Views/BuddySession/BuddySessionView.swift:186-213`
+**File:** `FocusHavenPackage/Sources/FocusHavenFeature/Views/BuddySession/BuddySessionView.swift:186-213`
 
 ### 5. ✅ Server Time Offset Missing (Services)
 **Problem:** Swift didn't track Firebase server time offset for timer sync.
 **Fix:** Added `serverTimeOffset` property and `listenToServerTimeOffset()` matching RN.
-**File:** `FocusNestPackage/Sources/FocusNestFeature/Services/SessionService.swift:15,40-54`
+**File:** `FocusHavenPackage/Sources/FocusHavenFeature/Services/SessionService.swift:15,40-54`
 
 ### 6. ✅ Chart Colors Not Applied (Theme)
 **Problem:** Charts used default colors instead of themed colors for dark/light mode.
@@ -57,12 +57,12 @@
 ### 7. ✅ Period-Specific Stats Missing (Hooks)
 **Problem:** ProgressView showed all-time stats instead of period-specific.
 **Fix:** Rewrote ProgressView to compute stats for selected period (Daily/Weekly/Monthly).
-**File:** `FocusNestPackage/Sources/FocusNestFeature/Views/Progress/ProgressView.swift`
+**File:** `FocusHavenPackage/Sources/FocusHavenFeature/Views/Progress/ProgressView.swift`
 
 ### 8. ✅ Period Navigation Missing (Hooks)
 **Problem:** No way to view historical days/weeks/months in Progress screen.
 **Fix:** Added prev/next navigation with title display ("Today", "Yesterday", date ranges).
-**File:** `FocusNestPackage/Sources/FocusNestFeature/Views/Progress/ProgressView.swift`
+**File:** `FocusHavenPackage/Sources/FocusHavenFeature/Views/Progress/ProgressView.swift`
 
 ### 9. ✅ TaskCard Start Button Missing (Components)
 **Problem:** RN had inline "Start" button on task cards; Swift didn't.
@@ -158,7 +158,7 @@ All critical issues have been fixed! ✅
 1. `TimerView.swift` - Added frame modifier for centering
 2. `BuddySessionView.swift` - Added dismiss, fixed timer sync
 3. `SessionService.swift` - Added serverTimeOffset, Firebase init safety
-4. `FocusNestApp.swift` - Added sessionService.configure() call
+4. `FocusHavenApp.swift` - Added sessionService.configure() call
 5. `Theme.swift` - Added chart colors and dark theme colors
 6. `DailyChartView.swift` - Applied chart colors
 7. `WeeklyChartView.swift` - Applied chart colors

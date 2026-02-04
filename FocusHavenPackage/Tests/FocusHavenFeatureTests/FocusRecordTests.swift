@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-@testable import FocusNestFeature
+@testable import FocusHavenFeature
 
 @Suite("FocusRecord Tests - Matching RN sessionStore.ts")
 struct FocusRecordTests {
