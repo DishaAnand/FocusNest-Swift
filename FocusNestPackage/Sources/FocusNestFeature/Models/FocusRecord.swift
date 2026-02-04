@@ -50,3 +50,59 @@ extension FocusRecord {
         }
     }
 }
+
+// MARK: - Session Stats (matching RN getSessionStatsInRange)
+
+/// Stats for focus sessions in a date range
+public struct SessionStats: Sendable {
+    public let sessionsCompleted: Int
+    public let avgSession: Int  // seconds
+    public let longestSession: Int  // seconds
+
+    public init(sessionsCompleted: Int = 0, avgSession: Int = 0, longestSession: Int = 0) {
+        self.sessionsCompleted = sessionsCompleted
+        self.avgSession = avgSession
+        self.longestSession = longestSession
+    }
+}
+
+extension FocusRecord {
+    /// Calculate stats for focus sessions in date range
+    /// Matches RN: `getSessionStatsInRange(start, end)`
+    public static func getStatsInRange(records: [FocusRecord], start: Date, end: Date) -> SessionStats {
+        let calendar = Calendar.current
+        let startOfStart = calendar.startOfDay(for: start)
+        let endOfEnd = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: end) ?? end
+
+        // Filter to focus sessions (not breaks) within range
+        let focusSessions = records.filter { record in
+            !record.isBreak &&
+            record.date >= startOfStart &&
+            record.date <= endOfEnd
+        }
+
+        let sessionsCompleted = focusSessions.count
+
+        guard sessionsCompleted > 0 else {
+            return SessionStats()
+        }
+
+        let durations = focusSessions.map { $0.duration }
+        let longestSession = durations.max() ?? 0
+        let totalSeconds = durations.reduce(0, +)
+        let avgSession = totalSeconds / sessionsCompleted
+
+        return SessionStats(
+            sessionsCompleted: sessionsCompleted,
+            avgSession: avgSession,
+            longestSession: longestSession
+        )
+    }
+
+    /// Delete all focus records from the model context
+    /// Matches RN: `clearAllProgress()` / `clearAllSessions()`
+    @MainActor
+    public static func clearAll(from context: ModelContext) throws {
+        try context.delete(model: FocusRecord.self)
+    }
+}

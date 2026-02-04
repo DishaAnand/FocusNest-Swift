@@ -57,3 +57,30 @@ extension FocusTask {
         }
     }
 }
+
+// MARK: - Default Task (matching RN DEFAULT_TASKS)
+
+extension FocusTask {
+    /// Default task ID (matches RN 'other' task)
+    public static let defaultTaskId = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+
+    /// Create the default "Other" task
+    /// Matches RN: `DEFAULT_TASKS = [{ id: 'other', title: 'Other', icon: 'refresh-outline' }]`
+    public static func createDefaultTask() -> FocusTask {
+        FocusTask(id: defaultTaskId, title: "Other")
+    }
+
+    /// Ensure at least one task exists, creating default if needed
+    @MainActor
+    public static func ensureDefaultTask(in context: ModelContext, existingTasks: [FocusTask]) {
+        if existingTasks.isEmpty {
+            context.insert(createDefaultTask())
+        }
+    }
+
+    /// Delete all tasks from the model context
+    @MainActor
+    public static func clearAll(from context: ModelContext) throws {
+        try context.delete(model: FocusTask.self)
+    }
+}

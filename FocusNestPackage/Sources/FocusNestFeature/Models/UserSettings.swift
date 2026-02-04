@@ -14,6 +14,7 @@ public final class UserSettings: @unchecked Sendable {
     private static let autoStartFocusKey = "autoStartFocus"
     private static let themeKey = "theme"
     private static let notificationsEnabledKey = "notificationsEnabled"
+    private static let soundKeyKey = "soundKey"
 
     public var focusDuration: Int { didSet { save() } }
     public var breakDuration: Int { didSet { save() } }
@@ -25,6 +26,8 @@ public final class UserSettings: @unchecked Sendable {
     public var autoStartFocus: Bool { didSet { save() } }
     public var theme: AppTheme { didSet { save() } }
     public var notificationsEnabled: Bool { didSet { save() } }
+    /// Selected notification sound (matches RN soundKey)
+    public var soundKey: String { didSet { save() } }
 
     public init() {
         let defaults = UserDefaults.standard
@@ -34,9 +37,10 @@ public final class UserSettings: @unchecked Sendable {
         self.sessionsBeforeLongBreak = defaults.object(forKey: Self.sessionsBeforeLongBreakKey) as? Int ?? 4
         self.soundEnabled = defaults.object(forKey: Self.soundEnabledKey) as? Bool ?? true
         self.vibrationEnabled = defaults.object(forKey: Self.vibrationEnabledKey) as? Bool ?? true
-        self.autoStartBreaks = defaults.object(forKey: Self.autoStartBreaksKey) as? Bool ?? false
+        self.autoStartBreaks = defaults.object(forKey: Self.autoStartBreaksKey) as? Bool ?? true  // RN default is true
         self.autoStartFocus = defaults.object(forKey: Self.autoStartFocusKey) as? Bool ?? false
         self.notificationsEnabled = defaults.object(forKey: Self.notificationsEnabledKey) as? Bool ?? true
+        self.soundKey = defaults.string(forKey: Self.soundKeyKey) ?? "chimes"  // RN default
 
         if let themeRaw = defaults.string(forKey: Self.themeKey),
            let savedTheme = AppTheme(rawValue: themeRaw) {
@@ -58,6 +62,7 @@ public final class UserSettings: @unchecked Sendable {
         defaults.set(autoStartFocus, forKey: Self.autoStartFocusKey)
         defaults.set(theme.rawValue, forKey: Self.themeKey)
         defaults.set(notificationsEnabled, forKey: Self.notificationsEnabledKey)
+        defaults.set(soundKey, forKey: Self.soundKeyKey)
     }
 
     public var focusDurationMinutes: Int {
