@@ -53,17 +53,17 @@ public struct TimerView: View {
 
                     HStack(spacing: Theme.spacingL) {
                         if timerService.state != .idle {
-                            Button { soundService.lightImpact(); timerService.stop(); notificationService.cancelTimerNotifications() } label: {
+                            Button { soundService.lightImpact(settings: settings); timerService.stop(); notificationService.cancelTimerNotifications() } label: {
                                 Image(systemName: "stop.fill").font(.title2).foregroundStyle(.white).frame(width: 56, height: 56).background(Theme.errorColor.opacity(0.8)).clipShape(Circle())
                             }
                         }
-                        Button { soundService.mediumImpact(); handlePlayPause() } label: {
+                        Button { soundService.mediumImpact(settings: settings); handlePlayPause() } label: {
                             Image(systemName: timerService.isRunning ? "pause.fill" : "play.fill")
                                 .font(.title).foregroundStyle(.white).frame(width: 80, height: 80)
                                 .background(timerService.isBreak ? Theme.breakGradient : Theme.focusGradient).clipShape(Circle())
                                 .shadow(color: (timerService.isBreak ? Theme.breakColor : Theme.focusColor).opacity(0.3), radius: 10, x: 0, y: 4)
                         }
-                        Button { soundService.lightImpact(); timerService.skip(); notificationService.cancelTimerNotifications() } label: {
+                        Button { soundService.lightImpact(settings: settings); timerService.skip(); notificationService.cancelTimerNotifications() } label: {
                             Image(systemName: "forward.end.fill").font(.title2).foregroundStyle(.white).frame(width: 56, height: 56).background(Theme.textSecondary).clipShape(Circle())
                         }
                     }
@@ -100,8 +100,8 @@ public struct TimerView: View {
 
     private func setupTimerCallbacks() {
         timerService.onComplete = { mode in
-            if settings.soundEnabled { soundService.playTimerComplete() }
-            if settings.vibrationEnabled { soundService.successHaptic() }
+            soundService.playTimerComplete(settings: settings)
+            soundService.successHaptic(settings: settings)
             if mode == .focus {
                 let record = FocusRecord(duration: settings.focusDuration, isBreak: false, taskId: timerService.selectedTask?.id, taskTitle: timerService.selectedTask?.title, wasCompleted: true)
                 modelContext.insert(record)

@@ -72,7 +72,7 @@ public struct BuddySessionView: View {
                 VStack(spacing: Theme.spacingM) {
                     Text("Share this link:").font(Theme.captionFont).foregroundStyle(Theme.textSecondary)
                     Text(session.shareLink).font(.system(.body, design: .monospaced)).padding(Theme.spacingM).background(Theme.backgroundSecondary).clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusS))
-                    Button { UIPasteboard.general.string = session.shareLink; soundService.lightImpact() } label: { Label("Copy Link", systemImage: "doc.on.doc").secondaryButtonStyle() }.frame(maxWidth: 200)
+                    Button { UIPasteboard.general.string = session.shareLink; soundService.lightImpact(settings: settings) } label: { Label("Copy Link", systemImage: "doc.on.doc").secondaryButtonStyle() }.frame(maxWidth: 200)
                 }
                 if session.creatorId == sessionService.deviceId && session.isReadyToStart { Button { Task { await startSession() } } label: { Text("Start Session").primaryButtonStyle() }.padding(.top, Theme.spacingM) }
             }
@@ -145,7 +145,7 @@ public struct BuddySessionView: View {
             modelContext.insert(FocusRecord(duration: session.duration, isBreak: false, taskTitle: customTaskTitle, wasCompleted: true, wasBuddySession: true))
         }
         currentStep = .completed
-        soundService.successHaptic()
+        soundService.successHaptic(settings: settings)
     }
 
     private func cancelSession() async {

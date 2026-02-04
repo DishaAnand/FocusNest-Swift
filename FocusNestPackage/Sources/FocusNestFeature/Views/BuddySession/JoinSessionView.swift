@@ -6,6 +6,7 @@ public struct JoinSessionView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(SessionService.self) private var sessionService
     @Environment(SoundService.self) private var soundService
+    @Environment(UserSettings.self) private var settings
     @Query(filter: #Predicate<FocusTask> { !$0.isCompleted }, sort: \FocusTask.createdAt, order: .reverse) private var tasks: [FocusTask]
 
     let sessionId: String
@@ -78,12 +79,12 @@ public struct JoinSessionView: View {
 
         do {
             _ = try await sessionService.joinSession(sessionId: sessionId, taskTitle: customTaskTitle, userName: userName)
-            soundService.successHaptic()
+            soundService.successHaptic(settings: settings)
             dismiss()
             onJoined()
         } catch {
             errorMessage = error.localizedDescription
-            soundService.errorHaptic()
+            soundService.errorHaptic(settings: settings)
         }
 
         isLoading = false
