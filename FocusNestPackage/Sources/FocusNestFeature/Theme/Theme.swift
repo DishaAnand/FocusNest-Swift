@@ -1,5 +1,34 @@
 import SwiftUI
 
+// MARK: - Color Extension for Hex
+
+extension Color {
+    /// Initialize Color from hex string (e.g., "F8F7F3" or "#F8F7F3")
+    public init(hex: String) {
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        let a, r, g, b: UInt64
+        switch hex.count {
+        case 3: // RGB (12-bit)
+            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
+        case 6: // RGB (24-bit)
+            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
+        case 8: // ARGB (32-bit)
+            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
+        default:
+            (a, r, g, b) = (255, 0, 0, 0)
+        }
+        self.init(
+            .sRGB,
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue: Double(b) / 255,
+            opacity: Double(a) / 255
+        )
+    }
+}
+
 public enum Theme {
     // MARK: - Primary Colors
     public static let primary = Color("Primary", bundle: .module)
@@ -38,6 +67,98 @@ public enum Theme {
     public static let borderColor = Color.black.opacity(0.06)
     /// RN: COLORS.shadow = rgba(0,0,0,0.08)
     public static let shadowColor = Color.black.opacity(0.08)
+
+    // MARK: - Chart Colors (matching RN useChartColors.ts)
+
+    /// Y-axis label color - adapts to color scheme
+    public static func chartAxisLabel(_ colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark
+            ? Color(hex: "B0B0B0")
+            : Color(hex: "4A5A59")
+    }
+
+    /// X-axis label color - adapts to color scheme
+    public static func chartXAxisLabel(_ colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark
+            ? Color(hex: "CCCCCC")
+            : Color(hex: "0E1A19")
+    }
+
+    /// Grid line color - adapts to color scheme
+    public static func chartGridLine(_ colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark
+            ? Color.white
+            : Color(hex: "0B0B0B")
+    }
+
+    /// Grid opacity for major lines
+    public static let chartGridOpacityMajor: Double = 0.06
+    /// Grid opacity for minor lines
+    public static let chartGridOpacityMinor: Double = 0.03
+
+    // MARK: - Light/Dark Theme Colors (matching RN theme.ts)
+
+    /// Light theme colors - matches RN lightColors
+    public enum LightTheme {
+        public static let bg = Color(hex: "F8F7F3")
+        public static let card = Color.white
+        public static let text = Color(hex: "111111")
+        public static let muted = Color(hex: "6B7280")
+        public static let primary = Color(hex: "2B7A78")
+        public static let primaryBg = Color(hex: "E0F2F1")
+        public static let border = Color(hex: "E5E7EB")
+    }
+
+    /// Dark theme colors - matches RN darkColors
+    public enum DarkTheme {
+        public static let bg = Color(hex: "121212")
+        public static let card = Color(hex: "1E1E1E")
+        public static let text = Color.white
+        public static let muted = Color(hex: "AAAAAA")
+        public static let primary = Color(hex: "4DD0E1")
+        public static let primaryBg = Color(hex: "1A2A2A")
+        public static let border = Color(hex: "333333")
+    }
+
+    /// Get theme color that adapts to color scheme
+    public static func themeColor(_ colorScheme: ColorScheme, light: Color, dark: Color) -> Color {
+        colorScheme == .dark ? dark : light
+    }
+
+    /// Adaptive background color
+    public static func adaptiveBg(_ colorScheme: ColorScheme) -> Color {
+        themeColor(colorScheme, light: LightTheme.bg, dark: DarkTheme.bg)
+    }
+
+    /// Adaptive card color
+    public static func adaptiveCard(_ colorScheme: ColorScheme) -> Color {
+        themeColor(colorScheme, light: LightTheme.card, dark: DarkTheme.card)
+    }
+
+    /// Adaptive text color
+    public static func adaptiveText(_ colorScheme: ColorScheme) -> Color {
+        themeColor(colorScheme, light: LightTheme.text, dark: DarkTheme.text)
+    }
+
+    /// Adaptive muted color
+    public static func adaptiveMuted(_ colorScheme: ColorScheme) -> Color {
+        themeColor(colorScheme, light: LightTheme.muted, dark: DarkTheme.muted)
+    }
+
+    /// Adaptive primary color
+    public static func adaptivePrimary(_ colorScheme: ColorScheme) -> Color {
+        themeColor(colorScheme, light: LightTheme.primary, dark: DarkTheme.primary)
+    }
+
+    /// Adaptive primary background color
+    public static func adaptivePrimaryBg(_ colorScheme: ColorScheme) -> Color {
+        themeColor(colorScheme, light: LightTheme.primaryBg, dark: DarkTheme.primaryBg)
+    }
+
+    /// Adaptive border color
+    public static func adaptiveBorder(_ colorScheme: ColorScheme) -> Color {
+        themeColor(colorScheme, light: LightTheme.border, dark: DarkTheme.border)
+    }
 
     // MARK: - Background Colors
     public static let backgroundPrimary = Color(uiColor: .systemBackground)
