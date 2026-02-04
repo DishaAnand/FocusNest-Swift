@@ -2,7 +2,7 @@ import Testing
 import Foundation
 @testable import FocusNestFeature
 
-@Suite("FocusTask Model Tests")
+@Suite("FocusTask Model Tests - Matching RN tasks.ts")
 struct FocusTaskTests {
     @Test("Task initializes with correct defaults")
     func taskInitializesWithCorrectDefaults() async throws {
@@ -187,5 +187,31 @@ struct FocusTaskTests {
 
         #expect(task.createdAt >= beforeCreation)
         #expect(task.createdAt <= afterCreation)
+    }
+
+    // MARK: - Default Task Tests (matching RN DEFAULT_TASKS)
+
+    @Test("Default task ID is correct UUID")
+    func defaultTaskIdIsCorrect() async throws {
+        // Matches RN: DEFAULT_TASKS = [{ id: 'other', ... }]
+        // We use a fixed UUID instead of string 'other'
+        #expect(FocusTask.defaultTaskId == UUID(uuidString: "00000000-0000-0000-0000-000000000001")!)
+    }
+
+    @Test("createDefaultTask creates 'Other' task with correct ID")
+    func createDefaultTaskCorrectly() async throws {
+        // Matches RN: { id: 'other', title: 'Other', icon: 'refresh-outline' }
+        let defaultTask = FocusTask.createDefaultTask()
+        #expect(defaultTask.id == FocusTask.defaultTaskId)
+        #expect(defaultTask.title == "Other")
+        #expect(defaultTask.isCompleted == false)
+        #expect(defaultTask.totalFocusTime == 0)
+    }
+
+    @Test("Default task title matches RN")
+    func defaultTaskTitleMatchesRN() async throws {
+        // RN: DEFAULT_TASKS = [{ id: 'other', title: 'Other', ... }]
+        let defaultTask = FocusTask.createDefaultTask()
+        #expect(defaultTask.title == "Other")
     }
 }

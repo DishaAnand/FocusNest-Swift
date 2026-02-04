@@ -2,13 +2,13 @@ import Testing
 import SwiftUI
 @testable import FocusNestFeature
 
-@Suite("UserSettings Tests")
+@Suite("UserSettings Tests - Matching RN settings.ts")
 @MainActor
 struct UserSettingsTests {
 
     // MARK: - Default Initialization Tests
 
-    @Test("Settings initialize with expected default values")
+    @Test("Settings initialize with expected default values matching RN")
     func settingsInitializeWithExpectedDefaults() async throws {
         // Clear any stored values to test defaults
         let defaults = UserDefaults.standard
@@ -22,10 +22,12 @@ struct UserSettingsTests {
         defaults.removeObject(forKey: "autoStartFocus")
         defaults.removeObject(forKey: "theme")
         defaults.removeObject(forKey: "notificationsEnabled")
+        defaults.removeObject(forKey: "soundKey")
 
         let settings = UserSettings()
 
-        // Duration defaults (in seconds)
+        // Duration defaults (in seconds) - RN stores in minutes, we store in seconds
+        // RN: focusMin = 25, breakMin = 5
         #expect(settings.focusDuration == 25 * 60)  // 25 minutes
         #expect(settings.breakDuration == 5 * 60)   // 5 minutes
         #expect(settings.longBreakDuration == 15 * 60)  // 15 minutes
@@ -34,12 +36,16 @@ struct UserSettingsTests {
         // Boolean defaults
         #expect(settings.soundEnabled == true)
         #expect(settings.vibrationEnabled == true)
-        #expect(settings.autoStartBreaks == false)
+        // CRITICAL: RN default for autoStartBreak is TRUE
+        #expect(settings.autoStartBreaks == true)  // Matches RN: autoStartBreak default = true
         #expect(settings.autoStartFocus == false)
         #expect(settings.notificationsEnabled == true)
 
-        // Theme default
+        // Theme default - RN: appearance = 'system'
         #expect(settings.theme == .system)
+
+        // Sound key default - RN: soundKey = 'chimes'
+        #expect(settings.soundKey == "chimes")
     }
 
     // MARK: - Duration Minutes Computed Property Tests
@@ -182,6 +188,35 @@ struct UserSettingsTests {
         #expect(allCases.contains(.dark))
     }
 
+    // MARK: - Sound Key Tests (matching RN soundKey setting)
+
+    @Test("Sound key default matches RN")
+    func soundKeyDefaultMatchesRN() async throws {
+        let defaults = UserDefaults.standard
+        defaults.removeObject(forKey: "soundKey")
+
+        let settings = UserSettings()
+        // RN: soundKey default = 'chimes'
+        #expect(settings.soundKey == "chimes")
+    }
+
+    @Test("Sound key can be changed and persists")
+    func soundKeyCanBeChangedAndPersists() async throws {
+        let settings = UserSettings()
+        settings.soundKey = "bell"
+
+        let loadedSettings = UserSettings()
+        #expect(loadedSettings.soundKey == "bell")
+
+        // Test another value
+        settings.soundKey = "notification"
+        let reloadedSettings = UserSettings()
+        #expect(reloadedSettings.soundKey == "notification")
+
+        // Reset to default
+        settings.soundKey = "chimes"
+    }
+
     // MARK: - UserDefaults Persistence Tests
 
     @Test("Settings persist to UserDefaults")
@@ -195,10 +230,11 @@ struct UserSettingsTests {
         settings.sessionsBeforeLongBreak = 3
         settings.soundEnabled = false
         settings.vibrationEnabled = false
-        settings.autoStartBreaks = true
+        settings.autoStartBreaks = false  // Changed from true (opposite of default)
         settings.autoStartFocus = true
         settings.theme = .dark
         settings.notificationsEnabled = false
+        settings.soundKey = "bell"
 
         // Create new instance to verify persistence
         let loadedSettings = UserSettings()
@@ -209,10 +245,11 @@ struct UserSettingsTests {
         #expect(loadedSettings.sessionsBeforeLongBreak == 3)
         #expect(loadedSettings.soundEnabled == false)
         #expect(loadedSettings.vibrationEnabled == false)
-        #expect(loadedSettings.autoStartBreaks == true)
+        #expect(loadedSettings.autoStartBreaks == false)
         #expect(loadedSettings.autoStartFocus == true)
         #expect(loadedSettings.theme == .dark)
         #expect(loadedSettings.notificationsEnabled == false)
+        #expect(loadedSettings.soundKey == "bell")
     }
 
     @Test("Theme persists correctly to UserDefaults")

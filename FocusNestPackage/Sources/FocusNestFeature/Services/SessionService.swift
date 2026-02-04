@@ -9,8 +9,14 @@ public final class SessionService: @unchecked Sendable {
     public private(set) var error: String?
     public let deviceId: String
 
+    /// Firebase server time offset for accurate timer sync
+    /// serverTime ≈ Date.now() + serverTimeOffset
+    /// Matches RN: listenToServerTimeOffset()
+    public private(set) var serverTimeOffset: TimeInterval = 0
+
     private var database: DatabaseReference?
     private var sessionObserver: DatabaseHandle?
+    private var serverTimeOffsetObserver: DatabaseHandle?
     private var isFirebaseConfigured: Bool = false
 
     public init() {
@@ -26,6 +32,32 @@ public final class SessionService: @unchecked Sendable {
     public func configure() {
         database = Database.database().reference()
         isFirebaseConfigured = true
+        startListeningToServerTimeOffset()
+    }
+
+    /// Current server time accounting for offset
+    /// Matches RN: serverTime ≈ Date.now() + offset
+    public var serverTime: TimeInterval {
+        Date().timeIntervalSince1970 + serverTimeOffset
+    }
+
+    /// Start listening to Firebase server time offset
+    /// Matches RN: listenToServerTimeOffset()
+    private func startListeningToServerTimeOffset() {
+        guard let db = database else { return }
+        serverTimeOffsetObserver = db.child(".info/serverTimeOffset").observe(.value) { [weak self] snapshot in
+            Task { @MainActor in
+                guard let self else { return }
+                self.serverTimeOffset = (snapshot.value as? TimeInterval) ?? 0
+            }
+        }
+    }
+
+    private func stopListeningToServerTimeOffset() {
+        if let observer = serverTimeOffsetObserver, let db = database {
+            db.child(".info/serverTimeOffset").removeObserver(withHandle: observer)
+        }
+        serverTimeOffsetObserver = nil
     }
 
     public func createSession(taskTitle: String, duration: Int, userName: String) async throws -> BuddySession {
@@ -71,7 +103,9 @@ public final class SessionService: @unchecked Sendable {
         guard session.isReadyToStart else { throw SessionError.notEnoughParticipants }
         guard isFirebaseConfigured, let db = database else { throw SessionError.notConfigured }
 
-        let startTime = Date().timeIntervalSince1970
+        // Use server time for accurate sync between devices
+        // Matches RN: startTime: serverTimestamp()
+        let startTime = serverTime
         try await db.child("sessions").child(session.sessionId).updateChildValues(["state": SessionState.active.rawValue, "startTime": startTime])
         session.state = .active
         session.startTime = startTime
@@ -132,6 +166,7 @@ public final class SessionService: @unchecked Sendable {
 
     public func cleanup() {
         stopObservingSession()
+        stopListeningToServerTimeOffset()
         currentSession = nil
     }
 }
