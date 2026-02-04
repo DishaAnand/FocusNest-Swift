@@ -1,0 +1,31 @@
+import SwiftUI
+import SwiftData
+import FocusNestFeature
+
+@main
+@MainActor
+struct FocusNestApp: App {
+    @State private var settings = UserSettings()
+    @State private var timerService: TimerService
+    @State private var notificationService = NotificationService()
+    @State private var soundService = SoundService()
+    @State private var sessionService = SessionService()
+
+    init() {
+        let settings = UserSettings()
+        self._settings = State(initialValue: settings)
+        self._timerService = State(initialValue: TimerService(settings: settings))
+    }
+
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+                .environment(settings)
+                .environment(timerService)
+                .environment(notificationService)
+                .environment(soundService)
+                .environment(sessionService)
+        }
+        .modelContainer(for: [FocusTask.self, FocusRecord.self])
+    }
+}
