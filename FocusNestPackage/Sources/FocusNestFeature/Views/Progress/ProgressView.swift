@@ -16,12 +16,23 @@ public struct FocusProgressView: View {
     }
     private var currentStreak: Int {
         let calendar = Calendar.current
-        var streak = 0; var checkDate = calendar.startOfDay(for: Date())
+        var streak = 0
+        var checkDate = calendar.startOfDay(for: Date())
+
         while true {
-            let hasSession = records.contains { !$0.isBreak && calendar.isDate($0.date, inSameDayAs: checkDate) }
-            if hasSession { streak += 1; guard let prev = calendar.date(byAdding: .day, value: -1, to: checkDate) else { break }; checkDate = prev }
-            else { if streak == 0 && calendar.isDateInToday(Date()) { guard let y = calendar.date(byAdding: .day, value: -1, to: checkDate) else { break }; checkDate = y } else { break } }
+            let hasSession = records.contains { record in
+                !record.isBreak && calendar.isDate(record.date, inSameDayAs: checkDate)
+            }
+
+            if hasSession {
+                streak += 1
+                guard let previousDay = calendar.date(byAdding: .day, value: -1, to: checkDate) else { break }
+                checkDate = previousDay
+            } else {
+                break
+            }
         }
+
         return streak
     }
 
