@@ -3,6 +3,7 @@ import Charts
 
 public struct DailyChartView: View {
     let records: [FocusRecord]
+    @Environment(\.colorScheme) private var colorScheme
 
     public init(records: [FocusRecord]) { self.records = records }
 
@@ -24,7 +25,25 @@ public struct DailyChartView: View {
                 if data.breakMinutes > 0 { BarMark(x: .value("Day", data.dayName), y: .value("Break", data.breakMinutes)).foregroundStyle(Theme.breakColor).cornerRadius(4) }
             }
             .chartYScale(domain: 0...max(1, dailyData.map { $0.focusMinutes + $0.breakMinutes }.max() ?? 1))
-            .chartYAxis { AxisMarks(position: .leading) { value in AxisGridLine(); AxisValueLabel { if let m = value.as(Int.self) { Text("\(m)m").font(.caption2) } } } }
+            .chartYAxis {
+                AxisMarks(position: .leading) { value in
+                    AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
+                        .foregroundStyle(Theme.chartGridLine(colorScheme).opacity(Theme.chartGridOpacityMajor))
+                    AxisValueLabel {
+                        if let m = value.as(Int.self) {
+                            Text("\(m)m")
+                                .font(.caption2)
+                                .foregroundStyle(Theme.chartAxisLabel(colorScheme))
+                        }
+                    }
+                }
+            }
+            .chartXAxis {
+                AxisMarks { value in
+                    AxisValueLabel()
+                        .foregroundStyle(Theme.chartXAxisLabel(colorScheme))
+                }
+            }
             .frame(height: 200)
             HStack(spacing: Theme.spacingL) { LegendItem(color: Theme.focusColor, label: "Focus"); LegendItem(color: Theme.breakColor, label: "Break") }
         }
