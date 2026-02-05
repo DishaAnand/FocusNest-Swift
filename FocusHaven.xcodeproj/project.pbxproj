@@ -11,7 +11,36 @@
 		AAA00003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AAA00004 /* Assets.xcassets */; };
 		AAA00005 /* FocusHavenFeature in Frameworks */ = {isa = PBXBuildFile; productRef = AAA00006 /* FocusHavenFeature */; };
 		AAA00007 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = AAA00008 /* GoogleService-Info.plist */; };
+		BBB00001 /* FocusHavenWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBB00002 /* FocusHavenWidgetsBundle.swift */; };
+		BBB00003 /* FocusTimerLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBB00004 /* FocusTimerLiveActivity.swift */; };
+		BBB00005 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BBB00006 /* WidgetKit.framework */; };
+		BBB00007 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BBB00008 /* SwiftUI.framework */; };
+		BBB00009 /* FocusHavenWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BBB00010 /* FocusHavenWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		BBB00020 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AAA00060 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BBB00030;
+			remoteInfo = FocusHavenWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		BBB00021 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				BBB00009 /* FocusHavenWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		AAA00002 /* FocusHavenApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusHavenApp.swift; sourceTree = "<group>"; };
@@ -19,6 +48,12 @@
 		AAA00008 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		AAA00009 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		AAA00010 /* FocusHaven.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FocusHaven.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BBB00002 /* FocusHavenWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusHavenWidgetsBundle.swift; sourceTree = "<group>"; };
+		BBB00004 /* FocusTimerLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusTimerLiveActivity.swift; sourceTree = "<group>"; };
+		BBB00006 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		BBB00008 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		BBB00010 /* FocusHavenWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FocusHavenWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		BBB00011 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -30,6 +65,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BBB00022 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BBB00007 /* SwiftUI.framework in Frameworks */,
+				BBB00005 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -37,6 +81,7 @@
 			isa = PBXGroup;
 			children = (
 				AAA00031 /* FocusHaven */,
+				BBB00031 /* FocusHavenWidgets */,
 				AAA00032 /* Products */,
 				AAA00033 /* Frameworks */,
 			);
@@ -57,6 +102,7 @@
 			isa = PBXGroup;
 			children = (
 				AAA00010 /* FocusHaven.app */,
+				BBB00010 /* FocusHavenWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -64,8 +110,20 @@
 		AAA00033 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				BBB00006 /* WidgetKit.framework */,
+				BBB00008 /* SwiftUI.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		BBB00031 /* FocusHavenWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				BBB00002 /* FocusHavenWidgetsBundle.swift */,
+				BBB00004 /* FocusTimerLiveActivity.swift */,
+				BBB00011 /* Info.plist */,
+			);
+			path = FocusHavenWidgets;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -78,10 +136,12 @@
 				AAA00041 /* Sources */,
 				AAA00020 /* Frameworks */,
 				AAA00042 /* Resources */,
+				BBB00021 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				BBB00023 /* PBXTargetDependency */,
 			);
 			name = FocusHaven;
 			packageProductDependencies = (
@@ -90,6 +150,23 @@
 			productName = FocusHaven;
 			productReference = AAA00010 /* FocusHaven.app */;
 			productType = "com.apple.product-type.application";
+		};
+		BBB00030 /* FocusHavenWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BBB00050 /* Build configuration list for PBXNativeTarget "FocusHavenWidgets" */;
+			buildPhases = (
+				BBB00032 /* Sources */,
+				BBB00022 /* Frameworks */,
+				BBB00033 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = FocusHavenWidgets;
+			productName = FocusHavenWidgets;
+			productReference = BBB00010 /* FocusHavenWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -102,6 +179,9 @@
 				LastUpgradeCheck = 1520;
 				TargetAttributes = {
 					AAA00040 = {
+						CreatedOnToolsVersion = 15.2;
+					};
+					BBB00030 = {
 						CreatedOnToolsVersion = 15.2;
 					};
 				};
@@ -123,6 +203,7 @@
 			projectRoot = "";
 			targets = (
 				AAA00040 /* FocusHaven */,
+				BBB00030 /* FocusHavenWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -137,6 +218,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BBB00033 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -148,7 +236,24 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BBB00032 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BBB00001 /* FocusHavenWidgetsBundle.swift in Sources */,
+				BBB00003 /* FocusTimerLiveActivity.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		BBB00023 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BBB00030 /* FocusHavenWidgets */;
+			targetProxy = BBB00020 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		AAA00080 /* Debug */ = {
@@ -273,6 +378,7 @@
 		AAA00082 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
@@ -302,6 +408,7 @@
 		AAA00083 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
@@ -328,6 +435,60 @@
 			};
 			name = Release;
 		};
+		BBB00051 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = ZK8JN58JHS;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FocusHavenWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "FocusHaven Widgets";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dishaanand.focushaven.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		BBB00052 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = ZK8JN58JHS;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FocusHavenWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "FocusHaven Widgets";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dishaanand.focushaven.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -345,6 +506,15 @@
 			buildConfigurations = (
 				AAA00080 /* Debug */,
 				AAA00081 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BBB00050 /* Build configuration list for PBXNativeTarget "FocusHavenWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BBB00051 /* Debug */,
+				BBB00052 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -9,7 +9,7 @@ struct TimerServiceTests {
     func timerServiceInitializesCorrectly() async throws {
         let settings = UserSettings()
         settings.focusDuration = 25 * 60
-        let service = TimerService(settings: settings)
+        let service = TimerService(settings: settings, liveActivityService: LiveActivityService())
         #expect(service.state == .idle)
         #expect(service.mode == .focus)
         #expect(service.remainingTime == 25 * 60)
@@ -22,14 +22,14 @@ struct TimerServiceTests {
     func timerServiceFormatsTime() async throws {
         let settings = UserSettings()
         settings.focusDuration = 25 * 60
-        let service = TimerService(settings: settings)
+        let service = TimerService(settings: settings, liveActivityService: LiveActivityService())
         #expect(service.formattedTime == "25:00")
     }
 
     @Test("Timer service identifies break mode correctly")
     func timerServiceIdentifiesBreakMode() async throws {
         let settings = UserSettings()
-        let service = TimerService(settings: settings)
+        let service = TimerService(settings: settings, liveActivityService: LiveActivityService())
         service.setMode(.focus)
         #expect(service.isBreak == false)
         service.setMode(.shortBreak)
@@ -44,7 +44,7 @@ struct TimerServiceTests {
         settings.focusDuration = 25 * 60
         settings.breakDuration = 5 * 60
         settings.longBreakDuration = 15 * 60
-        let service = TimerService(settings: settings)
+        let service = TimerService(settings: settings, liveActivityService: LiveActivityService())
         service.setMode(.focus)
         #expect(service.mode == .focus)
         #expect(service.remainingTime == 25 * 60)
@@ -59,7 +59,7 @@ struct TimerServiceTests {
     @Test("Timer service state transitions work correctly")
     func timerServiceStateTransitions() async throws {
         let settings = UserSettings()
-        let service = TimerService(settings: settings)
+        let service = TimerService(settings: settings, liveActivityService: LiveActivityService())
         #expect(service.state == .idle)
         #expect(service.isRunning == false)
         #expect(service.isPaused == false)
@@ -78,7 +78,7 @@ struct TimerServiceTests {
     @Test("Timer service toggle play pause works correctly")
     func timerServiceTogglePlayPause() async throws {
         let settings = UserSettings()
-        let service = TimerService(settings: settings)
+        let service = TimerService(settings: settings, liveActivityService: LiveActivityService())
         #expect(service.state == .idle)
         service.togglePlayPause()
         #expect(service.state == .running)
@@ -92,7 +92,7 @@ struct TimerServiceTests {
     func timerServiceResetWorksCorrectly() async throws {
         let settings = UserSettings()
         settings.focusDuration = 25 * 60
-        let service = TimerService(settings: settings)
+        let service = TimerService(settings: settings, liveActivityService: LiveActivityService())
         service.setMode(.shortBreak)
         service.start()
         service.reset()
@@ -106,7 +106,7 @@ struct TimerServiceTests {
     func timerServiceSkipAdvancesToNextMode() async throws {
         let settings = UserSettings()
         settings.sessionsBeforeLongBreak = 4
-        let service = TimerService(settings: settings)
+        let service = TimerService(settings: settings, liveActivityService: LiveActivityService())
         service.setMode(.focus)
         service.skip()
         #expect(service.mode == .shortBreak)
@@ -118,7 +118,7 @@ struct TimerServiceTests {
     func timerServiceProgressCalculation() async throws {
         let settings = UserSettings()
         settings.focusDuration = 100
-        let service = TimerService(settings: settings)
+        let service = TimerService(settings: settings, liveActivityService: LiveActivityService())
 
         // At start, progress should be 0
         #expect(service.progress == 0.0)
@@ -146,7 +146,7 @@ struct TimerServiceTests {
 
         // Test single digit seconds (should be zero-padded)
         settings.focusDuration = 65  // 1:05
-        let service = TimerService(settings: settings)
+        let service = TimerService(settings: settings, liveActivityService: LiveActivityService())
         #expect(service.formattedTime == "01:05")
 
         // Test zero time
@@ -162,7 +162,7 @@ struct TimerServiceTests {
     func timerServiceSetModeWithCustomDuration() async throws {
         let settings = UserSettings()
         settings.focusDuration = 25 * 60
-        let service = TimerService(settings: settings)
+        let service = TimerService(settings: settings, liveActivityService: LiveActivityService())
 
         // Set focus mode with custom duration
         service.setMode(.focus, duration: 10 * 60)
@@ -187,7 +187,7 @@ struct TimerServiceTests {
         let settings = UserSettings()
         settings.focusDuration = 25 * 60
         settings.breakDuration = 5 * 60
-        let service = TimerService(settings: settings)
+        let service = TimerService(settings: settings, liveActivityService: LiveActivityService())
 
         // Start and then stop should reset remaining time
         service.start()
@@ -207,7 +207,7 @@ struct TimerServiceTests {
     func timerServiceStartFromIdleResetsTime() async throws {
         let settings = UserSettings()
         settings.focusDuration = 25 * 60
-        let service = TimerService(settings: settings)
+        let service = TimerService(settings: settings, liveActivityService: LiveActivityService())
 
         // Modify remaining time via setMode with different duration
         service.setMode(.focus, duration: 10 * 60)
@@ -222,7 +222,7 @@ struct TimerServiceTests {
     @Test("Timer service guards against invalid state transitions")
     func timerServiceGuardsInvalidTransitions() async throws {
         let settings = UserSettings()
-        let service = TimerService(settings: settings)
+        let service = TimerService(settings: settings, liveActivityService: LiveActivityService())
 
         // Calling pause when idle should do nothing
         service.pause()

@@ -39,6 +39,7 @@ public final class TimerService: @unchecked Sendable {
     private var backgroundEnterTime: Date?
     private var wasRunningBeforeBackground: Bool = false
     private let settings: UserSettings
+    private let liveActivityService: LiveActivityService
 
     // For smooth progress calculation
     private var sessionStartTime: Date?
@@ -72,8 +73,9 @@ public final class TimerService: @unchecked Sendable {
         mode == .shortBreak || mode == .longBreak
     }
 
-    public init(settings: UserSettings) {
+    public init(settings: UserSettings, liveActivityService: LiveActivityService) {
         self.settings = settings
+        self.liveActivityService = liveActivityService
         self.totalDuration = settings.focusDuration
         self.remainingTime = settings.focusDuration
         setupBackgroundObservers()
@@ -100,6 +102,14 @@ public final class TimerService: @unchecked Sendable {
         sessionStartTime = Date()
         state = .running
         startTimer()
+
+        // Start Live Activity
+        liveActivityService.startActivity(
+            remainingSeconds: remainingTime,
+            totalSeconds: totalDuration,
+            mode: mode.rawValue,
+            taskName: selectedTask?.title
+        )
     }
 
     public func pause() {
@@ -112,6 +122,16 @@ public final class TimerService: @unchecked Sendable {
         state = .paused
         stopTimer()
         updateProgress() // Freeze at current progress
+
+        // Update Live Activity to show paused state
+        Task {
+            await liveActivityService.updateActivity(
+                remainingSeconds: remainingTime,
+                totalSeconds: totalDuration,
+                mode: mode.rawValue,
+                isPaused: true
+            )
+        }
     }
 
     public func resume() {
@@ -119,6 +139,16 @@ public final class TimerService: @unchecked Sendable {
         sessionStartTime = Date() // Start fresh, pausedElapsedTime already has accumulated time
         state = .running
         startTimer()
+
+        // Update Live Activity with new end time
+        Task {
+            await liveActivityService.updateActivity(
+                remainingSeconds: remainingTime,
+                totalSeconds: totalDuration,
+                mode: mode.rawValue,
+                isPaused: false
+            )
+        }
     }
 
     public func togglePlayPause() {
@@ -136,13 +166,43 @@ public final class TimerService: @unchecked Sendable {
         sessionStartTime = nil
         resetToMode(mode)
         progress = 0
+
+        // End Live Activity
+        Task {
+            await liveActivityService.endActivity()
+        }
     }
 
     public func skip() {
         stopTimer()
         pausedElapsedTime = 0
         sessionStartTime = nil
+
+        // End Live Activity before advancing
+        Task {
+            await liveActivityService.endActivity()
+        }
+
         advanceToNextMode()
+    }
+
+    /// Start an extension session with a custom duration (used when user chooses to keep focusing)
+    public func startExtension(duration: Int) {
+        stopTimer()
+
+        // End existing Live Activity
+        Task {
+            await liveActivityService.endActivity()
+        }
+
+        mode = .focus
+        state = .idle
+        pausedElapsedTime = 0
+        sessionStartTime = nil
+        totalDuration = duration
+        remainingTime = duration
+        progress = 0
+        start()
     }
 
     public func reset() {
@@ -154,6 +214,11 @@ public final class TimerService: @unchecked Sendable {
         remainingTime = settings.focusDuration
         selectedTask = nil
         pausedElapsedTime = 0
+
+        // End Live Activity
+        Task {
+            await liveActivityService.endActivity()
+        }
         sessionStartTime = nil
         progress = 0
     }

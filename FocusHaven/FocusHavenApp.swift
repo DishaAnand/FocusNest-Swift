@@ -10,11 +10,14 @@ struct FocusHavenApp: App {
     @State private var notificationService = NotificationService()
     @State private var soundService = SoundService()
     @State private var sessionService = SessionService()
+    @State private var liveActivityService = LiveActivityService()
 
     init() {
         let settings = UserSettings()
+        let liveActivityService = LiveActivityService()
         self._settings = State(initialValue: settings)
-        self._timerService = State(initialValue: TimerService(settings: settings))
+        self._liveActivityService = State(initialValue: liveActivityService)
+        self._timerService = State(initialValue: TimerService(settings: settings, liveActivityService: liveActivityService))
     }
 
     var body: some Scene {
