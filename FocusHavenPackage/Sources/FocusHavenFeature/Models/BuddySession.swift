@@ -11,8 +11,10 @@ public struct SessionParticipant: Codable, Sendable, Identifiable, Equatable {
     public let odid: String
     public var name: String
     public var taskTitle: String
+    public var duration: Int  // Each participant has their own duration
     public var status: ParticipantStatus
     public var violationCount: Int
+    public var totalAwayTime: Int  // Total seconds spent away (distracted)
     public var joinedAt: TimeInterval
     public var rating: Int?
 
@@ -20,16 +22,20 @@ public struct SessionParticipant: Codable, Sendable, Identifiable, Equatable {
         odid: String,
         name: String,
         taskTitle: String,
+        duration: Int = 25 * 60,
         status: ParticipantStatus = .waiting,
         violationCount: Int = 0,
+        totalAwayTime: Int = 0,
         joinedAt: TimeInterval = Date().timeIntervalSince1970,
         rating: Int? = nil
     ) {
         self.odid = odid
         self.name = name
         self.taskTitle = taskTitle
+        self.duration = duration
         self.status = status
         self.violationCount = violationCount
+        self.totalAwayTime = totalAwayTime
         self.joinedAt = joinedAt
         self.rating = rating
     }
@@ -74,8 +80,14 @@ public struct BuddySession: Codable, Sendable, Identifiable, Equatable {
         self.createdAt = createdAt
     }
 
-    public var shareLink: String {
-        "focusnest://buddy/\(sessionId)"
+    /// Short 6-character code for easy sharing
+    public var shortCode: String {
+        String(sessionId.prefix(8)).uppercased()
+    }
+
+    /// Deep link for direct app opening
+    public var deepLink: String {
+        "focushaven://buddy/\(sessionId)"
     }
 
     public var participantCount: Int {
@@ -104,5 +116,18 @@ public struct BuddySession: Codable, Sendable, Identifiable, Equatable {
         guard let start = startTime else { return 0.0 }
         let elapsed = currentTime - start
         return min(1.0, max(0.0, elapsed / Double(duration)))
+    }
+
+    /// Get remaining time for a specific participant (independent timers)
+    public func remainingTimeForParticipant(_ participantId: String, currentTime: TimeInterval) -> Int {
+        guard let start = startTime,
+              let participant = participants[participantId] else { return 0 }
+        let elapsed = Int(currentTime - start)
+        return max(0, participant.duration - elapsed)
+    }
+
+    /// Check if a specific participant has completed their timer
+    public func isParticipantComplete(_ participantId: String, currentTime: TimeInterval) -> Bool {
+        remainingTimeForParticipant(participantId, currentTime: currentTime) <= 0
     }
 }

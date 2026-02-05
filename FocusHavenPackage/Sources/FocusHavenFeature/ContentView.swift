@@ -1,13 +1,18 @@
 import SwiftUI
 import SwiftData
 
+/// Wrapper to make String work with sheet(item:)
+struct SessionIdWrapper: Identifiable {
+    let id: String
+    var sessionId: String { id }
+}
+
 @MainActor
 public struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var selectedTab: AppTab = .timer
     @State private var showBuddySession = false
-    @State private var pendingSessionId: String?
-    @State private var showJoinSession = false
+    @State private var pendingSession: SessionIdWrapper?
 
     public init() {}
 
@@ -41,11 +46,11 @@ public struct ContentView: View {
         .sheet(isPresented: $showBuddySession) {
             BuddySessionView()
         }
-        .sheet(isPresented: $showJoinSession) {
-            if let sessionId = pendingSessionId {
-                JoinSessionView(sessionId: sessionId) {
-                    pendingSessionId = nil
-                }
+        .sheet(item: $pendingSession) { session in
+            JoinSessionView(sessionId: session.sessionId) {
+                pendingSession = nil
+                // Show buddy session view after successfully joining
+                showBuddySession = true
             }
         }
         .onOpenURL { url in
@@ -57,13 +62,12 @@ public struct ContentView: View {
     }
 
     private func handleDeepLink(_ url: URL) {
-        guard url.scheme == "focusnest",
+        guard url.scheme == "focushaven",
               url.host == "buddy",
               let sessionId = url.pathComponents.dropFirst().first else {
             return
         }
-        pendingSessionId = sessionId
-        showJoinSession = true
+        pendingSession = SessionIdWrapper(id: sessionId)
     }
 }
 

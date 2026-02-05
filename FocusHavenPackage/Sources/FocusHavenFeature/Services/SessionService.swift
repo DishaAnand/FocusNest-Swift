@@ -55,12 +55,16 @@ public final class SessionService: @unchecked Sendable {
 
     /// Start listening to Firebase server time offset
     /// Matches RN: listenToServerTimeOffset()
+    /// Note: Firebase returns offset in milliseconds, convert to seconds for TimeInterval
     private func startListeningToServerTimeOffset() {
         guard let db = database else { return }
         serverTimeOffsetObserver = db.child(".info/serverTimeOffset").observe(.value) { [weak self] snapshot in
             Task { @MainActor in
                 guard let self else { return }
-                self.serverTimeOffset = (snapshot.value as? TimeInterval) ?? 0
+                // Firebase returns milliseconds, convert to seconds
+                let offsetMs = (snapshot.value as? Double) ?? 0
+                self.serverTimeOffset = offsetMs / 1000.0
+                print("🔵 [SessionService] Server time offset: \(offsetMs)ms = \(self.serverTimeOffset)s")
             }
         }
     }
@@ -79,7 +83,7 @@ public final class SessionService: @unchecked Sendable {
         defer { isLoading = false }
 
         let sessionId = UUID().uuidString
-        let participant = SessionParticipant(odid: deviceId, name: userName, taskTitle: taskTitle)
+        let participant = SessionParticipant(odid: deviceId, name: userName, taskTitle: taskTitle, duration: duration)
         let session = BuddySession(sessionId: sessionId, creatorId: deviceId, duration: duration, participants: [deviceId: participant])
 
         let sessionRef = db.child("sessions").child(sessionId)
@@ -89,24 +93,66 @@ public final class SessionService: @unchecked Sendable {
         return session
     }
 
-    public func joinSession(sessionId: String, taskTitle: String, userName: String) async throws -> BuddySession {
+    /// Find session by short code (first 8 chars of sessionId)
+    public func findSessionByCode(_ code: String) async throws -> String {
+        guard isFirebaseConfigured, let db = database else { throw SessionError.notConfigured }
+
+        let normalizedCode = code.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        guard normalizedCode.count >= 6 else { throw SessionError.invalidCode }
+
+        // Query sessions that start with this code
+        let snapshot = try await db.child("sessions")
+            .queryOrderedByKey()
+            .queryStarting(atValue: normalizedCode)
+            .queryEnding(atValue: normalizedCode + "\u{f8ff}")
+            .queryLimited(toFirst: 1)
+            .getData()
+
+        guard let dict = snapshot.value as? [String: Any],
+              let firstSessionId = dict.keys.first else {
+            throw SessionError.sessionNotFound
+        }
+
+        return firstSessionId
+    }
+
+    public func joinSession(sessionId: String, taskTitle: String, userName: String, duration: Int = 25 * 60) async throws -> BuddySession {
         guard isFirebaseConfigured, let db = database else { throw SessionError.notConfigured }
         isLoading = true
         error = nil
         defer { isLoading = false }
 
+        print("🔵 [SessionService] Joining session: \(sessionId)")
         let sessionRef = db.child("sessions").child(sessionId)
         let snapshot = try await sessionRef.getData()
         guard snapshot.exists(), let data = snapshot.value as? [String: Any] else { throw SessionError.sessionNotFound }
         guard var session = BuddySession(from: data) else { throw SessionError.invalidSessionData }
         guard session.state == .waiting else { throw SessionError.sessionAlreadyStarted }
 
-        let participant = SessionParticipant(odid: deviceId, name: userName, taskTitle: taskTitle)
+        let participant = SessionParticipant(odid: deviceId, name: userName, taskTitle: taskTitle, duration: duration)
         session.participants[deviceId] = participant
+        print("🔵 [SessionService] Adding participant to Firebase...")
         try await sessionRef.child("participants").child(deviceId).setValue(participant.toDictionary())
+        print("🟢 [SessionService] Participant added successfully. Total participants: \(session.participantCount)")
         currentSession = session
         startObservingSession(sessionId: sessionId)
         return session
+    }
+
+    /// Record a distraction (called when user returns after being away 15+ seconds)
+    public func recordDistraction(awayDuration: Int) async throws {
+        guard let session = currentSession,
+              var participant = session.participant(withId: deviceId),
+              isFirebaseConfigured, let db = database else { throw SessionError.noActiveSession }
+
+        participant.violationCount += 1
+        participant.totalAwayTime += awayDuration
+
+        let participantRef = db.child("sessions").child(session.sessionId).child("participants").child(deviceId)
+        try await participantRef.updateChildValues([
+            "violationCount": participant.violationCount,
+            "totalAwayTime": participant.totalAwayTime
+        ])
     }
 
     public func startSession() async throws {
@@ -116,9 +162,18 @@ public final class SessionService: @unchecked Sendable {
         guard isFirebaseConfigured, let db = database else { throw SessionError.notConfigured }
 
         // Use server time for accurate sync between devices
-        // Matches RN: startTime: serverTimestamp()
         let startTime = serverTime
-        try await db.child("sessions").child(session.sessionId).updateChildValues(["state": SessionState.active.rawValue, "startTime": startTime])
+
+        // Update session state and set all participants to focused
+        var updates: [String: Any] = [
+            "state": SessionState.active.rawValue,
+            "startTime": startTime
+        ]
+        for participantId in session.participants.keys {
+            updates["participants/\(participantId)/status"] = ParticipantStatus.focused.rawValue
+        }
+
+        try await db.child("sessions").child(session.sessionId).updateChildValues(updates)
         session.state = .active
         session.startTime = startTime
         currentSession = session
@@ -161,9 +216,23 @@ public final class SessionService: @unchecked Sendable {
     private func startObservingSession(sessionId: String) {
         guard isFirebaseConfigured, let db = database else { return }
         stopObservingSession()
+        print("🔵 [SessionService] Starting to observe session: \(sessionId)")
         sessionObserver = db.child("sessions").child(sessionId).observe(.value) { [weak self] snapshot in
             Task { @MainActor in
-                guard let self, let data = snapshot.value as? [String: Any], let session = BuddySession(from: data) else { return }
+                print("🔵 [SessionService] Received Firebase update for session")
+                guard let self else {
+                    print("🔴 [SessionService] Self is nil")
+                    return
+                }
+                guard let data = snapshot.value as? [String: Any] else {
+                    print("🔴 [SessionService] Failed to parse snapshot as dictionary")
+                    return
+                }
+                guard let session = BuddySession(from: data) else {
+                    print("🔴 [SessionService] Failed to create BuddySession from data: \(data)")
+                    return
+                }
+                print("🟢 [SessionService] Session updated - participants: \(session.participantCount), state: \(session.state), isReady: \(session.isReadyToStart)")
                 self.currentSession = session
             }
         }
@@ -184,17 +253,18 @@ public final class SessionService: @unchecked Sendable {
 }
 
 public enum SessionError: LocalizedError, Sendable {
-    case notConfigured, sessionNotFound, invalidSessionData, sessionAlreadyStarted, noActiveSession, notSessionCreator, notEnoughParticipants
+    case notConfigured, sessionNotFound, invalidSessionData, sessionAlreadyStarted, noActiveSession, notSessionCreator, notEnoughParticipants, invalidCode
 
     public var errorDescription: String? {
         switch self {
         case .notConfigured: return "Firebase is not configured. Please ensure GoogleService-Info.plist is added."
-        case .sessionNotFound: return "This session could not be found. It may have expired."
+        case .sessionNotFound: return "No session found with this code. Check the code and try again."
         case .invalidSessionData: return "The session data is invalid."
         case .sessionAlreadyStarted: return "This session has already started."
         case .noActiveSession: return "No active session found."
         case .notSessionCreator: return "Only the session creator can perform this action."
         case .notEnoughParticipants: return "Need at least 2 participants to start."
+        case .invalidCode: return "Please enter a valid session code (at least 6 characters)."
         }
     }
 }
@@ -234,17 +304,35 @@ extension BuddySession {
 
 extension SessionParticipant {
     func toDictionary() -> [String: Any] {
-        var dict: [String: Any] = ["odid": odid, "name": name, "taskTitle": taskTitle, "status": status.rawValue, "violationCount": violationCount, "joinedAt": joinedAt]
+        var dict: [String: Any] = [
+            "odid": odid,
+            "name": name,
+            "taskTitle": taskTitle,
+            "duration": duration,
+            "status": status.rawValue,
+            "violationCount": violationCount,
+            "totalAwayTime": totalAwayTime,
+            "joinedAt": joinedAt
+        ]
         if let r = rating { dict["rating"] = r }
         return dict
     }
 
     init?(from dictionary: [String: Any]) {
-        guard let odid = dictionary["odid"] as? String, let name = dictionary["name"] as? String,
-              let taskTitle = dictionary["taskTitle"] as? String, let statusRaw = dictionary["status"] as? String,
-              let status = ParticipantStatus(rawValue: statusRaw), let violationCount = dictionary["violationCount"] as? Int,
+        guard let odid = dictionary["odid"] as? String,
+              let name = dictionary["name"] as? String,
+              let taskTitle = dictionary["taskTitle"] as? String,
+              let statusRaw = dictionary["status"] as? String,
+              let status = ParticipantStatus(rawValue: statusRaw),
               let joinedAt = dictionary["joinedAt"] as? TimeInterval else { return nil }
-        self.odid = odid; self.name = name; self.taskTitle = taskTitle; self.status = status
-        self.violationCount = violationCount; self.joinedAt = joinedAt; self.rating = dictionary["rating"] as? Int
+        self.odid = odid
+        self.name = name
+        self.taskTitle = taskTitle
+        self.duration = (dictionary["duration"] as? Int) ?? 25 * 60  // Default 25 min for backwards compat
+        self.status = status
+        self.violationCount = (dictionary["violationCount"] as? Int) ?? 0
+        self.totalAwayTime = (dictionary["totalAwayTime"] as? Int) ?? 0
+        self.joinedAt = joinedAt
+        self.rating = dictionary["rating"] as? Int
     }
 }

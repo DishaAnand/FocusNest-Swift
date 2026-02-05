@@ -15,6 +15,7 @@ public struct JoinSessionView: View {
     @State private var userName = UserDefaults.standard.string(forKey: "userName") ?? ""
     @State private var selectedTask: FocusTask?
     @State private var customTaskTitle = ""
+    @State private var sessionDuration = 25  // Independent duration
     @State private var isLoading = false
     @State private var errorMessage: String?
 
@@ -52,6 +53,17 @@ public struct JoinSessionView: View {
                         }
                     }
 
+                    VStack(alignment: .leading, spacing: Theme.spacingS) {
+                        Text("Your Focus Duration").font(Theme.headlineFont)
+                        Text("You can pick a different time than your buddy").font(Theme.captionFont).foregroundStyle(Theme.textSecondary)
+                        Picker("Duration", selection: $sessionDuration) {
+                            Text("1 min").tag(1)
+                            Text("15 min").tag(15)
+                            Text("25 min").tag(25)
+                            Text("45 min").tag(45)
+                        }.pickerStyle(.segmented)
+                    }
+
                     Button { Task { await joinSession() } } label: {
                         if isLoading {
                             ProgressView().progressViewStyle(.circular).tint(.white).frame(maxWidth: .infinity).padding(.vertical, Theme.spacingM).background(Theme.focusGradient).clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusM))
@@ -78,7 +90,7 @@ public struct JoinSessionView: View {
         errorMessage = nil
 
         do {
-            _ = try await sessionService.joinSession(sessionId: sessionId, taskTitle: customTaskTitle, userName: userName)
+            _ = try await sessionService.joinSession(sessionId: sessionId, taskTitle: customTaskTitle, userName: userName, duration: sessionDuration * 60)
             soundService.successHaptic(settings: settings)
             dismiss()
             onJoined()
