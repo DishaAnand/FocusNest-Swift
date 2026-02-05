@@ -58,11 +58,11 @@ public final class NotificationService: @unchecked Sendable {
         pendingNotificationIds.removeAll()
     }
 
-    public func notifyBuddyJoined(buddyName: String) async {
+    public func notifyBuddyJoined(buddyName: String? = nil) async {
         guard isAuthorized else { return }
         let content = UNMutableNotificationContent()
         content.title = "Buddy Joined!"
-        content.body = "\(buddyName) has joined your focus session."
+        content.body = buddyName.map { "\($0) has joined your focus session." } ?? "A buddy has joined your focus session. Ready to start!"
         content.sound = .default
         let request = UNNotificationRequest(identifier: "buddy-join-\(UUID().uuidString)", content: content, trigger: nil)
         try? await UNUserNotificationCenter.current().add(request)

@@ -118,9 +118,9 @@ struct BuddySessionTests {
 
     @Test("BuddySession shareLink generates correct URL")
     func sessionShareLink() {
-        // Matches RN deep link format: focusnest://buddy/{sessionId}
+        // Matches RN deep link format: focushaven://buddy/{sessionId}
         let session = BuddySession(sessionId: "abc123", creatorId: "device-123")
-        #expect(session.shareLink == "focusnest://buddy/abc123")
+        #expect(session.shareLink == "focushaven://buddy/abc123")
     }
 
     @Test("BuddySession participantCount returns correct count")

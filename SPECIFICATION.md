@@ -118,7 +118,7 @@ FocusHaven is a native iOS Pomodoro timer application with collaborative "buddy 
 5. Completed: Success message
 
 #### Join Session Flow
-1. Receive deep link: `focusnest://buddy/{sessionId}`
+1. Receive deep link: `focushaven://buddy/{sessionId}`
 2. Enter name, select/create task
 3. Join session
 4. Participate in active timer
@@ -262,7 +262,7 @@ TabView
 
 ## Deep Linking
 
-Scheme: `focusnest://buddy/{sessionId}`
+Scheme: `focushaven://buddy/{sessionId}`
 
 Handling:
 1. ContentView receives URL via `.onOpenURL`

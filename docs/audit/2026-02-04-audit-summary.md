@@ -147,7 +147,7 @@ All critical issues have been fixed! ✅
 - [ ] Violation counters display
 
 ### Deep Link Handling
-- [x] Parse focusnest://buddy/{sessionId}
+- [x] Parse focushaven://buddy/{sessionId}
 - [x] Open JoinScreen modal
 - [x] Handle cold start and foreground
 
