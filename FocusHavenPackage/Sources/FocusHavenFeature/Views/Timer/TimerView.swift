@@ -12,9 +12,10 @@ public struct TimerView: View {
     @Environment(SoundService.self) private var soundService
 
     @State private var showTaskSelector = false
-    @State private var showEnergyMeter = false
+    @State private var showEnergyOverlay = false
     @State private var showSessionComplete = false
     @State private var showNotificationOnboarding = false
+    @State private var lastPrediction: Int? = nil
     @State private var completedSessionDuration: Int = 0
     @State private var completedDistractionCount: Int = 0  // Captured at session end for display
     @State private var predictedFocus: Int? = nil
@@ -128,13 +129,13 @@ public struct TimerView: View {
                     }
                     .padding(.vertical, Theme.spacingM)
 
-                    VStack(spacing: Theme.spacingS) {
-                        HStack(spacing: Theme.spacingXS) {
-                            ForEach(0..<settings.sessionsBeforeLongBreak, id: \.self) { index in
-                                Circle().fill(index < timerService.completedSessions ? Theme.focusColor : Theme.textTertiary.opacity(0.3)).frame(width: 12, height: 12)
-                            }
+                    // Energy prediction pill (only show when idle and in focus mode)
+                    if timerService.state == .idle && !timerService.isBreak {
+                        EnergyPredictionPill(lastPrediction: lastPrediction) {
+                            soundService.lightImpact(settings: settings)
+                            showEnergyOverlay = true
                         }
-                        Text("\(timerService.completedSessions) of \(settings.sessionsBeforeLongBreak) sessions until long break").font(Theme.captionFont).foregroundStyle(Theme.textSecondary)
+                        .padding(.top, Theme.spacingS)
                     }
                 }
                 .padding(Theme.spacingL)
@@ -144,22 +145,22 @@ public struct TimerView: View {
         }
         .background(Theme.backgroundPrimary)
         .sheet(isPresented: $showTaskSelector) { TaskSelectorSheet(selectedTask: Bindable(timerService).selectedTask) }
-        .sheet(isPresented: $showEnergyMeter) {
-            EnergyMeterView(
-                onStart: { level in
-                    predictedFocus = level
-                    showEnergyMeter = false
-                    startTimerAfterPrediction()
-                },
-                onSkip: {
-                    predictedFocus = nil
-                    showEnergyMeter = false
-                    startTimerAfterPrediction()
-                }
-            )
-            .presentationDetents([.medium])
-            .presentationDragIndicator(.visible)
+        .overlay {
+            if showEnergyOverlay {
+                EnergyPredictionOverlay(
+                    onStart: { level in
+                        showEnergyOverlay = false
+                        startTimerAfterPrediction(level: level)
+                    },
+                    onDismiss: {
+                        showEnergyOverlay = false
+                    }
+                )
+                .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                .zIndex(100)
+            }
         }
+        .animation(.spring(response: 0.3), value: showEnergyOverlay)
         .sheet(item: $focusResult) { result in
             FocusPredictionResultView(
                 predictedLevel: result.predicted,
@@ -208,12 +209,8 @@ public struct TimerView: View {
                 onDismiss: {
                     settings.hasSeenNotificationOnboarding = true
                     showNotificationOnboarding = false
-                    // Continue to energy meter
-                    if !timerService.isBreak {
-                        showEnergyMeter = true
-                    } else {
-                        timerService.togglePlayPause()
-                    }
+                    // Continue to start timer (prediction is optional now)
+                    startTimerWithoutPrediction()
                 }
             )
             .presentationDetents([.height(340)])
@@ -266,14 +263,8 @@ public struct TimerView: View {
                 return
             }
 
-            // Starting a new session - show energy meter for focus sessions
-            if !timerService.isBreak {
-                showEnergyMeter = true
-            } else {
-                // For breaks, just start normally
-                Task { await notificationService.scheduleTimerCompletion(in: timerService.remainingTime, mode: timerService.mode, taskTitle: timerService.selectedTask?.title) }
-                timerService.togglePlayPause()
-            }
+            // Start timer directly (prediction is now optional via pill)
+            startTimerWithoutPrediction()
         } else if timerService.state == .paused {
             Task { notificationService.cancelTimerNotifications(); await notificationService.scheduleTimerCompletion(in: timerService.remainingTime, mode: timerService.mode, taskTitle: timerService.selectedTask?.title) }
             timerService.togglePlayPause()
@@ -283,9 +274,19 @@ public struct TimerView: View {
         }
     }
 
-    private func startTimerAfterPrediction() {
+    private func startTimerWithoutPrediction() {
         distractionCount = 0
         sessionWasCompleted = true
+        predictedFocus = nil
+        Task { await notificationService.scheduleTimerCompletion(in: timerService.remainingTime, mode: timerService.mode, taskTitle: timerService.selectedTask?.title) }
+        timerService.togglePlayPause()
+    }
+
+    private func startTimerAfterPrediction(level: Int) {
+        distractionCount = 0
+        sessionWasCompleted = true
+        predictedFocus = level
+        lastPrediction = level
         Task { await notificationService.scheduleTimerCompletion(in: timerService.remainingTime, mode: timerService.mode, taskTitle: timerService.selectedTask?.title) }
         timerService.togglePlayPause()
     }
