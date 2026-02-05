@@ -15,9 +15,11 @@ struct FocusHavenApp: App {
     init() {
         let settings = UserSettings()
         let liveActivityService = LiveActivityService()
+        let notificationService = NotificationService()
         self._settings = State(initialValue: settings)
         self._liveActivityService = State(initialValue: liveActivityService)
-        self._timerService = State(initialValue: TimerService(settings: settings, liveActivityService: liveActivityService))
+        self._notificationService = State(initialValue: notificationService)
+        self._timerService = State(initialValue: TimerService(settings: settings, liveActivityService: liveActivityService, notificationService: notificationService))
     }
 
     var body: some Scene {
@@ -31,6 +33,8 @@ struct FocusHavenApp: App {
                 .preferredColorScheme(settings.theme.colorScheme)
                 .task {
                     sessionService.configure()
+                    // Request notification permission on launch
+                    _ = await notificationService.requestAuthorization()
                 }
         }
         .modelContainer(for: [FocusTask.self, FocusRecord.self])

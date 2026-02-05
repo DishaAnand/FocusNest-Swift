@@ -40,6 +40,7 @@ public final class TimerService: @unchecked Sendable {
     private var wasRunningBeforeBackground: Bool = false
     private let settings: UserSettings
     private let liveActivityService: LiveActivityService
+    private let notificationService: NotificationService
 
     // For smooth progress calculation
     private var sessionStartTime: Date?
@@ -73,9 +74,10 @@ public final class TimerService: @unchecked Sendable {
         mode == .shortBreak || mode == .longBreak
     }
 
-    public init(settings: UserSettings, liveActivityService: LiveActivityService) {
+    public init(settings: UserSettings, liveActivityService: LiveActivityService, notificationService: NotificationService) {
         self.settings = settings
         self.liveActivityService = liveActivityService
+        self.notificationService = notificationService
         self.totalDuration = settings.focusDuration
         self.remainingTime = settings.focusDuration
         setupBackgroundObservers()
@@ -110,6 +112,15 @@ public final class TimerService: @unchecked Sendable {
             mode: mode.rawValue,
             taskName: selectedTask?.title
         )
+
+        // Schedule notification for timer completion
+        Task {
+            await notificationService.scheduleTimerCompletion(
+                in: remainingTime,
+                mode: mode,
+                taskTitle: selectedTask?.title
+            )
+        }
     }
 
     public func pause() {
@@ -122,6 +133,9 @@ public final class TimerService: @unchecked Sendable {
         state = .paused
         stopTimer()
         updateProgress() // Freeze at current progress
+
+        // Cancel scheduled notification
+        notificationService.cancelTimerNotifications()
 
         // Update Live Activity to show paused state
         Task {
@@ -149,6 +163,15 @@ public final class TimerService: @unchecked Sendable {
                 isPaused: false
             )
         }
+
+        // Reschedule notification for remaining time
+        Task {
+            await notificationService.scheduleTimerCompletion(
+                in: remainingTime,
+                mode: mode,
+                taskTitle: selectedTask?.title
+            )
+        }
     }
 
     public func togglePlayPause() {
@@ -167,6 +190,9 @@ public final class TimerService: @unchecked Sendable {
         resetToMode(mode)
         progress = 0
 
+        // Cancel scheduled notification
+        notificationService.cancelTimerNotifications()
+
         // End Live Activity
         Task {
             await liveActivityService.endActivity()
@@ -177,6 +203,9 @@ public final class TimerService: @unchecked Sendable {
         stopTimer()
         pausedElapsedTime = 0
         sessionStartTime = nil
+
+        // Cancel scheduled notification
+        notificationService.cancelTimerNotifications()
 
         // End Live Activity before advancing
         Task {
@@ -189,6 +218,9 @@ public final class TimerService: @unchecked Sendable {
     /// Start an extension session with a custom duration (used when user chooses to keep focusing)
     public func startExtension(duration: Int) {
         stopTimer()
+
+        // Cancel any existing notification
+        notificationService.cancelTimerNotifications()
 
         // End existing Live Activity
         Task {
@@ -214,6 +246,9 @@ public final class TimerService: @unchecked Sendable {
         remainingTime = settings.focusDuration
         selectedTask = nil
         pausedElapsedTime = 0
+
+        // Cancel scheduled notification
+        notificationService.cancelTimerNotifications()
 
         // End Live Activity
         Task {

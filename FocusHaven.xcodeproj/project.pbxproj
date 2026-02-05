@@ -11,6 +11,8 @@
 		AAA00003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AAA00004 /* Assets.xcassets */; };
 		AAA00005 /* FocusHavenFeature in Frameworks */ = {isa = PBXBuildFile; productRef = AAA00006 /* FocusHavenFeature */; };
 		AAA00007 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = AAA00008 /* GoogleService-Info.plist */; };
+		CCC00001 /* focus-complete.aiff in Resources */ = {isa = PBXBuildFile; fileRef = CCC00002 /* focus-complete.aiff */; };
+		CCC00003 /* break-complete.aiff in Resources */ = {isa = PBXBuildFile; fileRef = CCC00004 /* break-complete.aiff */; };
 		BBB00001 /* FocusHavenWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBB00002 /* FocusHavenWidgetsBundle.swift */; };
 		BBB00003 /* FocusTimerLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBB00004 /* FocusTimerLiveActivity.swift */; };
 		BBB00005 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BBB00006 /* WidgetKit.framework */; };
@@ -48,6 +50,8 @@
 		AAA00008 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		AAA00009 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		AAA00010 /* FocusHaven.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FocusHaven.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CCC00002 /* focus-complete.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = "focus-complete.aiff"; sourceTree = "<group>"; };
+		CCC00004 /* break-complete.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = "break-complete.aiff"; sourceTree = "<group>"; };
 		BBB00002 /* FocusHavenWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusHavenWidgetsBundle.swift; sourceTree = "<group>"; };
 		BBB00004 /* FocusTimerLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusTimerLiveActivity.swift; sourceTree = "<group>"; };
 		BBB00006 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
@@ -92,10 +96,20 @@
 			children = (
 				AAA00002 /* FocusHavenApp.swift */,
 				AAA00004 /* Assets.xcassets */,
+				CCC00010 /* Sounds */,
 				AAA00008 /* GoogleService-Info.plist */,
 				AAA00009 /* Info.plist */,
 			);
 			path = FocusHaven;
+			sourceTree = "<group>";
+		};
+		CCC00010 /* Sounds */ = {
+			isa = PBXGroup;
+			children = (
+				CCC00002 /* focus-complete.aiff */,
+				CCC00004 /* break-complete.aiff */,
+			);
+			path = Sounds;
 			sourceTree = "<group>";
 		};
 		AAA00032 /* Products */ = {
@@ -215,6 +229,8 @@
 			files = (
 				AAA00003 /* Assets.xcassets in Resources */,
 				AAA00007 /* GoogleService-Info.plist in Resources */,
+				CCC00001 /* focus-complete.aiff in Resources */,
+				CCC00003 /* break-complete.aiff in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

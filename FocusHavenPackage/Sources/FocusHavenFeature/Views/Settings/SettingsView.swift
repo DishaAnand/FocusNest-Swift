@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 @MainActor
 public struct SettingsView: View {
@@ -26,11 +27,12 @@ public struct SettingsView: View {
                     Toggle("Sound", isOn: $settings.soundEnabled)
                     Toggle("Vibration", isOn: $settings.vibrationEnabled)
                 }
-                Section("Notifications") {
-                    Toggle("Notifications", isOn: $settings.notificationsEnabled)
-                    if !notificationService.isAuthorized {
-                        Button("Enable Notifications") { Task { _ = await notificationService.requestAuthorization() } }.foregroundStyle(Theme.focusColor)
-                    }
+                Section {
+                    NotificationStatusRow(notificationService: notificationService)
+                } header: {
+                    Text("Notifications")
+                } footer: {
+                    Text("Notifications let you hear when your timer ends, even when your phone is locked.")
                 }
                 Section("Appearance") {
                     Picker("Theme", selection: $settings.theme) {
@@ -56,5 +58,70 @@ public struct SettingsView: View {
 
     private func durationPicker(title: String, value: Binding<Int>, range: ClosedRange<Int>) -> some View {
         HStack { Text(title); Spacer(); Picker(title, selection: value) { ForEach(Array(range), id: \.self) { Text("\($0) min").tag($0) } }.pickerStyle(.menu).labelsHidden() }
+    }
+}
+
+// MARK: - Notification Status Row
+
+private struct NotificationStatusRow: View {
+    let notificationService: NotificationService
+
+    var body: some View {
+        if notificationService.isAuthorized {
+            // Notifications enabled
+            HStack(spacing: 12) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                    .font(.title2)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Notifications Enabled")
+                        .font(.body)
+                    Text("You'll hear when timers complete")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+            }
+            .padding(.vertical, 4)
+        } else {
+            // Notifications disabled
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 12) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                        .font(.title2)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Notifications Disabled")
+                            .font(.body)
+                        Text("You won't hear when timers complete")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+                }
+
+                Button {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                } label: {
+                    HStack {
+                        Image(systemName: "gear")
+                        Text("Open Settings to Enable")
+                    }
+                    .font(.subheadline.weight(.medium))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(Theme.focusColor)
+                    .foregroundStyle(.white)
+                    .cornerRadius(8)
+                }
+            }
+            .padding(.vertical, 4)
+        }
     }
 }

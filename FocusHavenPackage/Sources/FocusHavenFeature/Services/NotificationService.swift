@@ -34,13 +34,14 @@ public final class NotificationService: @unchecked Sendable {
         let content = UNMutableNotificationContent()
         switch mode {
         case .focus:
-            content.title = "Focus Session Complete!"
+            content.title = "🎯 Focus Session Complete!"
             content.body = taskTitle.map { "Great work on \"\($0)\"! Time for a break." } ?? "Great work! Time for a well-deserved break."
+            content.sound = UNNotificationSound(named: UNNotificationSoundName("focus-complete.aiff"))
         case .shortBreak, .longBreak:
-            content.title = "Break Time Over"
+            content.title = "☕ Break Time Over"
             content.body = "Ready to focus again? Let's go!"
+            content.sound = UNNotificationSound(named: UNNotificationSoundName("break-complete.aiff"))
         }
-        content.sound = .default
         content.badge = 1
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: TimeInterval(max(1, seconds)), repeats: false)

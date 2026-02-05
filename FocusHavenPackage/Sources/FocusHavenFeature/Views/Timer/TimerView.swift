@@ -14,6 +14,7 @@ public struct TimerView: View {
     @State private var showTaskSelector = false
     @State private var showEnergyMeter = false
     @State private var showSessionComplete = false
+    @State private var showNotificationOnboarding = false
     @State private var completedSessionDuration: Int = 0
     @State private var completedDistractionCount: Int = 0  // Captured at session end for display
     @State private var predictedFocus: Int? = nil
@@ -202,6 +203,22 @@ public struct TimerView: View {
                 }
             )
         }
+        .sheet(isPresented: $showNotificationOnboarding) {
+            NotificationOnboardingSheet(
+                onDismiss: {
+                    settings.hasSeenNotificationOnboarding = true
+                    showNotificationOnboarding = false
+                    // Continue to energy meter
+                    if !timerService.isBreak {
+                        showEnergyMeter = true
+                    } else {
+                        timerService.togglePlayPause()
+                    }
+                }
+            )
+            .presentationDetents([.height(340)])
+            .presentationDragIndicator(.visible)
+        }
         .onChange(of: scenePhase) { oldPhase, newPhase in
             // Only track distractions during active focus session (not breaks)
             guard timerService.isRunning && !timerService.isBreak else { return }
@@ -243,6 +260,12 @@ public struct TimerView: View {
 
     private func handlePlayPause() {
         if timerService.state == .idle {
+            // Check if we need to show notification onboarding first
+            if !settings.hasSeenNotificationOnboarding && !notificationService.isAuthorized {
+                showNotificationOnboarding = true
+                return
+            }
+
             // Starting a new session - show energy meter for focus sessions
             if !timerService.isBreak {
                 showEnergyMeter = true
