@@ -1,15 +1,35 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 @MainActor
 public struct TimerView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(UserSettings.self) private var settings
     @Environment(TimerService.self) private var timerService
     @Environment(NotificationService.self) private var notificationService
     @Environment(SoundService.self) private var soundService
 
     @State private var showTaskSelector = false
+    @State private var showEnergyMeter = false
+    @State private var predictedFocus: Int? = nil
+    @State private var distractionCount = 0
+    // Result data for sheet (set before presenting)
+    @State private var focusResult: FocusResultData? = nil
+
+    private struct FocusResultData: Identifiable {
+        let id = UUID()
+        let predicted: Int
+        let actual: Int
+        let duration: Int
+        let distractions: Int
+        let wasCompleted: Bool
+    }
+    @State private var wentAwayAt: Date? = nil
+    @State private var wasScreenLocked = false
+    @State private var sessionWasCompleted = true
+    private let distractionThreshold: TimeInterval = 15
 
     public init() {}
 
@@ -53,7 +73,43 @@ public struct TimerView: View {
 
                     HStack(spacing: Theme.spacingL) {
                         if timerService.state != .idle {
-                            Button { soundService.lightImpact(settings: settings); timerService.stop(); notificationService.cancelTimerNotifications() } label: {
+                            Button {
+                                soundService.lightImpact(settings: settings)
+                                sessionWasCompleted = false
+                                // If we had a prediction and stopped early during focus, show result
+                                if let predicted = predictedFocus, !timerService.isBreak {
+                                    let actualFocus = calculateActualFocus()
+                                    let dur = settings.focusDuration
+                                    let dist = distractionCount
+
+                                    let record = FocusRecord(
+                                        duration: dur - timerService.remainingTime,
+                                        isBreak: false,
+                                        taskId: timerService.selectedTask?.id,
+                                        taskTitle: timerService.selectedTask?.title,
+                                        wasCompleted: false,
+                                        predictedFocus: predicted,
+                                        actualFocus: actualFocus,
+                                        distractionCount: dist
+                                    )
+                                    modelContext.insert(record)
+                                    timerService.stop()
+                                    notificationService.cancelTimerNotifications()
+
+                                    // Set result data to show sheet
+                                    focusResult = FocusResultData(
+                                        predicted: predicted,
+                                        actual: actualFocus,
+                                        duration: dur,
+                                        distractions: dist,
+                                        wasCompleted: false
+                                    )
+                                } else {
+                                    timerService.stop()
+                                    notificationService.cancelTimerNotifications()
+                                    resetPredictionState()
+                                }
+                            } label: {
                                 Image(systemName: "stop.fill").font(.title2).foregroundStyle(.white).frame(width: 56, height: 56).background(Theme.errorColor.opacity(0.8)).clipShape(Circle())
                             }
                         }
@@ -85,18 +141,111 @@ public struct TimerView: View {
         }
         .background(Theme.backgroundPrimary)
         .sheet(isPresented: $showTaskSelector) { TaskSelectorSheet(selectedTask: Bindable(timerService).selectedTask) }
+        .sheet(isPresented: $showEnergyMeter) {
+            EnergyMeterView(
+                onStart: { level in
+                    predictedFocus = level
+                    showEnergyMeter = false
+                    startTimerAfterPrediction()
+                },
+                onSkip: {
+                    predictedFocus = nil
+                    showEnergyMeter = false
+                    startTimerAfterPrediction()
+                }
+            )
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(item: $focusResult) { result in
+            FocusPredictionResultView(
+                predictedLevel: result.predicted,
+                actualLevel: result.actual,
+                duration: result.duration,
+                distractionCount: result.distractions,
+                wasCompleted: result.wasCompleted,
+                onDone: {
+                    focusResult = nil
+                    resetPredictionState()
+                }
+            )
+            .presentationDetents([.large])
+            .interactiveDismissDisabled()
+        }
+        .onChange(of: scenePhase) { oldPhase, newPhase in
+            // Only track distractions during active focus session (not breaks)
+            guard timerService.isRunning && !timerService.isBreak else { return }
+
+            if newPhase != .active && oldPhase == .active {
+                wentAwayAt = Date()
+                wasScreenLocked = !UIApplication.shared.isProtectedDataAvailable
+            } else if newPhase == .active && oldPhase != .active {
+                if let awayTime = wentAwayAt {
+                    let awayDuration = Date().timeIntervalSince(awayTime)
+                    if awayDuration >= distractionThreshold && !wasScreenLocked {
+                        distractionCount += 1
+                    }
+                }
+                wentAwayAt = nil
+                wasScreenLocked = false
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.protectedDataWillBecomeUnavailableNotification)) { _ in
+            if timerService.isRunning && !timerService.isBreak {
+                wasScreenLocked = true
+            }
+        }
         .task { setupTimerCallbacks() }
     }
 
     private func handlePlayPause() {
         if timerService.state == .idle {
-            Task { await notificationService.scheduleTimerCompletion(in: timerService.remainingTime, mode: timerService.mode, taskTitle: timerService.selectedTask?.title) }
+            // Starting a new session - show energy meter for focus sessions
+            if !timerService.isBreak {
+                showEnergyMeter = true
+            } else {
+                // For breaks, just start normally
+                Task { await notificationService.scheduleTimerCompletion(in: timerService.remainingTime, mode: timerService.mode, taskTitle: timerService.selectedTask?.title) }
+                timerService.togglePlayPause()
+            }
         } else if timerService.state == .paused {
             Task { notificationService.cancelTimerNotifications(); await notificationService.scheduleTimerCompletion(in: timerService.remainingTime, mode: timerService.mode, taskTitle: timerService.selectedTask?.title) }
+            timerService.togglePlayPause()
         } else {
             notificationService.cancelTimerNotifications()
+            timerService.togglePlayPause()
         }
+    }
+
+    private func startTimerAfterPrediction() {
+        distractionCount = 0
+        sessionWasCompleted = true
+        Task { await notificationService.scheduleTimerCompletion(in: timerService.remainingTime, mode: timerService.mode, taskTitle: timerService.selectedTask?.title) }
         timerService.togglePlayPause()
+    }
+
+    private func calculateActualFocus() -> Int {
+        // Start at 5, deduct for issues
+        var score = 5
+
+        // Each distraction: -1
+        score -= distractionCount
+
+        // Early stop: -2
+        if !sessionWasCompleted {
+            score -= 2
+        }
+
+        // Clamp to 1-5
+        return max(1, min(5, score))
+    }
+
+    private func resetPredictionState() {
+        predictedFocus = nil
+        distractionCount = 0
+        sessionWasCompleted = true
+        wentAwayAt = nil
+        wasScreenLocked = false
     }
 
     private func setupTimerCallbacks() {
@@ -104,8 +253,30 @@ public struct TimerView: View {
             soundService.playTimerComplete(settings: settings)
             soundService.successHaptic(settings: settings)
             if mode == .focus {
-                let record = FocusRecord(duration: settings.focusDuration, isBreak: false, taskId: timerService.selectedTask?.id, taskTitle: timerService.selectedTask?.title, wasCompleted: true)
+                sessionWasCompleted = true
+                let actualFocus = calculateActualFocus()
+                let record = FocusRecord(
+                    duration: settings.focusDuration,
+                    isBreak: false,
+                    taskId: timerService.selectedTask?.id,
+                    taskTitle: timerService.selectedTask?.title,
+                    wasCompleted: true,
+                    predictedFocus: predictedFocus,
+                    actualFocus: actualFocus,
+                    distractionCount: distractionCount
+                )
                 modelContext.insert(record)
+
+                // Show prediction result if user made a prediction
+                if let predicted = predictedFocus {
+                    focusResult = FocusResultData(
+                        predicted: predicted,
+                        actual: actualFocus,
+                        duration: settings.focusDuration,
+                        distractions: distractionCount,
+                        wasCompleted: true
+                    )
+                }
             }
         }
     }

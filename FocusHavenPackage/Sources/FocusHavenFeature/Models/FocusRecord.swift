@@ -12,6 +12,9 @@ public final class FocusRecord: @unchecked Sendable {
     public var taskTitle: String?
     public var wasCompleted: Bool
     public var wasBuddySession: Bool
+    public var predictedFocus: Int?  // 1-5, nil if skipped
+    public var actualFocus: Int?     // 1-5, calculated from session
+    public var distractionCount: Int // For solo sessions
 
     public init(
         id: UUID = UUID(),
@@ -21,7 +24,10 @@ public final class FocusRecord: @unchecked Sendable {
         taskId: UUID? = nil,
         taskTitle: String? = nil,
         wasCompleted: Bool = true,
-        wasBuddySession: Bool = false
+        wasBuddySession: Bool = false,
+        predictedFocus: Int? = nil,
+        actualFocus: Int? = nil,
+        distractionCount: Int = 0
     ) {
         self.id = id
         self.date = date
@@ -31,6 +37,9 @@ public final class FocusRecord: @unchecked Sendable {
         self.taskTitle = taskTitle
         self.wasCompleted = wasCompleted
         self.wasBuddySession = wasBuddySession
+        self.predictedFocus = predictedFocus
+        self.actualFocus = actualFocus
+        self.distractionCount = distractionCount
     }
 }
 
