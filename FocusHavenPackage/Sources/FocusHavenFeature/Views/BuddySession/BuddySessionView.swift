@@ -18,9 +18,9 @@ public struct BuddySessionView: View {
     @State private var customTaskTitle = ""
     @State private var sessionDuration = 25
     @State private var userName = UserDefaults.standard.string(forKey: "userName") ?? ""
-    @State private var buddyRating = 0
     @State private var errorMessage: String?
     @State private var showJoinWithCode = false
+    @State private var showCreateSession = false
     @State private var joinCode = ""
 
     // Distraction detection - only counted when user RETURNS after 15+ seconds
@@ -32,18 +32,40 @@ public struct BuddySessionView: View {
 
     public var body: some View {
         NavigationStack {
-            Group {
-                switch currentStep {
-                case .setup: setupView
-                case .waiting: waitingView
-                case .active: activeSessionView
-                case .rating: ratingView
-                case .completed: completedView
+            ZStack {
+                Group {
+                    switch currentStep {
+                    case .setup: setupView
+                    case .waiting: waitingView
+                    case .active: activeSessionView
+                    case .celebrating: Color.clear // Celebration overlay handles this
+                    case .postCompletion: postCompletionView
+                    case .supportMode: supportModeView
+                    case .summary: summaryView
+                    }
+                }
+
+                // Celebration overlay
+                if currentStep == .celebrating {
+                    CelebrationOverlay {
+                        // Check if buddy is still going
+                        if let session = sessionService.currentSession {
+                            let buddyStillGoing = session.otherParticipants(exceptId: sessionService.deviceId)
+                                .contains { session.remainingTimeForParticipant($0.odid, currentTime: sessionService.serverTime) > 0 }
+                            if buddyStillGoing {
+                                currentStep = .postCompletion
+                            } else {
+                                currentStep = .summary
+                            }
+                        } else {
+                            currentStep = .summary
+                        }
+                    }
                 }
             }
             .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { if currentStep != .completed { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { Task { await cancelSession() } } } } }
+            .toolbar { if currentStep != .summary { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { Task { await cancelSession() } } } } }
             .alert("Error", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) { Button("OK") { errorMessage = nil } } message: { Text(errorMessage ?? "") }
             .onChange(of: sessionService.currentSession?.state) { _, newState in handleSessionStateChange(newState) }
             .onChange(of: sessionService.currentSession?.participantCount) { oldCount, newCount in
@@ -94,7 +116,7 @@ public struct BuddySessionView: View {
                     switch session.state {
                     case .waiting: currentStep = .waiting
                     case .active: currentStep = .active
-                    case .completed: currentStep = .rating
+                    case .completed: currentStep = .summary
                     default: break
                     }
                 }
@@ -108,35 +130,99 @@ public struct BuddySessionView: View {
         case .setup: return "Start Buddy Session"
         case .waiting: return isCreator ? "Waiting for Buddy" : "Ready to Focus"
         case .active: return "Focus Together"
-        case .rating: return "Rate Your Buddy"
-        case .completed: return "Session Complete"
+        case .celebrating: return "Focus Together"
+        case .postCompletion: return "You Did It!"
+        case .supportMode: return "Supporting Buddy"
+        case .summary: return ""  // Summary has its own visual header
         }
     }
 
     private var setupView: some View {
         ScrollView {
             VStack(spacing: Theme.spacingL) {
-                VStack(alignment: .leading, spacing: Theme.spacingS) { Text("Your Name").font(Theme.headlineFont); TextField("Enter your name", text: $userName).textFieldStyle(.roundedBorder).autocorrectionDisabled() }
-                VStack(alignment: .leading, spacing: Theme.spacingS) {
-                    Text("What are you working on?").font(Theme.headlineFont); TextField("Enter task", text: $customTaskTitle).textFieldStyle(.roundedBorder)
-                    if !tasks.isEmpty { Text("Or select:").font(Theme.captionFont).foregroundStyle(Theme.textSecondary); ForEach(tasks.prefix(5)) { task in TaskSelectionCardView(task: task, isSelected: selectedTask?.id == task.id) { selectedTask = task; customTaskTitle = task.title } } }
+                // Header
+                VStack(spacing: Theme.spacingS) {
+                    Image(systemName: "person.2.fill")
+                        .font(.system(size: 48))
+                        .foregroundStyle(Theme.focusColor)
+                    Text("Buddy Session")
+                        .font(Theme.titleFont)
+                    Text("Focus together with a friend")
+                        .font(Theme.bodyFont)
+                        .foregroundStyle(Theme.textSecondary)
                 }
-                VStack(alignment: .leading, spacing: Theme.spacingS) { Text("Duration").font(Theme.headlineFont); Picker("Duration", selection: $sessionDuration) { Text("1 min").tag(1); Text("15 min").tag(15); Text("25 min").tag(25); Text("45 min").tag(45) }.pickerStyle(.segmented) }
-                Button { Task { await createSession() } } label: { Text("Create Session").primaryButtonStyle() }.disabled(userName.isEmpty || customTaskTitle.isEmpty).padding(.top, Theme.spacingM)
+                .padding(.top, Theme.spacingM)
 
-                // Divider with "or"
-                HStack {
-                    Rectangle().fill(Theme.textSecondary.opacity(0.3)).frame(height: 1)
-                    Text("or").font(Theme.captionFont).foregroundStyle(Theme.textSecondary)
-                    Rectangle().fill(Theme.textSecondary.opacity(0.3)).frame(height: 1)
-                }.padding(.vertical, Theme.spacingS)
+                // Two clear options
+                VStack(spacing: Theme.spacingM) {
+                    // Create Session Card
+                    Button {
+                        showCreateSession = true
+                    } label: {
+                        HStack(spacing: Theme.spacingM) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 32))
+                                .foregroundStyle(Theme.focusColor)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Create Session")
+                                    .font(Theme.headlineFont)
+                                    .foregroundStyle(Theme.textPrimary)
+                                Text("Start a new focus session and invite a buddy")
+                                    .font(Theme.captionFont)
+                                    .foregroundStyle(Theme.textSecondary)
+                                    .multilineTextAlignment(.leading)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .foregroundStyle(Theme.textSecondary)
+                        }
+                        .padding(Theme.spacingM)
+                        .background(Theme.backgroundSecondary)
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusM))
+                    }
 
-                // Join with code button
-                Button { showJoinWithCode = true } label: { Label("Join with Code", systemImage: "person.badge.plus").secondaryButtonStyle() }
-            }.padding(Theme.spacingM)
+                    // Join Session Card
+                    Button {
+                        showJoinWithCode = true
+                    } label: {
+                        HStack(spacing: Theme.spacingM) {
+                            Image(systemName: "person.badge.plus")
+                                .font(.system(size: 32))
+                                .foregroundStyle(.teal)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Join Session")
+                                    .font(Theme.headlineFont)
+                                    .foregroundStyle(Theme.textPrimary)
+                                Text("Enter a code to join your buddy's session")
+                                    .font(Theme.captionFont)
+                                    .foregroundStyle(Theme.textSecondary)
+                                    .multilineTextAlignment(.leading)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .foregroundStyle(Theme.textSecondary)
+                        }
+                        .padding(Theme.spacingM)
+                        .background(Theme.backgroundSecondary)
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusM))
+                    }
+                }
+            }
+            .padding(Theme.spacingM)
+        }
+        .sheet(isPresented: $showCreateSession) {
+            CreateSessionSheet(
+                userName: $userName,
+                taskTitle: $customTaskTitle,
+                duration: $sessionDuration,
+                tasks: tasks,
+                isPresented: $showCreateSession
+            ) {
+                Task { await createSession() }
+            }
         }
         .sheet(isPresented: $showJoinWithCode) {
-            JoinWithCodeSheet(userName: $userName, taskTitle: $customTaskTitle, isPresented: $showJoinWithCode) {
+            JoinWithCodeSheet(userName: $userName, taskTitle: $customTaskTitle, isPresented: $showJoinWithCode, tasks: tasks) {
                 currentStep = .waiting
             }
         }
@@ -211,30 +297,107 @@ public struct BuddySessionView: View {
 
     private var activeSessionView: some View {
         VStack(spacing: Theme.spacingL) {
-            if let session = sessionService.currentSession { ActiveSessionTimerView(session: session) { Task { await completeSession() } } }
+            if let session = sessionService.currentSession {
+                ActiveSessionTimerView(session: session) {
+                    // My timer completed - show celebration
+                    currentStep = .celebrating
+                }
+            }
         }.padding(Theme.spacingM)
     }
 
-    private var ratingView: some View {
+    private var postCompletionView: some View {
         VStack(spacing: Theme.spacingXL) {
             Spacer()
-            Image(systemName: "star.fill").font(.system(size: 64)).foregroundStyle(.yellow)
-            Text("How focused was your buddy?").font(Theme.titleFont).multilineTextAlignment(.center)
-            StarRatingView(rating: $buddyRating, size: 48)
-            Button { Task { await submitRating() } } label: { Text("Submit Rating").primaryButtonStyle() }.disabled(buddyRating == 0)
+
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 80))
+                .foregroundStyle(Theme.focusColor)
+
+            Text("Great focus session!")
+                .font(Theme.titleFont)
+
+            if let session = sessionService.currentSession,
+               let buddy = session.otherParticipants(exceptId: sessionService.deviceId).first {
+                let buddyRemaining = session.remainingTimeForParticipant(buddy.odid, currentTime: sessionService.serverTime)
+
+                if buddyRemaining > 0 {
+                    Text("\(buddy.name) has \(buddyRemaining / 60):\(String(format: "%02d", buddyRemaining % 60)) left")
+                        .font(Theme.headlineFont)
+                        .foregroundStyle(Theme.textSecondary)
+
+                    VStack(spacing: Theme.spacingM) {
+                        Button {
+                            currentStep = .supportMode
+                        } label: {
+                            Text("Focus Together").primaryButtonStyle()
+                        }
+
+                        Button {
+                            currentStep = .summary
+                        } label: {
+                            Text("I'm Done").secondaryButtonStyle()
+                        }
+                    }
+                    .padding(.top, Theme.spacingM)
+                }
+            }
+
             Spacer()
-        }.padding(Theme.spacingM)
+        }
+        .padding(Theme.spacingM)
     }
 
-    private var completedView: some View {
-        VStack(spacing: Theme.spacingXL) {
-            Spacer()
-            Image(systemName: "hands.clap.fill").font(.system(size: 80)).foregroundStyle(Theme.focusColor)
-            Text("Session Complete!").font(Theme.titleFont)
-            Text("Great work focusing together!").font(Theme.bodyFont).foregroundStyle(Theme.textSecondary)
-            Button { finishSession() } label: { Text("Done").primaryButtonStyle() }
-            Spacer()
-        }.padding(Theme.spacingM)
+    private var supportModeView: some View {
+        VStack(spacing: Theme.spacingL) {
+            if let session = sessionService.currentSession {
+                SupportModeTimerView(session: session) {
+                    // Buddy finished - both go to rating
+                    currentStep = .celebrating
+                }
+            }
+        }
+        .padding(Theme.spacingM)
+    }
+
+    private var summaryView: some View {
+        Group {
+            if let session = sessionService.currentSession {
+                let me = session.participant(withId: sessionService.deviceId)
+                let buddy = session.otherParticipants(exceptId: sessionService.deviceId).first
+
+                SessionSummaryView(
+                    myName: me?.name ?? userName,
+                    buddyName: buddy?.name ?? "Buddy",
+                    myDuration: me?.duration ?? session.duration,
+                    buddyDuration: buddy?.duration ?? session.duration,
+                    myDistractions: me?.violationCount ?? 0,
+                    buddyDistractions: buddy?.violationCount ?? 0,
+                    onDone: {
+                        // Save focus record
+                        modelContext.insert(FocusRecord(
+                            duration: me?.duration ?? session.duration,
+                            isBreak: false,
+                            taskTitle: customTaskTitle.isEmpty ? (me?.taskTitle ?? "Focus session") : customTaskTitle,
+                            wasCompleted: true,
+                            wasBuddySession: true
+                        ))
+                        soundService.successHaptic(settings: settings)
+                        finishSession()
+                    }
+                )
+                .navigationBarHidden(true)
+            } else {
+                // Fallback if session is nil
+                VStack(spacing: Theme.spacingXL) {
+                    Spacer()
+                    Image(systemName: "hands.clap.fill").font(.system(size: 80)).foregroundStyle(Theme.focusColor)
+                    Text("Session Complete!").font(Theme.titleFont)
+                    Button { finishSession() } label: { Text("Done").primaryButtonStyle() }
+                    Spacer()
+                }.padding(Theme.spacingM)
+            }
+        }
     }
 
     private func createSession() async {
@@ -261,22 +424,12 @@ public struct BuddySessionView: View {
         do {
             try await sessionService.completeSession()
             await notificationService.notifyBuddySessionComplete()
-            currentStep = .rating
+            currentStep = .summary
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 
-    private func submitRating() async {
-        if let session = sessionService.currentSession, let buddy = session.otherParticipants(exceptId: sessionService.deviceId).first {
-            try? await sessionService.rateBuddy(buddyId: buddy.odid, rating: buddyRating)
-        }
-        if let session = sessionService.currentSession {
-            modelContext.insert(FocusRecord(duration: session.duration, isBreak: false, taskTitle: customTaskTitle, wasCompleted: true, wasBuddySession: true))
-        }
-        currentStep = .completed
-        soundService.successHaptic(settings: settings)
-    }
 
     private func cancelSession() async {
         try? await sessionService.leaveSession()
@@ -299,7 +452,7 @@ public struct BuddySessionView: View {
                 // Ensure our status is focused when session starts
                 Task { try? await sessionService.updateStatus(.focused) }
             }
-        case .completed: if currentStep == .active { currentStep = .rating }
+        case .completed: if currentStep == .active { currentStep = .summary }
         case .cancelled: errorMessage = "Session was cancelled"; resetState()
         default: break
         }
@@ -311,11 +464,10 @@ public struct BuddySessionView: View {
         selectedTask = nil
         customTaskTitle = ""
         sessionDuration = 25
-        buddyRating = 0
     }
 }
 
-enum BuddySessionStep { case setup, waiting, active, rating, completed }
+enum BuddySessionStep { case setup, waiting, active, celebrating, postCompletion, supportMode, summary }
 
 @MainActor
 private struct ActiveSessionTimerView: View {
@@ -347,16 +499,22 @@ private struct ActiveSessionTimerView: View {
             // Buddy status card
             if let buddy = buddy {
                 HStack(spacing: Theme.spacingM) {
-                    // Always show green - we track distractions via the badge only
-                    Circle()
-                        .fill(Color.green)
-                        .frame(width: 12, height: 12)
+                    // Show green circle or checkmark if completed
+                    if buddyRemainingTime > 0 {
+                        Circle()
+                            .fill(Color.green)
+                            .frame(width: 12, height: 12)
+                    } else {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(Theme.focusColor)
+                            .font(.system(size: 16))
+                    }
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(buddy.name).font(Theme.headlineFont)
                         Text(buddy.taskTitle).font(Theme.captionFont).foregroundStyle(Theme.textSecondary)
 
-                        // Show buddy's remaining time if different
+                        // Show buddy's remaining time or completed status
                         if buddyRemainingTime > 0 {
                             Text("\(buddyRemainingTime / 60):\(String(format: "%02d", buddyRemainingTime % 60)) left")
                                 .font(Theme.captionFont)
@@ -369,8 +527,14 @@ private struct ActiveSessionTimerView: View {
                     }
                     Spacer()
 
-                    // Distraction count badge
-                    if buddy.violationCount > 0 {
+                    // Distraction count badge or completion badge
+                    if buddyRemainingTime <= 0 {
+                        VStack {
+                            Image(systemName: "hands.clap.fill")
+                                .font(.system(size: 20))
+                                .foregroundStyle(Theme.focusColor)
+                        }
+                    } else if buddy.violationCount > 0 {
                         VStack {
                             Text("\(buddy.violationCount)")
                                 .font(.system(size: 16, weight: .bold))
@@ -403,15 +567,96 @@ private struct ActiveSessionTimerView: View {
 }
 
 @MainActor
+private struct SupportModeTimerView: View {
+    @Environment(SessionService.self) private var sessionService
+    let session: BuddySession
+    let onBuddyComplete: () -> Void
+    @State private var buddyRemainingTime: Int = 0
+    @State private var timer: Timer?
+
+    private var buddy: SessionParticipant? {
+        session.otherParticipants(exceptId: sessionService.deviceId).first
+    }
+
+    var body: some View {
+        VStack(spacing: Theme.spacingL) {
+            Text("Supporting your buddy")
+                .font(Theme.headlineFont)
+                .foregroundStyle(Theme.textSecondary)
+
+            if let buddy = buddy {
+                // Buddy's timer (you're watching them)
+                CircularProgressView(
+                    progress: 1.0 - Double(buddyRemainingTime) / Double(buddy.duration),
+                    size: 200,
+                    color: Theme.focusColor
+                )
+
+                Text(String(format: "%02d:%02d", buddyRemainingTime / 60, buddyRemainingTime % 60))
+                    .font(Theme.timerFontSmall)
+                    .monospacedDigit()
+
+                // Buddy info card
+                HStack(spacing: Theme.spacingM) {
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 12, height: 12)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(buddy.name).font(Theme.headlineFont)
+                        Text(buddy.taskTitle).font(Theme.captionFont).foregroundStyle(Theme.textSecondary)
+                    }
+                    Spacer()
+
+                    // Your completed badge
+                    VStack {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 24))
+                            .foregroundStyle(Theme.focusColor)
+                        Text("You").font(.system(size: 10)).foregroundStyle(Theme.textSecondary)
+                    }
+                }
+                .padding(Theme.spacingM)
+                .background(Theme.backgroundSecondary)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusM))
+
+                Text("You finished! Cheering on \(buddy.name)")
+                    .font(Theme.captionFont)
+                    .foregroundStyle(Theme.textSecondary)
+            }
+        }
+        .onAppear {
+            guard let buddy = buddy else { return }
+            buddyRemainingTime = session.remainingTimeForParticipant(buddy.odid, currentTime: sessionService.serverTime)
+            timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [sessionService] _ in
+                Task { @MainActor in
+                    guard let buddy = session.otherParticipants(exceptId: sessionService.deviceId).first else { return }
+                    let remaining = session.remainingTimeForParticipant(buddy.odid, currentTime: sessionService.serverTime)
+                    if remaining > 0 {
+                        buddyRemainingTime = remaining
+                    } else {
+                        timer?.invalidate()
+                        onBuddyComplete()
+                    }
+                }
+            }
+        }
+        .onDisappear { timer?.invalidate() }
+    }
+}
+
+@MainActor
 private struct JoinWithCodeSheet: View {
     @Environment(SessionService.self) private var sessionService
     @Binding var userName: String
     @Binding var taskTitle: String
     @Binding var isPresented: Bool
+    let tasks: [FocusTask]
     let onJoined: () -> Void
 
     @State private var code = ""
     @State private var sessionDuration = 25
+    @State private var selectedTask: FocusTask?
     @State private var isLoading = false
     @State private var errorMessage: String?
 
@@ -419,29 +664,59 @@ private struct JoinWithCodeSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: Theme.spacingL) {
+                    // Header
                     Image(systemName: "person.badge.plus")
                         .font(.system(size: 60))
-                        .foregroundStyle(Theme.focusColor)
-                        .padding(.top, Theme.spacingL)
+                        .foregroundStyle(.teal)
+                        .padding(.top, Theme.spacingM)
 
-                    Text("Enter Session Code")
+                    Text("Join Session")
                         .font(Theme.titleFont)
 
-                    Text("Ask your buddy for their session code")
-                        .font(Theme.bodyFont)
-                        .foregroundStyle(Theme.textSecondary)
+                    // Session code
+                    VStack(alignment: .leading, spacing: Theme.spacingS) {
+                        Text("Session Code").font(Theme.headlineFont)
+                        TextField("XXXX", text: $code)
+                            .font(.system(size: 32, weight: .bold, design: .monospaced))
+                            .multilineTextAlignment(.center)
+                            .textFieldStyle(.roundedBorder)
+                            .textInputAutocapitalization(.characters)
+                            .autocorrectionDisabled()
+                            .frame(maxWidth: 150)
+                            .frame(maxWidth: .infinity)
+                    }
 
-                    TextField("Enter code", text: $code)
-                        .font(.system(size: 24, weight: .medium, design: .monospaced))
-                        .multilineTextAlignment(.center)
-                        .textFieldStyle(.roundedBorder)
-                        .textInputAutocapitalization(.characters)
-                        .autocorrectionDisabled()
-                        .frame(maxWidth: 200)
+                    // Name field
+                    VStack(alignment: .leading, spacing: Theme.spacingS) {
+                        Text("Your Name").font(Theme.headlineFont)
+                        TextField("Enter your name", text: $userName)
+                            .textFieldStyle(.roundedBorder)
+                            .autocorrectionDisabled()
+                    }
 
+                    // Task field
+                    VStack(alignment: .leading, spacing: Theme.spacingS) {
+                        Text("What are you working on?").font(Theme.headlineFont)
+                        TextField("Enter task", text: $taskTitle)
+                            .textFieldStyle(.roundedBorder)
+
+                        if !tasks.isEmpty {
+                            Text("Or select:")
+                                .font(Theme.captionFont)
+                                .foregroundStyle(Theme.textSecondary)
+                            ForEach(tasks.prefix(3)) { task in
+                                TaskSelectionCardView(task: task, isSelected: selectedTask?.id == task.id) {
+                                    selectedTask = task
+                                    taskTitle = task.title
+                                }
+                            }
+                        }
+                    }
+
+                    // Duration picker
                     VStack(alignment: .leading, spacing: Theme.spacingS) {
                         Text("Your Focus Duration").font(Theme.headlineFont)
-                        Text("Pick your own time - can differ from buddy").font(Theme.captionFont).foregroundStyle(Theme.textSecondary)
+                        Text("Can differ from your buddy's time").font(Theme.captionFont).foregroundStyle(Theme.textSecondary)
                         Picker("Duration", selection: $sessionDuration) {
                             Text("1 min").tag(1)
                             Text("15 min").tag(15)
@@ -449,7 +724,6 @@ private struct JoinWithCodeSheet: View {
                             Text("45 min").tag(45)
                         }.pickerStyle(.segmented)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
 
                     if let error = errorMessage {
                         Text(error)
@@ -458,7 +732,9 @@ private struct JoinWithCodeSheet: View {
                             .multilineTextAlignment(.center)
                     }
 
+                    // Join button
                     Button {
+                        UserDefaults.standard.set(userName, forKey: "userName")
                         Task { await joinWithCode() }
                     } label: {
                         if isLoading {
@@ -471,14 +747,8 @@ private struct JoinWithCodeSheet: View {
                             Text("Join Session").primaryButtonStyle()
                         }
                     }
-                    .disabled(code.count < 6 || isLoading || userName.isEmpty || taskTitle.isEmpty)
-                    .frame(maxWidth: 280)
-
-                    if userName.isEmpty || taskTitle.isEmpty {
-                        Text("Please fill in your name and task first")
-                            .font(Theme.captionFont)
-                            .foregroundStyle(.orange)
-                    }
+                    .disabled(code.count < 4 || isLoading || userName.isEmpty || taskTitle.isEmpty)
+                    .padding(.top, Theme.spacingS)
                 }
                 .padding(Theme.spacingM)
             }
@@ -504,6 +774,105 @@ private struct JoinWithCodeSheet: View {
             onJoined()
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+}
+
+@MainActor
+private struct CreateSessionSheet: View {
+    @Environment(SessionService.self) private var sessionService
+    @Environment(SoundService.self) private var soundService
+    @Environment(UserSettings.self) private var settings
+    @Binding var userName: String
+    @Binding var taskTitle: String
+    @Binding var duration: Int
+    let tasks: [FocusTask]
+    @Binding var isPresented: Bool
+    let onCreate: () -> Void
+
+    @State private var selectedTask: FocusTask?
+    @State private var isLoading = false
+    @State private var errorMessage: String?
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: Theme.spacingL) {
+                    // Header
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 60))
+                        .foregroundStyle(Theme.focusColor)
+                        .padding(.top, Theme.spacingM)
+
+                    Text("Create Session")
+                        .font(Theme.titleFont)
+
+                    // Name field
+                    VStack(alignment: .leading, spacing: Theme.spacingS) {
+                        Text("Your Name").font(Theme.headlineFont)
+                        TextField("Enter your name", text: $userName)
+                            .textFieldStyle(.roundedBorder)
+                            .autocorrectionDisabled()
+                    }
+
+                    // Task field
+                    VStack(alignment: .leading, spacing: Theme.spacingS) {
+                        Text("What are you working on?").font(Theme.headlineFont)
+                        TextField("Enter task", text: $taskTitle)
+                            .textFieldStyle(.roundedBorder)
+
+                        if !tasks.isEmpty {
+                            Text("Or select:")
+                                .font(Theme.captionFont)
+                                .foregroundStyle(Theme.textSecondary)
+                            ForEach(tasks.prefix(3)) { task in
+                                TaskSelectionCardView(task: task, isSelected: selectedTask?.id == task.id) {
+                                    selectedTask = task
+                                    taskTitle = task.title
+                                }
+                            }
+                        }
+                    }
+
+                    // Duration picker
+                    VStack(alignment: .leading, spacing: Theme.spacingS) {
+                        Text("Focus Duration").font(Theme.headlineFont)
+                        Picker("Duration", selection: $duration) {
+                            Text("1 min").tag(1)
+                            Text("15 min").tag(15)
+                            Text("25 min").tag(25)
+                            Text("45 min").tag(45)
+                        }
+                        .pickerStyle(.segmented)
+                    }
+
+                    if let error = errorMessage {
+                        Text(error)
+                            .font(Theme.captionFont)
+                            .foregroundStyle(.red)
+                            .multilineTextAlignment(.center)
+                    }
+
+                    // Create button
+                    Button {
+                        UserDefaults.standard.set(userName, forKey: "userName")
+                        isPresented = false
+                        onCreate()
+                    } label: {
+                        Text("Create & Get Code").primaryButtonStyle()
+                    }
+                    .disabled(userName.isEmpty || taskTitle.isEmpty)
+                    .padding(.top, Theme.spacingS)
+                }
+                .padding(Theme.spacingM)
+            }
+            .navigationTitle("Create Session")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { isPresented = false }
+                }
+            }
         }
     }
 }

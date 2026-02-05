@@ -93,12 +93,12 @@ public final class SessionService: @unchecked Sendable {
         return session
     }
 
-    /// Find session by short code (first 8 chars of sessionId)
+    /// Find session by short code (first 4 chars of sessionId)
     public func findSessionByCode(_ code: String) async throws -> String {
         guard isFirebaseConfigured, let db = database else { throw SessionError.notConfigured }
 
         let normalizedCode = code.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        guard normalizedCode.count >= 6 else { throw SessionError.invalidCode }
+        guard normalizedCode.count >= 4 else { throw SessionError.invalidCode }
 
         // Query sessions that start with this code
         let snapshot = try await db.child("sessions")
@@ -264,7 +264,7 @@ public enum SessionError: LocalizedError, Sendable {
         case .noActiveSession: return "No active session found."
         case .notSessionCreator: return "Only the session creator can perform this action."
         case .notEnoughParticipants: return "Need at least 2 participants to start."
-        case .invalidCode: return "Please enter a valid session code (at least 6 characters)."
+        case .invalidCode: return "Please enter a valid 4-character session code."
         }
     }
 }

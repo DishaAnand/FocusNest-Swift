@@ -80,9 +80,9 @@ public struct BuddySession: Codable, Sendable, Identifiable, Equatable {
         self.createdAt = createdAt
     }
 
-    /// Short 6-character code for easy sharing
+    /// Short 4-character code for easy sharing
     public var shortCode: String {
-        String(sessionId.prefix(8)).uppercased()
+        String(sessionId.prefix(4)).uppercased()
     }
 
     /// Deep link for direct app opening

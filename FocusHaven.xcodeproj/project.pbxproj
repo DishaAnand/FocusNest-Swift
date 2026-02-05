@@ -17,6 +17,7 @@
 		AAA00002 /* FocusHavenApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusHavenApp.swift; sourceTree = "<group>"; };
 		AAA00004 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AAA00008 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		AAA00009 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		AAA00010 /* FocusHaven.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FocusHaven.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -47,6 +48,7 @@
 				AAA00002 /* FocusHavenApp.swift */,
 				AAA00004 /* Assets.xcassets */,
 				AAA00008 /* GoogleService-Info.plist */,
+				AAA00009 /* Info.plist */,
 			);
 			path = FocusHaven;
 			sourceTree = "<group>";
@@ -278,6 +280,7 @@
 				DEVELOPMENT_TEAM = ZK8JN58JHS;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FocusHaven/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -306,6 +309,7 @@
 				DEVELOPMENT_TEAM = ZK8JN58JHS;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FocusHaven/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
