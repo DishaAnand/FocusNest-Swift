@@ -13,6 +13,9 @@ public struct TimerView: View {
 
     @State private var showTaskSelector = false
     @State private var showEnergyMeter = false
+    @State private var showSessionComplete = false
+    @State private var completedSessionDuration: Int = 0
+    @State private var completedDistractionCount: Int = 0  // Captured at session end for display
     @State private var predictedFocus: Int? = nil
     @State private var distractionCount = 0
     // Result data for sheet (set before presenting)
@@ -27,7 +30,6 @@ public struct TimerView: View {
         let wasCompleted: Bool
     }
     @State private var wentAwayAt: Date? = nil
-    @State private var wasScreenLocked = false
     @State private var sessionWasCompleted = true
     private let distractionThreshold: TimeInterval = 15
 
@@ -167,32 +169,73 @@ public struct TimerView: View {
                 onDone: {
                     focusResult = nil
                     resetPredictionState()
+                },
+                onTakeBreak: {
+                    focusResult = nil
+                    resetPredictionState()
+                    // Break auto-starts via timerService
+                },
+                onExtend: { extensionSeconds in
+                    focusResult = nil
+                    // Start a new focus session with the extension duration
+                    timerService.startExtension(duration: extensionSeconds)
+                    Task { await notificationService.scheduleTimerCompletion(in: extensionSeconds, mode: .focus, taskTitle: timerService.selectedTask?.title) }
                 }
             )
             .presentationDetents([.large])
             .interactiveDismissDisabled()
+        }
+        .fullScreenCover(isPresented: $showSessionComplete) {
+            SessionCompleteView(
+                duration: completedSessionDuration,
+                distractionCount: completedDistractionCount,
+                onTakeBreak: {
+                    showSessionComplete = false
+                    resetPredictionState()
+                    // Break auto-starts via timerService
+                },
+                onExtend: { extensionSeconds in
+                    showSessionComplete = false
+                    // Start a new focus session with the extension duration
+                    timerService.startExtension(duration: extensionSeconds)
+                    Task { await notificationService.scheduleTimerCompletion(in: extensionSeconds, mode: .focus, taskTitle: timerService.selectedTask?.title) }
+                }
+            )
         }
         .onChange(of: scenePhase) { oldPhase, newPhase in
             // Only track distractions during active focus session (not breaks)
             guard timerService.isRunning && !timerService.isBreak else { return }
 
             if newPhase != .active && oldPhase == .active {
+                // User left the app - record the time
                 wentAwayAt = Date()
-                wasScreenLocked = !UIApplication.shared.isProtectedDataAvailable
             } else if newPhase == .active && oldPhase != .active {
+                // User returned - check if they were away long enough
                 if let awayTime = wentAwayAt {
                     let awayDuration = Date().timeIntervalSince(awayTime)
-                    if awayDuration >= distractionThreshold && !wasScreenLocked {
+                    if awayDuration >= distractionThreshold {
                         distractionCount += 1
                     }
                 }
                 wentAwayAt = nil
-                wasScreenLocked = false
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.protectedDataWillBecomeUnavailableNotification)) { _ in
-            if timerService.isRunning && !timerService.isBreak {
-                wasScreenLocked = true
+        .onChange(of: settings.focusDuration) { _, newDuration in
+            // Sync timer when settings change while idle in focus mode
+            if timerService.state == .idle && timerService.mode == .focus {
+                timerService.setMode(.focus, duration: newDuration)
+            }
+        }
+        .onChange(of: settings.breakDuration) { _, newDuration in
+            // Sync timer when settings change while idle in short break mode
+            if timerService.state == .idle && timerService.mode == .shortBreak {
+                timerService.setMode(.shortBreak, duration: newDuration)
+            }
+        }
+        .onChange(of: settings.longBreakDuration) { _, newDuration in
+            // Sync timer when settings change while idle in long break mode
+            if timerService.state == .idle && timerService.mode == .longBreak {
+                timerService.setMode(.longBreak, duration: newDuration)
             }
         }
         .task { setupTimerCallbacks() }
@@ -245,8 +288,8 @@ public struct TimerView: View {
         distractionCount = 0
         sessionWasCompleted = true
         wentAwayAt = nil
-        wasScreenLocked = false
     }
+
 
     private func setupTimerCallbacks() {
         timerService.onComplete = { mode in
@@ -254,6 +297,7 @@ public struct TimerView: View {
             soundService.successHaptic(settings: settings)
             if mode == .focus {
                 sessionWasCompleted = true
+
                 let actualFocus = calculateActualFocus()
                 let record = FocusRecord(
                     duration: settings.focusDuration,
@@ -276,6 +320,12 @@ public struct TimerView: View {
                         distractions: distractionCount,
                         wasCompleted: true
                     )
+                } else {
+                    // No prediction - show celebration with choice to extend or break
+                    completedSessionDuration = settings.focusDuration
+                    completedDistractionCount = distractionCount  // Capture before showing
+                    print("🎉 SESSION COMPLETE - distractionCount: \(distractionCount), completedDistractionCount: \(completedDistractionCount)")
+                    showSessionComplete = true
                 }
             }
         }

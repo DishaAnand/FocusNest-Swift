@@ -1,42 +1,48 @@
 import SwiftUI
+import SwiftData
 
-struct FocusPredictionResultView: View {
-    let predictedLevel: Int
-    let actualLevel: Int
-    let duration: Int
-    let distractionCount: Int
-    let wasCompleted: Bool
-    let onDone: () -> Void
+struct SessionCompleteView: View {
+    let duration: Int // in seconds (passed for display, but we also check settings)
+    let distractionCount: Int // number of distractions during session
     let onTakeBreak: () -> Void
-    let onExtend: (Int) -> Void
+    let onExtend: (Int) -> Void // extension duration in seconds
+
+    @Environment(SoundService.self) private var soundService
+    @Environment(UserSettings.self) private var settings
 
     // MARK: - Break Guardian Thresholds (in seconds)
     private let playfulNudgeThreshold = 25 * 60   // 25 min - gentle nudge to take a break
     private let mandatoryBreakThreshold = 45 * 60 // 45 min - mandatory break lockout
 
-    @State private var ringProgress: CGFloat = 0
-    @State private var showScore = false
-    @State private var showComparison = false
-    @State private var showMessage = false
-    @State private var showStats = false
-    @State private var showButton = false
+    // Use settings.focusDuration as fallback if duration is 0 (SwiftUI capture issue)
+    private var effectiveDuration: Int {
+        duration > 0 ? duration : settings.focusDuration
+    }
+
+    // Phase-based animation system
+    @State private var phase: AnimationPhase = .initial
+
+    // Individual animation states
+    @State private var backgroundGlow: CGFloat = 0
+    @State private var orbitRotation: Double = 0
     @State private var pulseScale: CGFloat = 1.0
-    @State private var particlesVisible = false
+    @State private var confettiTrigger = false
+    @State private var showExtendOptions = false
+    @State private var countedMinutes: Int = 0
+    @State private var streakScale: CGFloat = 0
+    @State private var buttonOffset: CGFloat = 100
 
     // Break Guardian states
-    @State private var showExtendOptions = false
     @State private var showPlayfulNudge = false
     @State private var showMandatoryBreak = false
     @State private var mandatoryBreakRemaining: Int = 5 * 60 // 5 minutes
     @State private var mandatoryBreakTimer: Timer? = nil
 
-    @Environment(SoundService.self) private var soundService
-    @Environment(UserSettings.self) private var settings
-
-    // Use settings.focusDuration as fallback if duration is 0 (SwiftUI capture issue)
-    private var effectiveDuration: Int {
-        duration > 0 ? duration : settings.focusDuration
+    private enum AnimationPhase {
+        case initial, burst, counting, reveal, complete
     }
+
+    private var minutesEarned: Int { max(1, effectiveDuration / 60) }
 
     // Break Guardian computed properties
     private var needsPlayfulNudge: Bool {
@@ -47,272 +53,179 @@ struct FocusPredictionResultView: View {
         effectiveDuration >= mandatoryBreakThreshold
     }
 
-    private var comparisonType: ComparisonType {
-        if actualLevel > predictedLevel { return .underestimated }
-        else if actualLevel == predictedLevel { return .spotOn }
-        else { return .overestimated }
-    }
-
-    private var celebrationEmoji: String {
-        let gap = actualLevel - predictedLevel
-        switch comparisonType {
-        case .underestimated:
-            if gap >= 3 { return "🤯" }
-            else if gap == 2 { return "🚀" }
-            else { return "✨" }
-        case .spotOn: return "🎯"
-        case .overestimated:
-            let missedBy = predictedLevel - actualLevel
-            if missedBy >= 2 { return "💪" }
-            else { return "👍" }
+    private var focusEmoji: String {
+        switch distractionCount {
+        case 0: return "🎯"
+        case 1: return "✨"
+        case 2: return "👍"
+        case 3: return "💪"
+        default: return "🌱"
         }
     }
 
-    private var titleForGap: String {
-        let gap = actualLevel - predictedLevel
-        switch comparisonType {
-        case .underestimated:
-            if gap >= 3 { return "Mind Blown! 🤯" }
-            else if gap == 2 { return "Way Better! 🚀" }
-            else { return "Nice Surprise! ✨" }
-        case .spotOn:
-            return "Spot On! 🎯"
-        case .overestimated:
-            let missedBy = predictedLevel - actualLevel
-            if missedBy >= 3 { return "Tough One 💪" }
-            else if missedBy == 2 { return "Keep Growing 🌱" }
-            else { return "Almost There! 👍" }
+    private var focusTitle: String {
+        switch distractionCount {
+        case 0: return "Perfect Focus"
+        case 1: return "Nearly Perfect"
+        case 2: return "Solid Session"
+        case 3: return "Good Effort"
+        default: return "Keep Growing"
         }
     }
 
-    private var messages: [String] {
-        let gap = actualLevel - predictedLevel
-
-        switch comparisonType {
-        case .underestimated:
-            if gap >= 3 {
-                // Massive improvement (3-4 levels up)
-                return [
-                    "Wow! You seriously underestimated yourself!",
-                    "Plot twist: You're a focus beast!",
-                    "Who knew you had this in you? 🔥",
-                    "That's a whole different level!"
-                ]
-            } else if gap == 2 {
-                // Good improvement (2 levels up)
-                return [
-                    "Way better than you thought!",
-                    "Your focus surprised even you!",
-                    "Turns out you're pretty amazing",
-                    "Two levels up? Nice work!"
-                ]
-            } else {
-                // Slight improvement (1 level up)
-                return [
-                    "Just a bit better than expected!",
-                    "You edged past your prediction",
-                    "A little extra focus magic ✨",
-                    "Slightly underestimated yourself"
-                ]
-            }
-        case .spotOn:
-            return [
-                "Perfect prediction!",
-                "You know yourself so well!",
-                "Nailed it! Self-awareness on point",
-                "Exactly as you predicted 🎯",
-                "Your intuition is spot on"
-            ]
-        case .overestimated:
-            let missedBy = predictedLevel - actualLevel
-            if missedBy >= 3 {
-                return [
-                    "Tough session, but you tried",
-                    "Some days are harder than others",
-                    "The important thing: you showed up",
-                    "Tomorrow is a fresh start"
-                ]
-            } else if missedBy == 2 {
-                return [
-                    "A bit off today, but that's okay",
-                    "Not quite there, keep going!",
-                    "Building awareness takes time",
-                    "Progress isn't always linear"
-                ]
-            } else {
-                return [
-                    "So close to your prediction!",
-                    "Just slightly off—nearly nailed it",
-                    "Almost there! Great effort",
-                    "One level off is still solid"
-                ]
-            }
+    private var distractionMessage: String {
+        switch distractionCount {
+        case 0: return "Zero distractions!"
+        case 1: return "Only 1 distraction"
+        default: return "\(distractionCount) distractions"
         }
     }
 
     var body: some View {
         ZStack {
             // Animated gradient background
-            backgroundGradient
+            AnimatedGradientBackground(intensity: backgroundGlow)
+                .ignoresSafeArea()
 
-            // Floating particles for celebration
-            if particlesVisible && comparisonType != .overestimated {
-                ParticleView(color: comparisonType.color)
+            // Orbiting particles
+            OrbitingParticles(rotation: orbitRotation)
+                .opacity(phase == .initial ? 0 : 1)
+
+            // Confetti layer
+            if confettiTrigger {
+                SessionConfetti()
             }
 
+            // Main content
             VStack(spacing: 0) {
-                Spacer(minLength: 20)
+                Spacer()
 
-                // Main score ring (sized to fit with extend options)
+                // Central achievement display
                 ZStack {
-                    // Outer glow
-                    Circle()
-                        .stroke(comparisonType.color.opacity(0.2), lineWidth: 20)
-                        .frame(width: 160, height: 160)
-                        .blur(radius: 10)
-                        .scaleEffect(pulseScale)
+                    // Pulsing glow rings
+                    ForEach(0..<3) { i in
+                        Circle()
+                            .stroke(
+                                LinearGradient(
+                                    colors: [.green.opacity(0.3), .cyan.opacity(0.2)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 2
+                            )
+                            .frame(width: CGFloat(140 + i * 40), height: CGFloat(140 + i * 40))
+                            .scaleEffect(pulseScale + CGFloat(i) * 0.05)
+                            .opacity(phase == .initial ? 0 : 0.6 - Double(i) * 0.15)
+                    }
 
-                    // Background ring
-                    Circle()
-                        .stroke(Color.white.opacity(0.1), lineWidth: 10)
-                        .frame(width: 160, height: 160)
+                    // Main circle with minutes counter
+                    ZStack {
+                        // Glowing backdrop
+                        Circle()
+                            .fill(
+                                RadialGradient(
+                                    colors: [.green.opacity(0.4), .green.opacity(0.1), .clear],
+                                    center: .center,
+                                    startRadius: 20,
+                                    endRadius: 70
+                                )
+                            )
+                            .frame(width: 140, height: 140)
+                            .blur(radius: 10)
 
-                    // Progress ring
-                    Circle()
-                        .trim(from: 0, to: ringProgress * CGFloat(actualLevel) / 5.0)
-                        .stroke(
-                            AngularGradient(
-                                colors: [comparisonType.color.opacity(0.6), comparisonType.color],
-                                center: .center,
-                                startAngle: .degrees(-90),
-                                endAngle: .degrees(270)
-                            ),
-                            style: StrokeStyle(lineWidth: 10, lineCap: .round)
+                        Circle()
+                            .fill(Color(white: 0.1))
+                            .frame(width: 120, height: 120)
+                            .overlay(
+                                Circle()
+                                    .stroke(
+                                        LinearGradient(
+                                            colors: [.green, .cyan],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ),
+                                        lineWidth: 4
+                                    )
+                            )
+
+                        // Animated minute counter
+                        VStack(spacing: 2) {
+                            Text("\(countedMinutes)")
+                                .font(.system(size: 44, weight: .bold, design: .rounded))
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [.white, .green.opacity(0.9)],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    )
+                                )
+                                .contentTransition(.numericText(countsDown: false))
+
+                            Text("minutes")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(.white.opacity(0.6))
+                                .textCase(.uppercase)
+                                .tracking(1.5)
+                        }
+                    }
+                    .scaleEffect(phase == .burst ? 1.2 : 1.0)
+                }
+                .padding(.bottom, 32)
+
+                // Title with gradient
+                Text("Deep Work Complete")
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.white, .white.opacity(0.8)],
+                            startPoint: .leading,
+                            endPoint: .trailing
                         )
-                        .frame(width: 160, height: 160)
-                        .rotationEffect(.degrees(-90))
-                        .shadow(color: comparisonType.color.opacity(0.5), radius: 8)
+                    )
+                    .opacity(phase == .initial || phase == .burst ? 0 : 1)
+                    .offset(y: phase == .reveal || phase == .complete ? 0 : 20)
+                    .padding(.bottom, 24)
 
-                    // Center content
-                    VStack(spacing: 2) {
-                        Text(celebrationEmoji)
-                            .font(.system(size: 28))
-                            .opacity(showScore ? 1 : 0)
-                            .scaleEffect(showScore ? 1 : 0.5)
+                // Achievement badge
+                HStack(spacing: 12) {
+                    // Focus emoji with bounce
+                    Text(focusEmoji)
+                        .font(.system(size: 28))
+                        .scaleEffect(streakScale)
 
-                        Text("\(actualLevel)")
-                            .font(.system(size: 56, weight: .bold, design: .rounded))
-                            .foregroundStyle(comparisonType.color)
-                            .opacity(showScore ? 1 : 0)
-                            .scaleEffect(showScore ? 1 : 0.8)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(focusTitle)
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(.white)
 
-                        Text("out of 5")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.5))
-                            .opacity(showScore ? 1 : 0)
+                        Text(distractionMessage)
+                            .font(.system(size: 13))
+                            .foregroundStyle(.white.opacity(0.6))
                     }
                 }
-                .padding(.bottom, 24)
-
-                // Comparison cards
-                HStack(spacing: 16) {
-                    ComparisonCard(
-                        title: "Predicted",
-                        value: predictedLevel,
-                        color: .orange,
-                        icon: "brain.head.profile"
-                    )
-                    .opacity(showComparison ? 1 : 0)
-                    .offset(x: showComparison ? 0 : -30)
-
-                    // Arrow with animation
-                    Image(systemName: comparisonType == .spotOn ? "equal" : (comparisonType == .underestimated ? "arrow.up.right" : "arrow.down.right"))
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(comparisonType.color)
-                        .opacity(showComparison ? 1 : 0)
-                        .scaleEffect(showComparison ? 1 : 0.5)
-
-                    ComparisonCard(
-                        title: "Actual",
-                        value: actualLevel,
-                        color: comparisonType.color,
-                        icon: "flame.fill"
-                    )
-                    .opacity(showComparison ? 1 : 0)
-                    .offset(x: showComparison ? 0 : 30)
-                }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 24)
-
-                // Message banner
-                VStack(spacing: 8) {
-                    Text(titleForGap)
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundStyle(.white)
-
-                    Text(messages.randomElement()!)
-                        .font(.system(size: 15))
-                        .foregroundStyle(.white.opacity(0.7))
-                        .multilineTextAlignment(.center)
-                }
-                .padding(.horizontal, 32)
-                .opacity(showMessage ? 1 : 0)
-                .offset(y: showMessage ? 0 : 20)
-                .padding(.bottom, 16)
-
-                // Session summary card
-                VStack(spacing: 0) {
-                    HStack(spacing: 0) {
-                        // Duration
-                        StatItem(
-                            icon: "hourglass.bottomhalf.filled",
-                            label: "Duration",
-                            value: "\(duration / 60) min",
-                            color: .cyan
-                        )
-
-                        Divider()
-                            .frame(height: 40)
-                            .background(Color.white.opacity(0.1))
-
-                        // Focus quality
-                        StatItem(
-                            icon: distractionCount == 0 ? "sparkles" : "eyes",
-                            label: distractionCount == 0 ? "Deep Focus" : "Distractions",
-                            value: distractionCount == 0 ? "Locked In" : "\(distractionCount) break\(distractionCount == 1 ? "" : "s")",
-                            color: distractionCount == 0 ? .green : .orange
-                        )
-
-                        Divider()
-                            .frame(height: 40)
-                            .background(Color.white.opacity(0.1))
-
-                        // Completion
-                        StatItem(
-                            icon: wasCompleted ? "trophy.fill" : "flag.fill",
-                            label: "Status",
-                            value: wasCompleted ? "Finished" : "Stopped",
-                            color: wasCompleted ? .yellow : .orange
-                        )
-                    }
-                }
-                .padding(.vertical, 16)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 14)
                 .background(
                     RoundedRectangle(cornerRadius: 16)
-                        .fill(Color.white.opacity(0.06))
+                        .fill(.ultraThinMaterial)
                         .overlay(
                             RoundedRectangle(cornerRadius: 16)
-                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                .stroke(
+                                    LinearGradient(
+                                        colors: [.white.opacity(0.3), .white.opacity(0.1)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 1
+                                )
                         )
                 )
-                .padding(.horizontal, 24)
-                .opacity(showStats ? 1 : 0)
-                .scaleEffect(showStats ? 1 : 0.95)
-                .padding(.bottom, 20)
+                .scaleEffect(streakScale)
+                .opacity(phase == .complete ? 1 : 0)
 
-                Spacer(minLength: 10)
+                Spacer()
 
-                // Action buttons (same as SessionCompleteView)
+                // Action buttons
                 VStack(spacing: 16) {
                     // Primary: Take a Break
                     Button {
@@ -351,13 +264,16 @@ struct FocusPredictionResultView: View {
                     if !needsMandatoryBreak {
                         VStack(spacing: 14) {
                             Button {
+                                print("🔔 Keep momentum tapped - effectiveDuration: \(effectiveDuration)s, threshold: \(playfulNudgeThreshold)s, needsPlayfulNudge: \(needsPlayfulNudge)")
                                 // If needs playful nudge, show it instead of options
                                 if needsPlayfulNudge {
+                                    print("🔔 Showing playful nudge!")
                                     withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
                                         showPlayfulNudge = true
                                     }
                                     soundService.lightImpact(settings: settings)
                                 } else {
+                                    print("🔔 Showing extend options (no nudge needed)")
                                     withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
                                         showExtendOptions.toggle()
                                     }
@@ -377,15 +293,15 @@ struct FocusPredictionResultView: View {
 
                             if showExtendOptions {
                                 HStack(spacing: 12) {
-                                    PredictionExtendButton(minutes: 15, color: .cyan) {
+                                    ExtendOptionButton(minutes: 15, color: .cyan) {
                                         soundService.mediumImpact(settings: settings)
                                         onExtend(15 * 60)
                                     }
-                                    PredictionExtendButton(minutes: 25, color: .green) {
+                                    ExtendOptionButton(minutes: 25, color: .green) {
                                         soundService.mediumImpact(settings: settings)
                                         onExtend(25 * 60)
                                     }
-                                    PredictionExtendButton(minutes: 45, color: .orange) {
+                                    ExtendOptionButton(minutes: 45, color: .orange) {
                                         soundService.mediumImpact(settings: settings)
                                         onExtend(45 * 60)
                                     }
@@ -400,12 +316,13 @@ struct FocusPredictionResultView: View {
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 50)
-                .opacity(showButton ? 1 : 0)
-                .offset(y: showButton ? 0 : 30)
+                .offset(y: buttonOffset)
+                .opacity(phase == .complete ? 1 : 0)
             }
         }
         .onAppear {
-            startAnimations()
+            print("🎉 SessionCompleteView appeared - duration: \(duration)s, effectiveDuration: \(effectiveDuration)s (\(effectiveDuration/60) min), needsPlayfulNudge: \(needsPlayfulNudge), needsMandatoryBreak: \(needsMandatoryBreak)")
+            startCelebration()
             // Auto-show mandatory break for 60+ min sessions
             if needsMandatoryBreak {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
@@ -417,7 +334,7 @@ struct FocusPredictionResultView: View {
             }
         }
         .sheet(isPresented: $showPlayfulNudge) {
-            PredictionPlayfulNudgeView(
+            PlayfulNudgeView(
                 onTakeBreak: {
                     showPlayfulNudge = false
                     onTakeBreak()
@@ -434,7 +351,7 @@ struct FocusPredictionResultView: View {
         }
         .overlay {
             if showMandatoryBreak {
-                PredictionMandatoryBreakView(
+                MandatoryBreakView(
                     remainingSeconds: mandatoryBreakRemaining,
                     onTakeBreak: {
                         stopMandatoryBreakTimer()
@@ -462,264 +379,270 @@ struct FocusPredictionResultView: View {
         mandatoryBreakTimer = nil
     }
 
-    private var backgroundGradient: some View {
-        ZStack {
-            Color(red: 0.05, green: 0.05, blue: 0.08)
-
-            // Radial glow at top
-            RadialGradient(
-                colors: [comparisonType.color.opacity(0.15), .clear],
-                center: .top,
-                startRadius: 50,
-                endRadius: 400
-            )
-
-            // Subtle bottom gradient
-            LinearGradient(
-                colors: [.clear, comparisonType.color.opacity(0.05)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        }
-        .ignoresSafeArea()
-    }
-
-    private func startAnimations() {
-        // Haptic feedback
+    private func startCelebration() {
+        // Initial haptic
         soundService.successHaptic(settings: settings)
 
-        // Ring fills up
-        withAnimation(.easeOut(duration: 1.0).delay(0.2)) {
-            ringProgress = 1.0
+        // Phase 1: Background comes alive
+        withAnimation(.easeOut(duration: 0.6)) {
+            backgroundGlow = 1.0
+            phase = .burst
         }
 
-        // Score appears
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.6)) {
-            showScore = true
+        // Start orbit rotation (continuous)
+        withAnimation(.linear(duration: 20).repeatForever(autoreverses: false)) {
+            orbitRotation = 360
         }
 
-        // Start pulse animation
-        withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true).delay(1.0)) {
-            pulseScale = 1.08
+        // Phase 2: Burst animation
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.6).delay(0.2)) {
+            pulseScale = 1.1
+        }
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.7).delay(0.4)) {
+            pulseScale = 1.0
         }
 
-        // Comparison slides in
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.8).delay(1.0)) {
-            showComparison = true
+        // Phase 3: Count up minutes
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            phase = .counting
+            animateCounter()
         }
 
-        // Message fades up
-        withAnimation(.easeOut(duration: 0.4).delay(1.3)) {
-            showMessage = true
+        // Phase 4: Reveal title
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                phase = .reveal
+            }
         }
 
-        // Stats appear
-        withAnimation(.easeOut(duration: 0.4).delay(1.5)) {
-            showStats = true
+        // Phase 5: Confetti burst + final reveals
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            confettiTrigger = true
+            soundService.lightImpact(settings: settings)
+
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                phase = .complete
+                buttonOffset = 0
+            }
+
+            // Streak badge bounces in
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.5).delay(0.2)) {
+                streakScale = 1.0
+            }
         }
 
-        // Button slides up
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.8).delay(1.7)) {
-            showButton = true
+        // Continuous pulse effect
+        withAnimation(.easeInOut(duration: 2).repeatForever(autoreverses: true).delay(2)) {
+            pulseScale = 1.03
+        }
+    }
+
+    private func animateCounter() {
+        // Guard against 0 minutes (happens with very short durations)
+        guard minutesEarned > 0 else {
+            countedMinutes = max(1, minutesEarned) // Show at least 1
+            return
         }
 
-        // Particles for celebration
-        if comparisonType != .overestimated {
-            withAnimation(.easeIn(duration: 0.3).delay(0.8)) {
-                particlesVisible = true
+        let animDuration = 0.6
+        let steps = min(minutesEarned, 30) // Cap animation steps
+        let interval = animDuration / Double(steps)
+
+        for i in 1...steps {
+            DispatchQueue.main.asyncAfter(deadline: .now() + interval * Double(i)) {
+                withAnimation(.easeOut(duration: 0.1)) {
+                    self.countedMinutes = (self.minutesEarned * i) / steps
+                }
+                if i == steps {
+                    self.countedMinutes = self.minutesEarned
+                }
             }
         }
     }
 }
 
-// MARK: - Supporting Views
+// MARK: - Animated Gradient Background
 
-private struct ComparisonCard: View {
-    let title: String
-    let value: Int
-    let color: Color
-    let icon: String
+private struct AnimatedGradientBackground: View {
+    let intensity: CGFloat
+    @State private var animateGradient = false
 
     var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 18))
-                .foregroundStyle(color)
+        ZStack {
+            // Base dark color
+            Color(red: 0.02, green: 0.02, blue: 0.04)
 
-            Text("\(value)")
-                .font(.system(size: 32, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+            // Animated gradient blobs
+            GeometryReader { geometry in
+                ZStack {
+                    // Green blob
+                    Circle()
+                        .fill(Color.green.opacity(0.15 * intensity))
+                        .frame(width: 300, height: 300)
+                        .blur(radius: 80)
+                        .offset(
+                            x: animateGradient ? 50 : -50,
+                            y: animateGradient ? -100 : -150
+                        )
 
-            Text(title)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.white.opacity(0.5))
+                    // Cyan blob
+                    Circle()
+                        .fill(Color.cyan.opacity(0.1 * intensity))
+                        .frame(width: 250, height: 250)
+                        .blur(radius: 70)
+                        .offset(
+                            x: animateGradient ? -80 : 80,
+                            y: animateGradient ? 200 : 150
+                        )
+
+                    // Subtle purple accent
+                    Circle()
+                        .fill(Color.purple.opacity(0.08 * intensity))
+                        .frame(width: 200, height: 200)
+                        .blur(radius: 60)
+                        .offset(
+                            x: animateGradient ? 100 : 60,
+                            y: animateGradient ? 50 : 100
+                        )
+                }
+                .frame(width: geometry.size.width, height: geometry.size.height)
+            }
         }
-        .frame(width: 100, height: 100)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.white.opacity(0.08))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(color.opacity(0.3), lineWidth: 1)
-                )
-        )
+        .onAppear {
+            withAnimation(.easeInOut(duration: 4).repeatForever(autoreverses: true)) {
+                animateGradient = true
+            }
+        }
     }
 }
 
-private struct StatItem: View {
-    let icon: String
-    let label: String
-    let value: String
-    let color: Color
+// MARK: - Orbiting Particles
+
+private struct OrbitingParticles: View {
+    let rotation: Double
 
     var body: some View {
-        VStack(spacing: 6) {
-            Image(systemName: icon)
-                .font(.system(size: 20))
-                .foregroundStyle(color)
+        GeometryReader { geometry in
+            let centerX = geometry.size.width / 2
+            let centerY = geometry.size.height * 0.35
 
-            Text(value)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+            ZStack {
+                ForEach(0..<8, id: \.self) { i in
+                    let angle = Double(i) * .pi / 4 + rotation * .pi / 180
+                    let radius = 80.0 + Double(i) * 10.0
+                    let xOffset = cos(angle) * radius
+                    let yOffset = sin(angle) * radius
+                    let particleColor: Color = i % 2 == 0 ? .green.opacity(0.6) : .cyan.opacity(0.5)
+                    let size: CGFloat = CGFloat(4 + i % 3)
 
-            Text(label)
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.white.opacity(0.4))
+                    Circle()
+                        .fill(particleColor)
+                        .frame(width: size, height: size)
+                        .offset(x: xOffset, y: yOffset)
+                        .position(x: centerX, y: centerY)
+                }
+            }
         }
-        .frame(maxWidth: .infinity)
+        .allowsHitTesting(false)
     }
 }
 
-private struct ParticleView: View {
-    let color: Color
+// MARK: - Confetti View
 
-    @State private var particles: [Particle] = []
+private struct SessionConfetti: View {
+    @State private var particles: [SessionConfettiParticle] = []
 
-    struct Particle: Identifiable {
+    struct SessionConfettiParticle: Identifiable {
         let id = UUID()
         var x: CGFloat
         var y: CGFloat
-        var scale: CGFloat
-        var opacity: Double
         var rotation: Double
+        var scale: CGFloat
+        let color: Color
+        let shape: SessionConfettiShape
     }
+
+    enum SessionConfettiShape {
+        case circle, rectangle, star
+    }
+
+    private let colors: [Color] = [
+        .green, .cyan, .mint, .yellow, .orange, .pink, .purple
+    ]
 
     var body: some View {
         GeometryReader { geometry in
             ZStack {
                 ForEach(particles) { particle in
-                    Circle()
-                        .fill(color)
-                        .frame(width: 8, height: 8)
+                    SessionConfettiPiece(shape: particle.shape, color: particle.color)
+                        .frame(width: 10, height: 10)
                         .scaleEffect(particle.scale)
-                        .opacity(particle.opacity)
-                        .position(x: particle.x, y: particle.y)
                         .rotationEffect(.degrees(particle.rotation))
+                        .position(x: particle.x, y: particle.y)
                 }
             }
             .onAppear {
-                createParticles(in: geometry.size)
+                createConfetti(in: geometry.size)
             }
         }
         .allowsHitTesting(false)
     }
 
-    private func createParticles(in size: CGSize) {
-        for i in 0..<20 {
-            let particle = Particle(
-                x: CGFloat.random(in: 50...(size.width - 50)),
-                y: size.height + 50,
-                scale: CGFloat.random(in: 0.3...1.0),
-                opacity: Double.random(in: 0.3...0.8),
-                rotation: Double.random(in: 0...360)
+    private func createConfetti(in size: CGSize) {
+        let centerX = size.width / 2
+        let startY = size.height * 0.35
+
+        for i in 0..<40 {
+            let shape: SessionConfettiShape = [.circle, .rectangle, .star].randomElement()!
+            var particle = SessionConfettiParticle(
+                x: centerX,
+                y: startY,
+                rotation: Double.random(in: 0...360),
+                scale: CGFloat.random(in: 0.5...1.2),
+                color: colors.randomElement()!,
+                shape: shape
             )
             particles.append(particle)
 
-            // Animate each particle upward
-            let delay = Double(i) * 0.05
-            withAnimation(.easeOut(duration: Double.random(in: 2.0...3.5)).delay(delay)) {
+            let targetX = centerX + CGFloat.random(in: -180...180)
+            let targetY = startY + CGFloat.random(in: 200...500)
+            let targetRotation = particle.rotation + Double.random(in: 180...720)
+
+            withAnimation(.easeOut(duration: Double.random(in: 1.5...2.5)).delay(Double(i) * 0.02)) {
                 if let index = particles.firstIndex(where: { $0.id == particle.id }) {
-                    particles[index].y = CGFloat.random(in: -50...size.height * 0.3)
-                    particles[index].opacity = 0
+                    particles[index].x = targetX
+                    particles[index].y = targetY
+                    particles[index].rotation = targetRotation
+                    particles[index].scale = 0
                 }
             }
         }
     }
 }
 
-// MARK: - Comparison Type
-
-private enum ComparisonType {
-    case underestimated, spotOn, overestimated
-
-    var title: String {
-        switch self {
-        case .underestimated: return "Better Than Expected! 🎉"
-        case .spotOn: return "Perfect Prediction! 🎯"
-        case .overestimated: return "Keep Growing 🌱"
-        }
-    }
-
-    var color: Color {
-        switch self {
-        case .underestimated: return Color(red: 0.2, green: 0.8, blue: 0.4)
-        case .spotOn: return Color(red: 0.3, green: 0.7, blue: 0.9)
-        case .overestimated: return Color(red: 1.0, green: 0.6, blue: 0.2)
-        }
-    }
-}
-
-// MARK: - Extend Option Button
-
-private struct PredictionExtendButton: View {
-    let minutes: Int
+private struct SessionConfettiPiece: View {
+    let shape: SessionConfetti.SessionConfettiShape
     let color: Color
-    let action: () -> Void
-
-    @State private var isPressed = false
 
     var body: some View {
-        Button {
-            action()
-        } label: {
-            VStack(spacing: 6) {
-                Text("+\(minutes)")
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                Text("min")
-                    .font(.system(size: 11, weight: .medium))
-                    .textCase(.uppercase)
-                    .tracking(0.5)
-            }
-            .foregroundStyle(.white)
-            .frame(width: 80, height: 70)
-            .background(
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(color.opacity(0.2))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(color.opacity(0.4), lineWidth: 1.5)
-                    )
-            )
-            .scaleEffect(isPressed ? 0.95 : 1.0)
+        switch shape {
+        case .circle:
+            Circle().fill(color)
+        case .rectangle:
+            RoundedRectangle(cornerRadius: 1)
+                .fill(color)
+                .frame(width: 8, height: 4)
+        case .star:
+            Image(systemName: "star.fill")
+                .font(.system(size: 8))
+                .foregroundStyle(color)
         }
-        .buttonStyle(.plain)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in
-                    withAnimation(.easeInOut(duration: 0.1)) { isPressed = true }
-                }
-                .onEnded { _ in
-                    withAnimation(.easeInOut(duration: 0.1)) { isPressed = false }
-                }
-        )
     }
 }
 
 // MARK: - Playful Nudge View (45-59 min sessions)
 
-private struct PredictionPlayfulNudgeView: View {
+private struct PlayfulNudgeView: View {
     let onTakeBreak: () -> Void
     let onContinueAnyway: () -> Void
 
@@ -735,7 +658,7 @@ private struct PredictionPlayfulNudgeView: View {
             ZStack {
                 // Steam/exhaustion lines
                 ForEach(0..<3, id: \.self) { i in
-                    PredictionWavyLine()
+                    WavyLine()
                         .stroke(Color.gray.opacity(0.4), lineWidth: 2)
                         .frame(width: 20, height: 30)
                         .offset(x: CGFloat(-30 + i * 30), y: -70 + steamOffset)
@@ -749,8 +672,8 @@ private struct PredictionPlayfulNudgeView: View {
 
                 // Sleepy eyes overlay
                 HStack(spacing: 24) {
-                    PredictionSleepyEye(isClosed: eyesClosed)
-                    PredictionSleepyEye(isClosed: eyesClosed)
+                    SleepyEye(isClosed: eyesClosed)
+                    SleepyEye(isClosed: eyesClosed)
                 }
                 .offset(y: -10)
 
@@ -833,7 +756,7 @@ private struct PredictionPlayfulNudgeView: View {
 }
 
 // Sleepy eye component
-private struct PredictionSleepyEye: View {
+private struct SleepyEye: View {
     let isClosed: Bool
 
     var body: some View {
@@ -856,7 +779,7 @@ private struct PredictionSleepyEye: View {
 }
 
 // Wavy steam line
-private struct PredictionWavyLine: Shape {
+private struct WavyLine: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()
         path.move(to: CGPoint(x: rect.midX, y: rect.maxY))
@@ -871,7 +794,7 @@ private struct PredictionWavyLine: Shape {
 
 // MARK: - Mandatory Break View (60+ min sessions)
 
-private struct PredictionMandatoryBreakView: View {
+private struct MandatoryBreakView: View {
     let remainingSeconds: Int
     let onTakeBreak: () -> Void
 
@@ -880,6 +803,7 @@ private struct PredictionMandatoryBreakView: View {
     @State private var lockScale: CGFloat = 0
     @State private var showContent = false
     @State private var pulseRing: CGFloat = 1.0
+    @State private var warningFlash = false
 
     private var formattedTime: String {
         let minutes = remainingSeconds / 60
@@ -1034,46 +958,60 @@ private struct PredictionMandatoryBreakView: View {
     }
 }
 
-#Preview("Better than expected") {
-    FocusPredictionResultView(
-        predictedLevel: 3,
-        actualLevel: 5,
-        duration: 25 * 60,
-        distractionCount: 0,
-        wasCompleted: true,
-        onDone: {},
-        onTakeBreak: {},
-        onExtend: { _ in }
-    )
-    .environment(SoundService())
-    .environment(UserSettings())
+// MARK: - Extend Option Button
+
+private struct ExtendOptionButton: View {
+    let minutes: Int
+    let color: Color
+    let action: () -> Void
+
+    @State private var isPressed = false
+
+    var body: some View {
+        Button {
+            action()
+        } label: {
+            VStack(spacing: 6) {
+                Text("+\(minutes)")
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                Text("min")
+                    .font(.system(size: 11, weight: .medium))
+                    .textCase(.uppercase)
+                    .tracking(0.5)
+            }
+            .foregroundStyle(.white)
+            .frame(width: 80, height: 70)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(color.opacity(0.2))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .stroke(color.opacity(0.4), lineWidth: 1.5)
+                    )
+            )
+            .scaleEffect(isPressed ? 0.95 : 1.0)
+        }
+        .buttonStyle(.plain)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in
+                    withAnimation(.easeInOut(duration: 0.1)) { isPressed = true }
+                }
+                .onEnded { _ in
+                    withAnimation(.easeInOut(duration: 0.1)) { isPressed = false }
+                }
+        )
+    }
 }
 
-#Preview("Spot on") {
-    FocusPredictionResultView(
-        predictedLevel: 4,
-        actualLevel: 4,
+// MARK: - Preview
+
+#Preview {
+    SessionCompleteView(
         duration: 25 * 60,
         distractionCount: 1,
-        wasCompleted: true,
-        onDone: {},
-        onTakeBreak: {},
-        onExtend: { _ in }
-    )
-    .environment(SoundService())
-    .environment(UserSettings())
-}
-
-#Preview("Room to grow") {
-    FocusPredictionResultView(
-        predictedLevel: 5,
-        actualLevel: 3,
-        duration: 25 * 60,
-        distractionCount: 2,
-        wasCompleted: false,
-        onDone: {},
-        onTakeBreak: {},
-        onExtend: { _ in }
+        onTakeBreak: { print("Take break") },
+        onExtend: { mins in print("Extend by \(mins)") }
     )
     .environment(SoundService())
     .environment(UserSettings())
