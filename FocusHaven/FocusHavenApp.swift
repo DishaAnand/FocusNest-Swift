@@ -11,6 +11,7 @@ struct FocusHavenApp: App {
     @State private var soundService = SoundService()
     @State private var sessionService = SessionService()
     @State private var liveActivityService = LiveActivityService()
+    @State private var wakeUpVoiceService = WakeUpVoiceService()
 
     init() {
         let settings = UserSettings()
@@ -30,6 +31,7 @@ struct FocusHavenApp: App {
                 .environment(notificationService)
                 .environment(soundService)
                 .environment(sessionService)
+                .environment(wakeUpVoiceService)
                 .preferredColorScheme(settings.theme.colorScheme)
                 .task {
                     sessionService.configure()
