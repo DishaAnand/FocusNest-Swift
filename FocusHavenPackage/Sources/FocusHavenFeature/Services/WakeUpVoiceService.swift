@@ -103,4 +103,73 @@ public final class WakeUpVoiceService: @unchecked Sendable {
     public func getFileURL(for voice: WakeUpVoice) -> URL {
         return recordingsDirectory.appendingPathComponent(voice.fileName)
     }
+
+    // MARK: - Recording
+    public func startRecording() async -> Bool {
+        let session = AVAudioSession.sharedInstance()
+
+        do {
+            try session.setCategory(.playAndRecord, mode: .default)
+            try session.setActive(true)
+        } catch {
+            print("Failed to set up audio session: \(error)")
+            return false
+        }
+
+        // Check microphone permission
+        if await AVAudioApplication.requestRecordPermission() == false {
+            return false
+        }
+
+        let fileName = "\(UUID().uuidString).m4a"
+        let fileURL = recordingsDirectory.appendingPathComponent(fileName)
+
+        let settings: [String: Any] = [
+            AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+            AVSampleRateKey: 44100,
+            AVNumberOfChannelsKey: 1,
+            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+        ]
+
+        do {
+            audioRecorder = try AVAudioRecorder(url: fileURL, settings: settings)
+            audioRecorder?.record()
+            isRecording = true
+            return true
+        } catch {
+            print("Failed to start recording: \(error)")
+            return false
+        }
+    }
+
+    public func stopRecording() -> (url: URL, duration: TimeInterval)? {
+        guard let recorder = audioRecorder, isRecording else { return nil }
+
+        recorder.stop()
+        isRecording = false
+
+        let url = recorder.url
+        let duration = recorder.currentTime
+
+        audioRecorder = nil
+
+        return (url, duration)
+    }
+
+    public func cancelRecording() {
+        guard let recorder = audioRecorder else { return }
+
+        recorder.stop()
+        isRecording = false
+
+        try? FileManager.default.removeItem(at: recorder.url)
+        audioRecorder = nil
+    }
+
+    public func saveRecording(url: URL, name: String, duration: TimeInterval) -> WakeUpVoice {
+        let fileName = url.lastPathComponent
+        let voice = WakeUpVoice(name: name, fileName: fileName, duration: duration)
+        addVoice(voice)
+        return voice
+    }
 }
