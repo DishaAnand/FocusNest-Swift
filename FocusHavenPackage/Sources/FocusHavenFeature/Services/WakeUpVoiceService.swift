@@ -172,4 +172,42 @@ public final class WakeUpVoiceService: @unchecked Sendable {
         addVoice(voice)
         return voice
     }
+
+    // MARK: - Playback
+    public func playVoice(_ voice: WakeUpVoice) {
+        let fileURL = getFileURL(for: voice)
+        playAudio(from: fileURL)
+    }
+
+    public func playAudio(from url: URL) {
+        stopPlayback()
+
+        do {
+            let session = AVAudioSession.sharedInstance()
+
+            if playInSilentMode {
+                try session.setCategory(.playback, mode: .default, options: [])
+            } else {
+                try session.setCategory(.ambient, mode: .default)
+            }
+            try session.setActive(true)
+
+            audioPlayer = try AVAudioPlayer(contentsOf: url)
+            audioPlayer?.play()
+            isPlaying = true
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + (audioPlayer?.duration ?? 0) + 0.1) { [weak self] in
+                self?.isPlaying = false
+            }
+        } catch {
+            print("Failed to play audio: \(error)")
+            isPlaying = false
+        }
+    }
+
+    public func stopPlayback() {
+        audioPlayer?.stop()
+        audioPlayer = nil
+        isPlaying = false
+    }
 }
