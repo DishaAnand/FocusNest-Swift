@@ -1,15 +1,15 @@
 import Foundation
 
 /// A personal voice recording used to wake users from extended breaks
-struct WakeUpVoice: Identifiable, Codable, Equatable {
-    let id: UUID
-    var name: String
-    var fileName: String
-    var duration: TimeInterval
-    var isDefault: Bool
-    var createdAt: Date
+public struct WakeUpVoice: Identifiable, Codable, Equatable, Sendable {
+    public let id: UUID
+    public var name: String
+    public var fileName: String
+    public var duration: TimeInterval
+    public var isDefault: Bool
+    public var createdAt: Date
 
-    init(id: UUID = UUID(), name: String, fileName: String, duration: TimeInterval, isDefault: Bool = false) {
+    public init(id: UUID = UUID(), name: String, fileName: String, duration: TimeInterval, isDefault: Bool = false) {
         self.id = id
         self.name = name
         self.fileName = fileName
@@ -19,7 +19,7 @@ struct WakeUpVoice: Identifiable, Codable, Equatable {
     }
 
     /// Formatted duration string (e.g., "12 sec")
-    var formattedDuration: String {
+    public var formattedDuration: String {
         let seconds = Int(duration)
         return "\(seconds) sec"
     }
