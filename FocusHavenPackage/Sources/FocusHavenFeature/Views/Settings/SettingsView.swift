@@ -28,6 +28,19 @@ public struct SettingsView: View {
                     Toggle("Vibration", isOn: $settings.vibrationEnabled)
                 }
                 Section {
+                    NavigationLink {
+                        WakeUpVoicesSettingsView()
+                    } label: {
+                        HStack {
+                            Image(systemName: "waveform.circle")
+                                .foregroundStyle(Theme.focusColor)
+                            Text("Wake-Up Voices")
+                        }
+                    }
+                } footer: {
+                    Text("Play a personal voice recording when you extend your break too long.")
+                }
+                Section {
                     NotificationStatusRow(notificationService: notificationService)
                 } header: {
                     Text("Notifications")
