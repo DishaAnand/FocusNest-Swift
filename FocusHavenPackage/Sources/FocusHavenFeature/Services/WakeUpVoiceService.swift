@@ -210,4 +210,32 @@ public final class WakeUpVoiceService: @unchecked Sendable {
         audioPlayer = nil
         isPlaying = false
     }
+
+    // MARK: - Break Overtime Trigger
+    private let overtimeThreshold: TimeInterval = 120 // 2 minutes
+
+    /// Called when break ends - starts countdown to play wake-up voice
+    public func breakEnded() {
+        guard isEnabled, !voices.isEmpty else { return }
+
+        overtimeTimer?.invalidate()
+
+        overtimeTimer = Timer.scheduledTimer(withTimeInterval: overtimeThreshold, repeats: false) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.triggerWakeUpVoice()
+            }
+        }
+    }
+
+    /// Called when user returns to the app - cancels the wake-up trigger
+    public func userReturned() {
+        overtimeTimer?.invalidate()
+        overtimeTimer = nil
+    }
+
+    /// Plays the wake-up voice
+    private func triggerWakeUpVoice() {
+        guard let voice = getDefaultVoice() else { return }
+        playVoice(voice)
+    }
 }
