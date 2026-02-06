@@ -10,11 +10,13 @@ public struct TimerView: View {
     @Environment(TimerService.self) private var timerService
     @Environment(NotificationService.self) private var notificationService
     @Environment(SoundService.self) private var soundService
+    @Environment(WakeUpVoiceService.self) private var wakeUpVoiceService
 
     @State private var showTaskSelector = false
     @State private var showEnergyOverlay = false
     @State private var showSessionComplete = false
     @State private var showNotificationOnboarding = false
+    @State private var showDurationPicker = false
     @State private var lastPrediction: Int? = nil
     @State private var completedSessionDuration: Int = 0
     @State private var completedDistractionCount: Int = 0  // Captured at session end for display
@@ -33,6 +35,7 @@ public struct TimerView: View {
     }
     @State private var wentAwayAt: Date? = nil
     @State private var sessionWasCompleted = true
+    @State private var oceanChoppiness: Double = 0
     private let distractionThreshold: TimeInterval = 15
 
     public init() {}
@@ -57,10 +60,20 @@ public struct TimerView: View {
                                 .contentTransition(.numericText())
                             if timerService.state == .paused {
                                 Text("PAUSED").font(Theme.captionFont).foregroundStyle(Theme.pausedColor).textCase(.uppercase)
+                            } else if timerService.state == .idle && !timerService.isBreak {
+                                Text("Tap to change")
+                                    .font(Theme.captionFont)
+                                    .foregroundStyle(Theme.textTertiary)
                             }
                         }
                     }
                     .padding(.vertical, Theme.spacingL)
+                    .onTapGesture {
+                        if timerService.state == .idle && !timerService.isBreak {
+                            soundService.lightImpact(settings: settings)
+                            showDurationPicker = true
+                        }
+                    }
 
                     if let task = timerService.selectedTask {
                         Button { showTaskSelector = true } label: {
@@ -145,6 +158,26 @@ public struct TimerView: View {
         }
         .background(Theme.backgroundPrimary)
         .sheet(isPresented: $showTaskSelector) { TaskSelectorSheet(selectedTask: Bindable(timerService).selectedTask) }
+        .sheet(isPresented: $showDurationPicker) {
+            DurationPickerSheet(
+                currentMinutes: settings.focusDurationMinutes,
+                onSelect: { minutes in
+                    settings.focusDurationMinutes = minutes
+                    // Update timer with new duration before starting
+                    timerService.setMode(.focus, duration: minutes * 60)
+                    showDurationPicker = false
+                    // Start timer after selecting duration
+                    if !settings.hasSeenNotificationOnboarding && !notificationService.isAuthorized {
+                        showNotificationOnboarding = true
+                    } else {
+                        startTimerWithoutPrediction()
+                    }
+                },
+                onDismiss: { showDurationPicker = false }
+            )
+            .presentationDetents([.height(320)])
+            .presentationDragIndicator(.visible)
+        }
         .overlay {
             if showEnergyOverlay {
                 EnergyPredictionOverlay(
@@ -217,6 +250,13 @@ public struct TimerView: View {
             .presentationDragIndicator(.visible)
         }
         .onChange(of: scenePhase) { oldPhase, newPhase in
+            // Cancel wake-up voice if user returned during/after break
+            if newPhase == .active && oldPhase != .active {
+                if timerService.isBreak || timerService.mode != .focus {
+                    wakeUpVoiceService.userReturned()
+                }
+            }
+
             // Only track distractions during active focus session (not breaks)
             guard timerService.isRunning && !timerService.isBreak else { return }
 
@@ -229,6 +269,23 @@ public struct TimerView: View {
                     let awayDuration = Date().timeIntervalSince(awayTime)
                     if awayDuration >= distractionThreshold {
                         distractionCount += 1
+                        // Make ocean choppy - intensity based on how long they were away
+                        let intensity = min(1.0, awayDuration / 60.0) // Max choppiness at 60s away
+                        withAnimation(.easeIn(duration: 0.3)) {
+                            oceanChoppiness = 0.5 + (intensity * 0.5) // Range: 0.5 to 1.0
+                        }
+                        // Gradually calm the ocean over 15 seconds
+                        withAnimation(.easeOut(duration: 15.0).delay(0.5)) {
+                            oceanChoppiness = 0
+                        }
+                    } else if awayDuration >= 3 {
+                        // Brief absence - slight ripple effect
+                        withAnimation(.easeIn(duration: 0.2)) {
+                            oceanChoppiness = 0.2
+                        }
+                        withAnimation(.easeOut(duration: 5.0).delay(0.3)) {
+                            oceanChoppiness = 0
+                        }
                     }
                 }
                 wentAwayAt = nil
@@ -319,6 +376,12 @@ public struct TimerView: View {
         timerService.onComplete = { mode in
             soundService.playTimerComplete(settings: settings)
             soundService.successHaptic(settings: settings)
+
+            // Start wake-up voice countdown when break ends
+            if mode == .shortBreak || mode == .longBreak {
+                wakeUpVoiceService.breakEnded()
+            }
+
             if mode == .focus {
                 sessionWasCompleted = true
 
@@ -390,6 +453,68 @@ private struct TaskSelectorSheet: View {
             .navigationTitle("Select Task")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+        }
+    }
+}
+
+// MARK: - Duration Picker Sheet
+
+@MainActor
+private struct DurationPickerSheet: View {
+    let currentMinutes: Int
+    let onSelect: (Int) -> Void
+    let onDismiss: () -> Void
+
+    @State private var selectedMinutes: Int
+
+    init(currentMinutes: Int, onSelect: @escaping (Int) -> Void, onDismiss: @escaping () -> Void) {
+        self.currentMinutes = currentMinutes
+        self.onSelect = onSelect
+        self.onDismiss = onDismiss
+        self._selectedMinutes = State(initialValue: currentMinutes)
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                // Wheel Picker
+                Picker("Minutes", selection: $selectedMinutes) {
+                    ForEach(1...120, id: \.self) { minute in
+                        Text("\(minute) min")
+                            .tag(minute)
+                    }
+                }
+                .pickerStyle(.wheel)
+                .frame(height: 180)
+
+                // Quick preset buttons
+                HStack(spacing: Theme.spacingM) {
+                    ForEach([15, 25, 45, 60], id: \.self) { preset in
+                        Button {
+                            selectedMinutes = preset
+                        } label: {
+                            Text("\(preset)")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(selectedMinutes == preset ? .white : Theme.focusColor)
+                                .frame(width: 52, height: 36)
+                                .background(selectedMinutes == preset ? Theme.focusColor : Theme.focusColor.opacity(0.15))
+                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                        }
+                    }
+                }
+                .padding(.bottom, Theme.spacingM)
+            }
+            .navigationTitle("Focus Duration")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { onDismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { onSelect(selectedMinutes) }
+                        .fontWeight(.semibold)
+                }
+            }
         }
     }
 }
