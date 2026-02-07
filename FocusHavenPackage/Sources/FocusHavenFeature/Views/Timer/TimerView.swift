@@ -148,22 +148,42 @@ public struct TimerView: View {
                     }
                     .padding(.vertical, Theme.spacingM)
 
-                    // Ambient sound selector
-                    AmbientSoundButton(
-                        sound: ambientSoundService.selectedSound,
-                        isPlaying: ambientSoundService.isPlaying
-                    ) {
-                        soundService.lightImpact(settings: settings)
-                        showAmbientSoundPicker = true
-                    }
-
-                    // Energy prediction pill (only show when idle and in focus mode)
+                    // Sound & Prediction row (only show when idle and in focus mode)
                     if timerService.state == .idle && !timerService.isBreak {
-                        EnergyPredictionPill(lastPrediction: lastPrediction) {
-                            soundService.lightImpact(settings: settings)
-                            showEnergyOverlay = true
+                        HStack(spacing: Theme.spacingM) {
+                            // Ambient sound selector (compact version)
+                            Button {
+                                soundService.lightImpact(settings: settings)
+                                showAmbientSoundPicker = true
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: ambientSoundService.selectedSound.iconName)
+                                        .font(.system(size: 14))
+                                    Text(ambientSoundService.selectedSound.displayName)
+                                        .font(.system(size: 13, weight: .medium))
+                                }
+                                .foregroundStyle(Theme.textSecondary)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .background(Theme.backgroundSecondary)
+                                .clipShape(Capsule())
+                            }
+
+                            // Predict your focus
+                            EnergyPredictionPill(lastPrediction: lastPrediction) {
+                                soundService.lightImpact(settings: settings)
+                                showEnergyOverlay = true
+                            }
                         }
-                        .padding(.top, Theme.spacingS)
+                    } else if timerService.isRunning || timerService.state == .paused {
+                        // Show sound button with playing state when timer is active
+                        AmbientSoundButton(
+                            sound: ambientSoundService.selectedSound,
+                            isPlaying: ambientSoundService.isPlaying
+                        ) {
+                            soundService.lightImpact(settings: settings)
+                            showAmbientSoundPicker = true
+                        }
                     }
                 }
                 .padding(Theme.spacingL)
