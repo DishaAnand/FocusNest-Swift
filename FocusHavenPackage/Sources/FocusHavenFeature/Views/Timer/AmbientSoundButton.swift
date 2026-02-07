@@ -6,81 +6,79 @@ struct AmbientSoundButton: View {
     let isPlaying: Bool
     let onTap: () -> Void
 
-    @State private var isPulsing = false
+    @State private var isAnimating = false
 
     var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 10) {
-                // Animated icon container
-                ZStack {
-                    // Pulse ring when playing
-                    if isPlaying {
-                        Circle()
-                            .stroke(Theme.focusColor.opacity(0.3), lineWidth: 2)
-                            .frame(width: 32, height: 32)
-                            .scaleEffect(isPulsing ? 1.3 : 1.0)
-                            .opacity(isPulsing ? 0 : 0.6)
-                    }
-
-                    // Icon background
-                    Circle()
-                        .fill(isPlaying ? Theme.focusColor : Theme.textTertiary.opacity(0.3))
-                        .frame(width: 28, height: 28)
-
-                    // Icon
-                    Image(systemName: sound.iconName)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(isPlaying ? .white : Theme.textSecondary)
-                }
-                .frame(width: 32, height: 32)
-
-                // Sound name
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(sound.displayName)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(Theme.textPrimary)
-
-                    if isPlaying {
-                        Text("Playing")
-                            .font(.system(size: 10))
-                            .foregroundStyle(Theme.focusColor)
-                    } else {
-                        Text("Tap to change")
-                            .font(.system(size: 10))
-                            .foregroundStyle(Theme.textTertiary)
-                    }
-                }
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(Theme.textTertiary)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(Theme.backgroundSecondary)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(isPlaying ? Theme.focusColor.opacity(0.3) : Color.clear, lineWidth: 1)
+            HStack(spacing: 8) {
+                Image(systemName: isPlaying ? "waveform" : sound.iconName)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.cyan, .blue],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                     )
+                    .scaleEffect(isPlaying && isAnimating ? 1.1 : 1.0)
+
+                Text(sound.displayName)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(Theme.textPrimary)
+
+                if isPlaying {
+                    // Small animated dots
+                    HStack(spacing: 2) {
+                        ForEach(0..<3, id: \.self) { i in
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [.cyan, .blue],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    )
+                                )
+                                .frame(width: 4, height: 4)
+                                .scaleEffect(isAnimating ? [1.0, 1.4, 0.8][i] : [0.8, 1.0, 1.2][i])
+                                .animation(
+                                    .easeInOut(duration: 0.5)
+                                    .repeatForever(autoreverses: true)
+                                    .delay(Double(i) * 0.15),
+                                    value: isAnimating
+                                )
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 11)
+            .background(
+                RoundedRectangle(cornerRadius: 22)
+                    .fill(Theme.backgroundSecondary.opacity(0.8))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 22)
+                            .stroke(
+                                LinearGradient(
+                                    colors: isPlaying
+                                        ? [.cyan.opacity(0.6), .blue.opacity(0.5), .purple.opacity(0.3)]
+                                        : [.cyan.opacity(0.4), .blue.opacity(0.3), .teal.opacity(0.2)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1.5
+                            )
+                    )
+                    .shadow(color: .cyan.opacity(isPlaying ? 0.25 : 0.12), radius: 8, x: 0, y: 2)
             )
+            .scaleEffect(isAnimating && !isPlaying ? 1.02 : 1.0)
         }
         .buttonStyle(.plain)
-        .onChange(of: isPlaying) { _, playing in
-            if playing {
-                withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: false)) {
-                    isPulsing = true
-                }
-            } else {
-                isPulsing = false
-            }
-        }
         .onAppear {
-            if isPlaying {
-                withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: false)) {
-                    isPulsing = true
-                }
+            withAnimation(
+                .easeInOut(duration: 2.0)
+                .repeatForever(autoreverses: true)
+            ) {
+                isAnimating = true
             }
         }
     }

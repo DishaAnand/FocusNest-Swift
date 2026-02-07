@@ -33,7 +33,7 @@ struct EnergyPredictionOverlay: View {
     var body: some View {
         ZStack {
             // Dimmed background
-            Color.black.opacity(0.4)
+            Color.black.opacity(0.5)
                 .ignoresSafeArea()
                 .onTapGesture {
                     onDismiss()
@@ -141,14 +141,21 @@ struct EnergyPredictionOverlay: View {
                 .padding(.bottom, 24)
             }
             .frame(width: 300, height: 440)
-            .background(Theme.backgroundPrimary)
+            .background(
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(Theme.backgroundSecondary)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 24)
+                            .stroke(Theme.textTertiary.opacity(0.15), lineWidth: 1)
+                    )
+            )
             .clipShape(RoundedRectangle(cornerRadius: 24))
-            .shadow(color: .black.opacity(0.25), radius: 20, x: 0, y: 10)
+            .shadow(color: .black.opacity(0.4), radius: 30, x: 0, y: 15)
         }
     }
 }
 
-/// Tempting pill button to trigger energy prediction
+/// Cute pill button with pink/purple gradient to trigger energy prediction
 struct EnergyPredictionPill: View {
     let lastPrediction: Int?
     let onTap: () -> Void
@@ -197,6 +204,7 @@ struct EnergyPredictionPill: View {
             )
             .scaleEffect(isAnimating ? 1.02 : 1.0)
         }
+        .buttonStyle(.plain)
         .onAppear {
             withAnimation(
                 .easeInOut(duration: 2.0)

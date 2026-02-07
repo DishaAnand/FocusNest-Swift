@@ -148,28 +148,19 @@ public struct TimerView: View {
                     }
                     .padding(.vertical, Theme.spacingM)
 
-                    // Sound & Prediction row (only show when idle and in focus mode)
+                    // Session options (only show when idle and in focus mode)
                     if timerService.state == .idle && !timerService.isBreak {
-                        HStack(spacing: Theme.spacingM) {
-                            // Ambient sound selector (compact version)
-                            Button {
+                        VStack(spacing: 10) {
+                            // Ambient sound button
+                            AmbientSoundButton(
+                                sound: ambientSoundService.selectedSound,
+                                isPlaying: false
+                            ) {
                                 soundService.lightImpact(settings: settings)
                                 showAmbientSoundPicker = true
-                            } label: {
-                                HStack(spacing: 6) {
-                                    Image(systemName: ambientSoundService.selectedSound.iconName)
-                                        .font(.system(size: 14))
-                                    Text(ambientSoundService.selectedSound.displayName)
-                                        .font(.system(size: 13, weight: .medium))
-                                }
-                                .foregroundStyle(Theme.textSecondary)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 10)
-                                .background(Theme.backgroundSecondary)
-                                .clipShape(Capsule())
                             }
 
-                            // Predict your focus
+                            // Predict your focus button
                             EnergyPredictionPill(lastPrediction: lastPrediction) {
                                 soundService.lightImpact(settings: settings)
                                 showEnergyOverlay = true
@@ -530,6 +521,31 @@ private struct TaskSelectorSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
         }
+    }
+}
+
+// MARK: - Sound Wave Animation
+
+@MainActor
+private struct SoundWaveView: View {
+    @State private var isAnimating = false
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(0..<3, id: \.self) { index in
+                RoundedRectangle(cornerRadius: 1)
+                    .fill(Theme.focusColor)
+                    .frame(width: 3, height: isAnimating ? [8, 12, 6][index] : [4, 6, 4][index])
+                    .animation(
+                        .easeInOut(duration: 0.4)
+                        .repeatForever(autoreverses: true)
+                        .delay(Double(index) * 0.15),
+                        value: isAnimating
+                    )
+            }
+        }
+        .frame(width: 14, height: 14)
+        .onAppear { isAnimating = true }
     }
 }
 
