@@ -34,11 +34,11 @@ public struct SettingsView: View {
                         HStack {
                             Image(systemName: "waveform.circle")
                                 .foregroundStyle(Theme.focusColor)
-                            Text("Wake-Up Voices")
+                            Text("Wake-Up Voice")
                         }
                     }
                 } footer: {
-                    Text("Play a personal voice recording when you extend your break too long.")
+                    Text("Play your voice as the notification sound when breaks end.")
                 }
                 Section {
                     NotificationStatusRow(notificationService: notificationService)

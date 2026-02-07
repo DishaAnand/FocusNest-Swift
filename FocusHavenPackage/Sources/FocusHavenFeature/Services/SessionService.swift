@@ -94,26 +94,44 @@ public final class SessionService: @unchecked Sendable {
     }
 
     /// Find session by short code (first 4 chars of sessionId)
+    /// Only returns sessions that are in "waiting" state
     public func findSessionByCode(_ code: String) async throws -> String {
         guard isFirebaseConfigured, let db = database else { throw SessionError.notConfigured }
 
         let normalizedCode = code.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
         guard normalizedCode.count >= 4 else { throw SessionError.invalidCode }
 
+        print("🔵 [SessionService] Finding session with code: \(normalizedCode)")
+
         // Query sessions that start with this code
         let snapshot = try await db.child("sessions")
             .queryOrderedByKey()
             .queryStarting(atValue: normalizedCode)
             .queryEnding(atValue: normalizedCode + "\u{f8ff}")
-            .queryLimited(toFirst: 1)
+            .queryLimited(toFirst: 10)  // Get more results to find a valid one
             .getData()
 
-        guard let dict = snapshot.value as? [String: Any],
-              let firstSessionId = dict.keys.first else {
+        guard let dict = snapshot.value as? [String: Any] else {
+            print("🔴 [SessionService] No sessions found with code: \(normalizedCode)")
             throw SessionError.sessionNotFound
         }
 
-        return firstSessionId
+        print("🔵 [SessionService] Found \(dict.count) sessions matching code")
+
+        // Find the first session that is in "waiting" state
+        for (sessionId, value) in dict {
+            if let sessionData = value as? [String: Any],
+               let stateRaw = sessionData["state"] as? String {
+                print("🔵 [SessionService] Session \(sessionId.prefix(8))... state: \(stateRaw)")
+                if stateRaw == SessionState.waiting.rawValue {
+                    print("🟢 [SessionService] Found waiting session: \(sessionId)")
+                    return sessionId
+                }
+            }
+        }
+
+        print("🔴 [SessionService] No waiting sessions found with code: \(normalizedCode)")
+        throw SessionError.sessionAlreadyStarted
     }
 
     public func joinSession(sessionId: String, taskTitle: String, userName: String, duration: Int = 25 * 60) async throws -> BuddySession {
@@ -125,9 +143,21 @@ public final class SessionService: @unchecked Sendable {
         print("🔵 [SessionService] Joining session: \(sessionId)")
         let sessionRef = db.child("sessions").child(sessionId)
         let snapshot = try await sessionRef.getData()
-        guard snapshot.exists(), let data = snapshot.value as? [String: Any] else { throw SessionError.sessionNotFound }
-        guard var session = BuddySession(from: data) else { throw SessionError.invalidSessionData }
-        guard session.state == .waiting else { throw SessionError.sessionAlreadyStarted }
+        guard snapshot.exists(), let data = snapshot.value as? [String: Any] else {
+            print("🔴 [SessionService] Session not found or empty data")
+            throw SessionError.sessionNotFound
+        }
+        print("🔵 [SessionService] Session data retrieved: \(data)")
+        guard var session = BuddySession(from: data) else {
+            print("🔴 [SessionService] Failed to parse session data")
+            throw SessionError.invalidSessionData
+        }
+        print("🔵 [SessionService] Session state: \(session.state.rawValue), participants: \(session.participantCount)")
+        // Allow joining if session is waiting OR if this device is already a participant (rejoin case)
+        guard session.state == .waiting || session.participants[deviceId] != nil else {
+            print("🔴 [SessionService] Session state is \(session.state.rawValue), not waiting. Cannot join.")
+            throw SessionError.sessionAlreadyStarted
+        }
 
         let participant = SessionParticipant(odid: deviceId, name: userName, taskTitle: taskTitle, duration: duration)
         session.participants[deviceId] = participant

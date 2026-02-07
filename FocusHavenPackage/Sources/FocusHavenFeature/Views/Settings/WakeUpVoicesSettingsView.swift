@@ -1,5 +1,4 @@
 import SwiftUI
-import AVFoundation
 
 @MainActor
 struct WakeUpVoicesSettingsView: View {
@@ -11,17 +10,16 @@ struct WakeUpVoicesSettingsView: View {
 
         List {
             Section {
-                Toggle("Enable Wake-Up Voices", isOn: $voiceService.isEnabled)
+                Toggle("Enable Wake-Up Voice", isOn: $voiceService.isEnabled)
             } footer: {
-                Text("When enabled, a voice recording will play if you extend your break by more than 2 minutes.")
+                Text("When enabled, your recorded voice will play as the notification sound when your break ends.")
             }
 
             if voiceService.isEnabled {
                 Section {
-                    Toggle("Play in Silent Mode", isOn: $voiceService.playInSilentMode)
                     Toggle("Shuffle Recordings", isOn: $voiceService.shuffleEnabled)
                 } footer: {
-                    Text("Shuffle will randomly pick from your recordings each time.")
+                    Text("Randomly pick from your recordings each time.")
                 }
 
                 Section {
@@ -33,7 +31,7 @@ struct WakeUpVoicesSettingsView: View {
                             Text("No recordings yet")
                                 .font(Theme.bodyFont)
                                 .foregroundStyle(Theme.textSecondary)
-                            Text("Add your first wake-up voice")
+                            Text("Record a short message (max 30 sec)")
                                 .font(Theme.captionFont)
                                 .foregroundStyle(Theme.textTertiary)
                         }
@@ -56,16 +54,27 @@ struct WakeUpVoicesSettingsView: View {
                         HStack {
                             Image(systemName: "plus.circle.fill")
                                 .foregroundStyle(Theme.focusColor)
-                            Text("Add Recording")
+                            Text("Record New Voice")
                                 .foregroundStyle(Theme.focusColor)
                         }
                     }
                 } header: {
                     Text("Your Recordings")
                 }
+
+                Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("How it works", systemImage: "info.circle")
+                            .font(Theme.bodyFont.weight(.medium))
+                        Text("Your voice will play as the notification sound when your break timer ends. This works even when you're using other apps.")
+                            .font(Theme.captionFont)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                    .padding(.vertical, 4)
+                }
             }
         }
-        .navigationTitle("Wake-Up Voices")
+        .navigationTitle("Wake-Up Voice")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showingRecordSheet) {
             RecordVoiceView()

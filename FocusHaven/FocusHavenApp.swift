@@ -11,16 +11,18 @@ struct FocusHavenApp: App {
     @State private var soundService = SoundService()
     @State private var sessionService = SessionService()
     @State private var liveActivityService = LiveActivityService()
-    @State private var wakeUpVoiceService = WakeUpVoiceService()
+    @State private var wakeUpVoiceService: WakeUpVoiceService
 
     init() {
         let settings = UserSettings()
         let liveActivityService = LiveActivityService()
         let notificationService = NotificationService()
+        let wakeUpVoiceService = WakeUpVoiceService()
         self._settings = State(initialValue: settings)
         self._liveActivityService = State(initialValue: liveActivityService)
         self._notificationService = State(initialValue: notificationService)
-        self._timerService = State(initialValue: TimerService(settings: settings, liveActivityService: liveActivityService, notificationService: notificationService))
+        self._wakeUpVoiceService = State(initialValue: wakeUpVoiceService)
+        self._timerService = State(initialValue: TimerService(settings: settings, liveActivityService: liveActivityService, notificationService: notificationService, wakeUpVoiceService: wakeUpVoiceService))
     }
 
     var body: some Scene {

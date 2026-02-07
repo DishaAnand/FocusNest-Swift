@@ -122,6 +122,8 @@ public struct BuddySessionView: View {
                 }
             }
         }
+        .presentationDetents([.large])
+        .interactiveDismissDisabled(currentStep != .setup)
     }
 
     private var navigationTitle: String {
@@ -676,29 +678,52 @@ private struct JoinWithCodeSheet: View {
                     // Session code
                     VStack(alignment: .leading, spacing: Theme.spacingS) {
                         Text("Session Code").font(Theme.headlineFont)
-                        TextField("XXXX", text: $code)
-                            .font(.system(size: 32, weight: .bold, design: .monospaced))
-                            .multilineTextAlignment(.center)
-                            .textFieldStyle(.roundedBorder)
-                            .textInputAutocapitalization(.characters)
-                            .autocorrectionDisabled()
-                            .frame(maxWidth: 150)
-                            .frame(maxWidth: .infinity)
+                        HStack {
+                            Image(systemName: "number")
+                                .foregroundStyle(.teal)
+                                .font(.system(size: 24, weight: .semibold))
+                            TextField("XXXX", text: $code)
+                                .font(.system(size: 32, weight: .bold, design: .monospaced))
+                                .textInputAutocapitalization(.characters)
+                                .autocorrectionDisabled()
+                                .multilineTextAlignment(.center)
+                        }
+                        .padding()
+                        .background(Theme.backgroundSecondary)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(code.count >= 4 ? Color.teal.opacity(0.5) : Color.clear, lineWidth: 2)
+                        )
                     }
 
                     // Name field
                     VStack(alignment: .leading, spacing: Theme.spacingS) {
                         Text("Your Name").font(Theme.headlineFont)
-                        TextField("Enter your name", text: $userName)
-                            .textFieldStyle(.roundedBorder)
-                            .autocorrectionDisabled()
+                        HStack(spacing: 12) {
+                            Image(systemName: "person.fill")
+                                .foregroundStyle(Theme.textTertiary)
+                            TextField("Enter your name", text: $userName)
+                                .font(Theme.bodyFont)
+                                .autocorrectionDisabled()
+                        }
+                        .padding()
+                        .background(Theme.backgroundSecondary)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
 
                     // Task field
                     VStack(alignment: .leading, spacing: Theme.spacingS) {
                         Text("What are you working on?").font(Theme.headlineFont)
-                        TextField("Enter task", text: $taskTitle)
-                            .textFieldStyle(.roundedBorder)
+                        HStack(spacing: 12) {
+                            Image(systemName: "target")
+                                .foregroundStyle(Theme.textTertiary)
+                            TextField("Enter your focus task", text: $taskTitle)
+                                .font(Theme.bodyFont)
+                        }
+                        .padding()
+                        .background(Theme.backgroundSecondary)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
 
                         if !tasks.isEmpty {
                             Text("Or select:")
@@ -715,7 +740,11 @@ private struct JoinWithCodeSheet: View {
 
                     // Duration picker
                     VStack(alignment: .leading, spacing: Theme.spacingS) {
-                        Text("Your Focus Duration").font(Theme.headlineFont)
+                        HStack {
+                            Image(systemName: "clock.fill")
+                                .foregroundStyle(.teal)
+                            Text("Your Focus Duration").font(Theme.headlineFont)
+                        }
                         Text("Can differ from your buddy's time").font(Theme.captionFont).foregroundStyle(Theme.textSecondary)
                         Picker("Duration", selection: $sessionDuration) {
                             Text("1 min").tag(1)
@@ -810,16 +839,30 @@ private struct CreateSessionSheet: View {
                     // Name field
                     VStack(alignment: .leading, spacing: Theme.spacingS) {
                         Text("Your Name").font(Theme.headlineFont)
-                        TextField("Enter your name", text: $userName)
-                            .textFieldStyle(.roundedBorder)
-                            .autocorrectionDisabled()
+                        HStack(spacing: 12) {
+                            Image(systemName: "person.fill")
+                                .foregroundStyle(Theme.textTertiary)
+                            TextField("Enter your name", text: $userName)
+                                .font(Theme.bodyFont)
+                                .autocorrectionDisabled()
+                        }
+                        .padding()
+                        .background(Theme.backgroundSecondary)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
 
                     // Task field
                     VStack(alignment: .leading, spacing: Theme.spacingS) {
                         Text("What are you working on?").font(Theme.headlineFont)
-                        TextField("Enter task", text: $taskTitle)
-                            .textFieldStyle(.roundedBorder)
+                        HStack(spacing: 12) {
+                            Image(systemName: "target")
+                                .foregroundStyle(Theme.textTertiary)
+                            TextField("Enter your focus task", text: $taskTitle)
+                                .font(Theme.bodyFont)
+                        }
+                        .padding()
+                        .background(Theme.backgroundSecondary)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
 
                         if !tasks.isEmpty {
                             Text("Or select:")
@@ -836,7 +879,11 @@ private struct CreateSessionSheet: View {
 
                     // Duration picker
                     VStack(alignment: .leading, spacing: Theme.spacingS) {
-                        Text("Focus Duration").font(Theme.headlineFont)
+                        HStack {
+                            Image(systemName: "clock.fill")
+                                .foregroundStyle(Theme.focusColor)
+                            Text("Focus Duration").font(Theme.headlineFont)
+                        }
                         Picker("Duration", selection: $duration) {
                             Text("1 min").tag(1)
                             Text("15 min").tag(15)

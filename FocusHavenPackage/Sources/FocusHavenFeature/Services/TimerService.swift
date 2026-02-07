@@ -41,6 +41,7 @@ public final class TimerService: @unchecked Sendable {
     private let settings: UserSettings
     private let liveActivityService: LiveActivityService
     private let notificationService: NotificationService
+    private let wakeUpVoiceService: WakeUpVoiceService
 
     // For smooth progress calculation
     private var sessionStartTime: Date?
@@ -74,10 +75,11 @@ public final class TimerService: @unchecked Sendable {
         mode == .shortBreak || mode == .longBreak
     }
 
-    public init(settings: UserSettings, liveActivityService: LiveActivityService, notificationService: NotificationService) {
+    public init(settings: UserSettings, liveActivityService: LiveActivityService, notificationService: NotificationService, wakeUpVoiceService: WakeUpVoiceService) {
         self.settings = settings
         self.liveActivityService = liveActivityService
         self.notificationService = notificationService
+        self.wakeUpVoiceService = wakeUpVoiceService
         self.totalDuration = settings.focusDuration
         self.remainingTime = settings.focusDuration
         setupBackgroundObservers()
@@ -115,10 +117,12 @@ public final class TimerService: @unchecked Sendable {
 
         // Schedule notification for timer completion
         Task {
+            let customSound = isBreak ? wakeUpVoiceService.getNotificationSound() : nil
             await notificationService.scheduleTimerCompletion(
                 in: remainingTime,
                 mode: mode,
-                taskTitle: selectedTask?.title
+                taskTitle: selectedTask?.title,
+                customBreakSound: customSound
             )
         }
     }
@@ -166,10 +170,12 @@ public final class TimerService: @unchecked Sendable {
 
         // Reschedule notification for remaining time
         Task {
+            let customSound = isBreak ? wakeUpVoiceService.getNotificationSound() : nil
             await notificationService.scheduleTimerCompletion(
                 in: remainingTime,
                 mode: mode,
-                taskTitle: selectedTask?.title
+                taskTitle: selectedTask?.title,
+                customBreakSound: customSound
             )
         }
     }

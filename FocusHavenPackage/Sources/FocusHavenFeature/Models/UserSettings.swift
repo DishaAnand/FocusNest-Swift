@@ -16,6 +16,7 @@ public final class UserSettings: @unchecked Sendable {
     private static let notificationsEnabledKey = "notificationsEnabled"
     private static let soundKeyKey = "soundKey"
     private static let hasSeenNotificationOnboardingKey = "hasSeenNotificationOnboarding"
+    private static let hasSeenWakeUpVoiceOnboardingKey = "hasSeenWakeUpVoiceOnboarding"
 
     public var focusDuration: Int { didSet { save() } }
     public var breakDuration: Int { didSet { save() } }
@@ -31,6 +32,8 @@ public final class UserSettings: @unchecked Sendable {
     public var soundKey: String { didSet { save() } }
     /// Whether user has seen the notification onboarding prompt
     public var hasSeenNotificationOnboarding: Bool { didSet { save() } }
+    /// Whether user has seen the wake-up voice onboarding prompt
+    public var hasSeenWakeUpVoiceOnboarding: Bool { didSet { save() } }
 
     public init() {
         let defaults = UserDefaults.standard
@@ -45,6 +48,7 @@ public final class UserSettings: @unchecked Sendable {
         self.notificationsEnabled = defaults.object(forKey: Self.notificationsEnabledKey) as? Bool ?? true
         self.soundKey = defaults.string(forKey: Self.soundKeyKey) ?? "chimes"  // RN default
         self.hasSeenNotificationOnboarding = defaults.bool(forKey: Self.hasSeenNotificationOnboardingKey)
+        self.hasSeenWakeUpVoiceOnboarding = defaults.bool(forKey: Self.hasSeenWakeUpVoiceOnboardingKey)
 
         if let themeRaw = defaults.string(forKey: Self.themeKey),
            let savedTheme = AppTheme(rawValue: themeRaw) {
@@ -68,6 +72,7 @@ public final class UserSettings: @unchecked Sendable {
         defaults.set(notificationsEnabled, forKey: Self.notificationsEnabledKey)
         defaults.set(soundKey, forKey: Self.soundKeyKey)
         defaults.set(hasSeenNotificationOnboarding, forKey: Self.hasSeenNotificationOnboardingKey)
+        defaults.set(hasSeenWakeUpVoiceOnboarding, forKey: Self.hasSeenWakeUpVoiceOnboardingKey)
     }
 
     public var focusDurationMinutes: Int {

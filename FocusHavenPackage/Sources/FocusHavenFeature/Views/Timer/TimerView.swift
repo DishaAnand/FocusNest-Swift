@@ -17,6 +17,8 @@ public struct TimerView: View {
     @State private var showSessionComplete = false
     @State private var showNotificationOnboarding = false
     @State private var showDurationPicker = false
+    @State private var showWakeUpVoiceOnboarding = false
+    @State private var showRecordVoice = false
     @State private var lastPrediction: Int? = nil
     @State private var completedSessionDuration: Int = 0
     @State private var completedDistractionCount: Int = 0  // Captured at session end for display
@@ -249,14 +251,32 @@ public struct TimerView: View {
             .presentationDetents([.height(340)])
             .presentationDragIndicator(.visible)
         }
-        .onChange(of: scenePhase) { oldPhase, newPhase in
-            // Cancel wake-up voice if user returned during/after break
-            if newPhase == .active && oldPhase != .active {
-                if timerService.isBreak || timerService.mode != .focus {
-                    wakeUpVoiceService.userReturned()
+        .sheet(isPresented: $showWakeUpVoiceOnboarding) {
+            WakeUpVoiceOnboardingView(
+                onSetUp: {
+                    settings.hasSeenWakeUpVoiceOnboarding = true
+                    showWakeUpVoiceOnboarding = false
+                    // Go directly to record screen
+                    showRecordVoice = true
+                },
+                onSkip: {
+                    settings.hasSeenWakeUpVoiceOnboarding = true
+                    showWakeUpVoiceOnboarding = false
+                    // Continue to start timer
+                    startTimerWithoutPrediction()
                 }
-            }
-
+            )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showRecordVoice) {
+            RecordVoiceView()
+                .onDisappear {
+                    // After recording, start the timer
+                    startTimerWithoutPrediction()
+                }
+        }
+        .onChange(of: scenePhase) { oldPhase, newPhase in
             // Only track distractions during active focus session (not breaks)
             guard timerService.isRunning && !timerService.isBreak else { return }
 
@@ -320,10 +340,17 @@ public struct TimerView: View {
                 return
             }
 
+            // Check if we should show wake-up voice onboarding (first focus session, no voices recorded yet)
+            if !settings.hasSeenWakeUpVoiceOnboarding && !timerService.isBreak && wakeUpVoiceService.voices.isEmpty {
+                showWakeUpVoiceOnboarding = true
+                return
+            }
+
             // Start timer directly (prediction is now optional via pill)
             startTimerWithoutPrediction()
         } else if timerService.state == .paused {
-            Task { notificationService.cancelTimerNotifications(); await notificationService.scheduleTimerCompletion(in: timerService.remainingTime, mode: timerService.mode, taskTitle: timerService.selectedTask?.title) }
+            let customSound = timerService.isBreak ? wakeUpVoiceService.getNotificationSound() : nil
+            Task { notificationService.cancelTimerNotifications(); await notificationService.scheduleTimerCompletion(in: timerService.remainingTime, mode: timerService.mode, taskTitle: timerService.selectedTask?.title, customBreakSound: customSound) }
             timerService.togglePlayPause()
         } else {
             notificationService.cancelTimerNotifications()
@@ -335,7 +362,8 @@ public struct TimerView: View {
         distractionCount = 0
         sessionWasCompleted = true
         predictedFocus = nil
-        Task { await notificationService.scheduleTimerCompletion(in: timerService.remainingTime, mode: timerService.mode, taskTitle: timerService.selectedTask?.title) }
+        let customSound = timerService.isBreak ? wakeUpVoiceService.getNotificationSound() : nil
+        Task { await notificationService.scheduleTimerCompletion(in: timerService.remainingTime, mode: timerService.mode, taskTitle: timerService.selectedTask?.title, customBreakSound: customSound) }
         timerService.togglePlayPause()
     }
 
@@ -344,7 +372,8 @@ public struct TimerView: View {
         sessionWasCompleted = true
         predictedFocus = level
         lastPrediction = level
-        Task { await notificationService.scheduleTimerCompletion(in: timerService.remainingTime, mode: timerService.mode, taskTitle: timerService.selectedTask?.title) }
+        let customSound = timerService.isBreak ? wakeUpVoiceService.getNotificationSound() : nil
+        Task { await notificationService.scheduleTimerCompletion(in: timerService.remainingTime, mode: timerService.mode, taskTitle: timerService.selectedTask?.title, customBreakSound: customSound) }
         timerService.togglePlayPause()
     }
 
@@ -376,11 +405,6 @@ public struct TimerView: View {
         timerService.onComplete = { mode in
             soundService.playTimerComplete(settings: settings)
             soundService.successHaptic(settings: settings)
-
-            // Start wake-up voice countdown when break ends
-            if mode == .shortBreak || mode == .longBreak {
-                wakeUpVoiceService.breakEnded()
-            }
 
             if mode == .focus {
                 sessionWasCompleted = true

@@ -1,6 +1,6 @@
 import Foundation
 import AVFoundation
-import UIKit
+import UserNotifications
 
 @MainActor
 @Observable
@@ -9,13 +9,11 @@ public final class WakeUpVoiceService: @unchecked Sendable {
     public private(set) var voices: [WakeUpVoice] = []
     public private(set) var isRecording: Bool = false
     public private(set) var isPlaying: Bool = false
+    public private(set) var conversionProgress: String? = nil
 
     // MARK: - Settings
     public var isEnabled: Bool {
         didSet { UserDefaults.standard.set(isEnabled, forKey: "wakeUpVoicesEnabled") }
-    }
-    public var playInSilentMode: Bool {
-        didSet { UserDefaults.standard.set(playInSilentMode, forKey: "wakeUpVoicesPlayInSilent") }
     }
     public var shuffleEnabled: Bool {
         didSet { UserDefaults.standard.set(shuffleEnabled, forKey: "wakeUpVoicesShuffle") }
@@ -24,24 +22,32 @@ public final class WakeUpVoiceService: @unchecked Sendable {
     // MARK: - Private
     private var audioRecorder: AVAudioRecorder?
     private var audioPlayer: AVAudioPlayer?
-    private var overtimeTimer: Timer?
     private let voicesKey = "wakeUpVoices"
+    private let maxRecordingDuration: TimeInterval = 30 // iOS notification sound limit
 
     // MARK: - Directories
     private var recordingsDirectory: URL {
         let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         let recordingsPath = documentsPath.appendingPathComponent("WakeUpVoices", isDirectory: true)
-
         if !FileManager.default.fileExists(atPath: recordingsPath.path) {
             try? FileManager.default.createDirectory(at: recordingsPath, withIntermediateDirectories: true)
         }
         return recordingsPath
     }
 
+    /// Library/Sounds directory - where iOS looks for custom notification sounds
+    private var notificationSoundsDirectory: URL {
+        let libraryPath = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
+        let soundsPath = libraryPath.appendingPathComponent("Sounds", isDirectory: true)
+        if !FileManager.default.fileExists(atPath: soundsPath.path) {
+            try? FileManager.default.createDirectory(at: soundsPath, withIntermediateDirectories: true)
+        }
+        return soundsPath
+    }
+
     // MARK: - Init
     public init() {
         self.isEnabled = UserDefaults.standard.object(forKey: "wakeUpVoicesEnabled") as? Bool ?? false
-        self.playInSilentMode = UserDefaults.standard.object(forKey: "wakeUpVoicesPlayInSilent") as? Bool ?? true
         self.shuffleEnabled = UserDefaults.standard.object(forKey: "wakeUpVoicesShuffle") as? Bool ?? false
         loadVoices()
     }
@@ -75,8 +81,10 @@ public final class WakeUpVoiceService: @unchecked Sendable {
     }
 
     public func deleteVoice(_ voice: WakeUpVoice) {
-        let fileURL = recordingsDirectory.appendingPathComponent(voice.fileName)
-        try? FileManager.default.removeItem(at: fileURL)
+        // Delete from Library/Sounds
+        let soundURL = notificationSoundsDirectory.appendingPathComponent(voice.fileName)
+        try? FileManager.default.removeItem(at: soundURL)
+
         voices.removeAll { $0.id == voice.id }
         if voice.isDefault && !voices.isEmpty {
             voices[0].isDefault = true
@@ -100,8 +108,8 @@ public final class WakeUpVoiceService: @unchecked Sendable {
         return voices.first { $0.isDefault } ?? voices.first
     }
 
-    public func getFileURL(for voice: WakeUpVoice) -> URL {
-        return recordingsDirectory.appendingPathComponent(voice.fileName)
+    public func getNotificationSoundURL(for voice: WakeUpVoice) -> URL {
+        return notificationSoundsDirectory.appendingPathComponent(voice.fileName)
     }
 
     // MARK: - Recording
@@ -116,11 +124,11 @@ public final class WakeUpVoiceService: @unchecked Sendable {
             return false
         }
 
-        // Check microphone permission
         if await AVAudioApplication.requestRecordPermission() == false {
             return false
         }
 
+        // Record as M4A first (will convert to WAV later)
         let fileName = "\(UUID().uuidString).m4a"
         let fileURL = recordingsDirectory.appendingPathComponent(fileName)
 
@@ -133,7 +141,7 @@ public final class WakeUpVoiceService: @unchecked Sendable {
 
         do {
             audioRecorder = try AVAudioRecorder(url: fileURL, settings: settings)
-            audioRecorder?.record()
+            audioRecorder?.record(forDuration: maxRecordingDuration) // Auto-stop at 30 sec
             isRecording = true
             return true
         } catch {
@@ -142,40 +150,152 @@ public final class WakeUpVoiceService: @unchecked Sendable {
         }
     }
 
-    public func stopRecording() -> (url: URL, duration: TimeInterval)? {
+    public func stopRecording() async -> (url: URL, duration: TimeInterval)? {
         guard let recorder = audioRecorder, isRecording else { return nil }
 
         recorder.stop()
         isRecording = false
 
         let url = recorder.url
-        let duration = recorder.currentTime
-
         audioRecorder = nil
 
-        return (url, duration)
+        // Get duration using AVURLAsset
+        let asset = AVURLAsset(url: url)
+        do {
+            let duration = try await asset.load(.duration)
+            let seconds = CMTimeGetSeconds(duration)
+            return (url, seconds.isNaN ? 0 : min(seconds, maxRecordingDuration))
+        } catch {
+            print("Failed to get duration: \(error)")
+            return (url, 0)
+        }
     }
 
     public func cancelRecording() {
         guard let recorder = audioRecorder else { return }
-
         recorder.stop()
         isRecording = false
-
         try? FileManager.default.removeItem(at: recorder.url)
         audioRecorder = nil
     }
 
-    public func saveRecording(url: URL, name: String, duration: TimeInterval) -> WakeUpVoice {
-        let fileName = url.lastPathComponent
-        let voice = WakeUpVoice(name: name, fileName: fileName, duration: duration)
-        addVoice(voice)
-        return voice
+    /// Converts M4A to WAV and saves to Library/Sounds for notification use
+    public func saveRecording(sourceURL: URL, name: String, duration: TimeInterval) async -> WakeUpVoice? {
+        conversionProgress = "Converting audio..."
+        print("🎤 [WakeUp] Starting save recording from: \(sourceURL.path)")
+        print("🎤 [WakeUp] Sounds directory: \(notificationSoundsDirectory.path)")
+
+        do {
+            let wavFileName = "\(UUID().uuidString).wav"
+            let wavURL = notificationSoundsDirectory.appendingPathComponent(wavFileName)
+            print("🎤 [WakeUp] Will save WAV to: \(wavURL.path)")
+
+            try await convertToWAV(sourceURL: sourceURL, destinationURL: wavURL)
+
+            // Verify file exists
+            let exists = FileManager.default.fileExists(atPath: wavURL.path)
+            print("🎤 [WakeUp] WAV file exists after conversion: \(exists)")
+
+            if exists {
+                let attrs = try? FileManager.default.attributesOfItem(atPath: wavURL.path)
+                let size = attrs?[.size] as? Int ?? 0
+                print("🎤 [WakeUp] WAV file size: \(size) bytes")
+            }
+
+            // Clean up original M4A
+            try? FileManager.default.removeItem(at: sourceURL)
+
+            let voice = WakeUpVoice(name: name, fileName: wavFileName, duration: duration)
+            addVoice(voice)
+            print("🎤 [WakeUp] Voice saved successfully: \(wavFileName)")
+
+            conversionProgress = nil
+            return voice
+        } catch {
+            print("🎤 [WakeUp] Failed to convert recording: \(error)")
+            conversionProgress = nil
+            return nil
+        }
     }
 
-    // MARK: - Playback
+    // MARK: - Audio Conversion (M4A to WAV)
+    private func convertToWAV(sourceURL: URL, destinationURL: URL) async throws {
+        let asset = AVAsset(url: sourceURL)
+
+        guard let audioTrack = try await asset.loadTracks(withMediaType: .audio).first else {
+            throw ConversionError.noAudioTrack
+        }
+
+        // Set up asset reader with PCM output
+        let reader = try AVAssetReader(asset: asset)
+
+        let readerOutputSettings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVLinearPCMBitDepthKey: 16,
+            AVLinearPCMIsFloatKey: false,
+            AVLinearPCMIsBigEndianKey: false,
+            AVSampleRateKey: 44100.0,
+            AVNumberOfChannelsKey: 1
+        ]
+
+        let readerOutput = AVAssetReaderTrackOutput(track: audioTrack, outputSettings: readerOutputSettings)
+        reader.add(readerOutput)
+
+        // Set up asset writer for WAV
+        let writer = try AVAssetWriter(outputURL: destinationURL, fileType: .wav)
+
+        let writerInputSettings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVLinearPCMBitDepthKey: 16,
+            AVLinearPCMIsFloatKey: false,
+            AVLinearPCMIsBigEndianKey: false,
+            AVLinearPCMIsNonInterleaved: false,
+            AVSampleRateKey: 44100.0,
+            AVNumberOfChannelsKey: 1
+        ]
+
+        let writerInput = AVAssetWriterInput(mediaType: .audio, outputSettings: writerInputSettings)
+        writerInput.expectsMediaDataInRealTime = false
+        writer.add(writerInput)
+
+        // Start processing
+        reader.startReading()
+        writer.startWriting()
+        writer.startSession(atSourceTime: .zero)
+
+        // Process all samples
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            let queue = DispatchQueue(label: "com.focushaven.audioconversion")
+            writerInput.requestMediaDataWhenReady(on: queue) {
+                while writerInput.isReadyForMoreMediaData {
+                    if let sampleBuffer = readerOutput.copyNextSampleBuffer() {
+                        writerInput.append(sampleBuffer)
+                    } else {
+                        writerInput.markAsFinished()
+                        continuation.resume()
+                        return
+                    }
+                }
+            }
+        }
+
+        await writer.finishWriting()
+
+        if writer.status == .failed {
+            throw writer.error ?? ConversionError.writeFailed
+        }
+
+        print("WAV conversion successful: \(destinationURL.path)")
+    }
+
+    enum ConversionError: Error {
+        case noAudioTrack
+        case writeFailed
+    }
+
+    // MARK: - Playback (for preview)
     public func playVoice(_ voice: WakeUpVoice) {
-        let fileURL = getFileURL(for: voice)
+        let fileURL = getNotificationSoundURL(for: voice)
         playAudio(from: fileURL)
     }
 
@@ -184,15 +304,11 @@ public final class WakeUpVoiceService: @unchecked Sendable {
 
         do {
             let session = AVAudioSession.sharedInstance()
-
-            if playInSilentMode {
-                try session.setCategory(.playback, mode: .default, options: [])
-            } else {
-                try session.setCategory(.ambient, mode: .default)
-            }
+            try session.setCategory(.playback, mode: .default, options: [])
             try session.setActive(true)
 
             audioPlayer = try AVAudioPlayer(contentsOf: url)
+            audioPlayer?.volume = 1.0
             audioPlayer?.play()
             isPlaying = true
 
@@ -211,31 +327,21 @@ public final class WakeUpVoiceService: @unchecked Sendable {
         isPlaying = false
     }
 
-    // MARK: - Break Overtime Trigger
-    private let overtimeThreshold: TimeInterval = 120 // 2 minutes
-
-    /// Called when break ends - starts countdown to play wake-up voice
-    public func breakEnded() {
-        guard isEnabled, !voices.isEmpty else { return }
-
-        overtimeTimer?.invalidate()
-
-        overtimeTimer = Timer.scheduledTimer(withTimeInterval: overtimeThreshold, repeats: false) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.triggerWakeUpVoice()
-            }
+    // MARK: - Notification Sound
+    /// Returns the UNNotificationSound for the default voice, or system default if none
+    public func getNotificationSound() -> UNNotificationSound {
+        print("🔔 [WakeUp] getNotificationSound called - isEnabled: \(isEnabled), voices count: \(voices.count)")
+        guard isEnabled, let voice = getDefaultVoice() else {
+            print("🔔 [WakeUp] Returning default sound (not enabled or no voices)")
+            return .default
         }
-    }
 
-    /// Called when user returns to the app - cancels the wake-up trigger
-    public func userReturned() {
-        overtimeTimer?.invalidate()
-        overtimeTimer = nil
-    }
+        // Verify the file exists
+        let soundURL = notificationSoundsDirectory.appendingPathComponent(voice.fileName)
+        let exists = FileManager.default.fileExists(atPath: soundURL.path)
+        print("🔔 [WakeUp] Using custom sound: \(voice.fileName), exists: \(exists), path: \(soundURL.path)")
 
-    /// Plays the wake-up voice
-    private func triggerWakeUpVoice() {
-        guard let voice = getDefaultVoice() else { return }
-        playVoice(voice)
+        // UNNotificationSound looks in Library/Sounds/ for the filename
+        return UNNotificationSound(named: UNNotificationSoundName(rawValue: voice.fileName))
     }
 }

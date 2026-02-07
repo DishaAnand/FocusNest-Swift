@@ -28,59 +28,156 @@ public struct JoinSessionView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: Theme.spacingL) {
-                    VStack(spacing: Theme.spacingS) {
-                        Image(systemName: "person.2.fill").font(.system(size: 48)).foregroundStyle(Theme.focusColor)
-                        Text("Join Buddy Session").font(Theme.titleFont)
-                        Text("Someone invited you to focus together!").font(Theme.bodyFont).foregroundStyle(Theme.textSecondary).multilineTextAlignment(.center)
-                    }.padding(.top, Theme.spacingL)
-
-                    VStack(alignment: .leading, spacing: Theme.spacingS) {
-                        Text("Your Name").font(Theme.headlineFont)
-                        TextField("Enter your name", text: $userName).textFieldStyle(.roundedBorder).autocorrectionDisabled()
-                    }
-
-                    VStack(alignment: .leading, spacing: Theme.spacingS) {
-                        Text("What will you work on?").font(Theme.headlineFont)
-                        TextField("Enter your task", text: $customTaskTitle).textFieldStyle(.roundedBorder)
-                        if !tasks.isEmpty {
-                            Text("Or select:").font(Theme.captionFont).foregroundStyle(Theme.textSecondary)
-                            ForEach(tasks.prefix(3)) { task in
-                                TaskSelectionCardView(task: task, isSelected: selectedTask?.id == task.id) {
-                                    selectedTask = task
-                                    customTaskTitle = task.title
-                                }
-                            }
-                        }
-                    }
-
-                    VStack(alignment: .leading, spacing: Theme.spacingS) {
-                        Text("Your Focus Duration").font(Theme.headlineFont)
-                        Text("You can pick a different time than your buddy").font(Theme.captionFont).foregroundStyle(Theme.textSecondary)
-                        Picker("Duration", selection: $sessionDuration) {
-                            Text("1 min").tag(1)
-                            Text("15 min").tag(15)
-                            Text("25 min").tag(25)
-                            Text("45 min").tag(45)
-                        }.pickerStyle(.segmented)
-                    }
-
-                    Button { Task { await joinSession() } } label: {
-                        if isLoading {
-                            ProgressView().progressViewStyle(.circular).tint(.white).frame(maxWidth: .infinity).padding(.vertical, Theme.spacingM).background(Theme.focusGradient).clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusM))
-                        } else {
-                            Text("Join Session").primaryButtonStyle()
-                        }
-                    }
-                    .disabled(userName.isEmpty || customTaskTitle.isEmpty || isLoading)
-                    .padding(.top, Theme.spacingM)
-
-                    if let error = errorMessage {
-                        Text(error).font(Theme.captionFont).foregroundStyle(Theme.errorColor).multilineTextAlignment(.center)
-                    }
-                }.padding(Theme.spacingM)
+                    headerSection
+                    nameInputSection
+                    taskInputSection
+                    durationSection
+                    errorSection
+                    joinButtonSection
+                }
+                .padding(.horizontal, Theme.spacingM)
+                .padding(.top, Theme.spacingM)
+                .padding(.bottom, 60)
+                .frame(maxWidth: 500)
+                .frame(maxWidth: .infinity)
             }
+            .scrollIndicators(.hidden)
+            .background(Theme.backgroundPrimary)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private var headerSection: some View {
+        VStack(spacing: Theme.spacingS) {
+            ZStack {
+                Circle()
+                    .fill(Theme.focusColor.opacity(0.15))
+                    .frame(width: 88, height: 88)
+                Image(systemName: "person.2.fill")
+                    .font(.system(size: 40))
+                    .foregroundStyle(Theme.focusColor)
+            }
+            Text("Join Buddy Session")
+                .font(.system(size: 24, weight: .bold, design: .rounded))
+            Text("Someone invited you to focus together!")
+                .font(Theme.bodyFont)
+                .foregroundStyle(Theme.textSecondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(.top, Theme.spacingM)
+    }
+
+    private var nameInputSection: some View {
+        VStack(alignment: .leading, spacing: Theme.spacingS) {
+            Label("Your Name", systemImage: "person.fill")
+                .font(Theme.headlineFont)
+            TextField("Enter your name", text: $userName)
+                .textFieldStyle(.roundedBorder)
+                .autocorrectionDisabled()
+        }
+        .padding(Theme.spacingM)
+        .background(Theme.backgroundSecondary)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusM))
+    }
+
+    private var taskInputSection: some View {
+        VStack(alignment: .leading, spacing: Theme.spacingS) {
+            Label("What will you work on?", systemImage: "target")
+                .font(Theme.headlineFont)
+            TextField("Enter your task", text: $customTaskTitle)
+                .textFieldStyle(.roundedBorder)
+            if !tasks.isEmpty {
+                Text("Or select from recent:")
+                    .font(Theme.captionFont)
+                    .foregroundStyle(Theme.textSecondary)
+                    .padding(.top, 4)
+                ForEach(tasks.prefix(3)) { task in
+                    TaskSelectionCardView(task: task, isSelected: selectedTask?.id == task.id) {
+                        selectedTask = task
+                        customTaskTitle = task.title
+                    }
+                }
+            }
+        }
+        .padding(Theme.spacingM)
+        .background(Theme.backgroundSecondary)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusM))
+    }
+
+    private var durationSection: some View {
+        VStack(alignment: .leading, spacing: Theme.spacingS) {
+            Label("Your Focus Duration", systemImage: "clock.fill")
+                .font(Theme.headlineFont)
+            Text("You can pick a different time than your buddy")
+                .font(Theme.captionFont)
+                .foregroundStyle(Theme.textSecondary)
+            Picker("Duration", selection: $sessionDuration) {
+                Text("1 min").tag(1)
+                Text("15 min").tag(15)
+                Text("25 min").tag(25)
+                Text("45 min").tag(45)
+            }
+            .pickerStyle(.segmented)
+        }
+        .padding(Theme.spacingM)
+        .background(Theme.backgroundSecondary)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusM))
+    }
+
+    @ViewBuilder
+    private var errorSection: some View {
+        if let error = errorMessage {
+            Text(error)
+                .font(Theme.captionFont)
+                .foregroundStyle(Theme.errorColor)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+        }
+    }
+
+    private var joinButtonSection: some View {
+        Button { Task { await joinSession() } } label: {
+            joinButtonLabel
+        }
+        .disabled(userName.isEmpty || customTaskTitle.isEmpty || isLoading)
+        .padding(.top, Theme.spacingS)
+    }
+
+    @ViewBuilder
+    private var joinButtonLabel: some View {
+        if isLoading {
+            ProgressView()
+                .progressViewStyle(.circular)
+                .tint(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, Theme.spacingM)
+                .background(Theme.focusGradient)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusM))
+        } else {
+            HStack(spacing: 8) {
+                Image(systemName: "person.2.fill")
+                Text("Join Session")
+            }
+            .font(.system(size: 17, weight: .semibold))
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, Theme.spacingM)
+            .background(joinButtonBackground)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusM))
+        }
+    }
+
+    @ViewBuilder
+    private var joinButtonBackground: some View {
+        if userName.isEmpty || customTaskTitle.isEmpty {
+            Color.gray.opacity(0.5)
+        } else {
+            Theme.focusGradient
         }
     }
 
