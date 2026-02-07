@@ -11,8 +11,10 @@ public struct TimerView: View {
     @Environment(NotificationService.self) private var notificationService
     @Environment(SoundService.self) private var soundService
     @Environment(WakeUpVoiceService.self) private var wakeUpVoiceService
+    @Environment(AmbientSoundService.self) private var ambientSoundService
 
     @State private var showTaskSelector = false
+    @State private var showAmbientSoundPicker = false
     @State private var showEnergyOverlay = false
     @State private var showSessionComplete = false
     @State private var showNotificationOnboarding = false
@@ -95,6 +97,8 @@ public struct TimerView: View {
                             Button {
                                 soundService.lightImpact(settings: settings)
                                 sessionWasCompleted = false
+                                // Stop ambient sound when stopping timer
+                                ambientSoundService.stop()
                                 // If we had a prediction and stopped early during focus, show result
                                 if let predicted = predictedFocus, !timerService.isBreak {
                                     let actualFocus = calculateActualFocus()
@@ -138,11 +142,20 @@ public struct TimerView: View {
                                 .background(timerService.isBreak ? Theme.breakGradient : Theme.focusGradient).clipShape(Circle())
                                 .shadow(color: (timerService.isBreak ? Theme.breakColor : Theme.focusColor).opacity(0.3), radius: 10, x: 0, y: 4)
                         }
-                        Button { soundService.lightImpact(settings: settings); timerService.skip(); notificationService.cancelTimerNotifications() } label: {
+                        Button { soundService.lightImpact(settings: settings); timerService.skip(); notificationService.cancelTimerNotifications(); ambientSoundService.stop() } label: {
                             Image(systemName: "forward.end.fill").font(.title2).foregroundStyle(.white).frame(width: 56, height: 56).background(Theme.textSecondary).clipShape(Circle())
                         }
                     }
                     .padding(.vertical, Theme.spacingM)
+
+                    // Ambient sound selector
+                    AmbientSoundButton(
+                        sound: ambientSoundService.selectedSound,
+                        isPlaying: ambientSoundService.isPlaying
+                    ) {
+                        soundService.lightImpact(settings: settings)
+                        showAmbientSoundPicker = true
+                    }
 
                     // Energy prediction pill (only show when idle and in focus mode)
                     if timerService.state == .idle && !timerService.isBreak {
@@ -276,6 +289,9 @@ public struct TimerView: View {
                     startTimerWithoutPrediction()
                 }
         }
+        .sheet(isPresented: $showAmbientSoundPicker) {
+            AmbientSoundPicker()
+        }
         .onChange(of: scenePhase) { oldPhase, newPhase in
             // Only track distractions during active focus session (not breaks)
             guard timerService.isRunning && !timerService.isBreak else { return }
@@ -352,9 +368,15 @@ public struct TimerView: View {
             let customSound = timerService.isBreak ? wakeUpVoiceService.getNotificationSound() : nil
             Task { notificationService.cancelTimerNotifications(); await notificationService.scheduleTimerCompletion(in: timerService.remainingTime, mode: timerService.mode, taskTitle: timerService.selectedTask?.title, customBreakSound: customSound) }
             timerService.togglePlayPause()
+            // Resume ambient sound when resuming focus
+            if !timerService.isBreak {
+                ambientSoundService.resume()
+            }
         } else {
             notificationService.cancelTimerNotifications()
             timerService.togglePlayPause()
+            // Pause ambient sound when pausing timer
+            ambientSoundService.pause()
         }
     }
 
@@ -365,6 +387,10 @@ public struct TimerView: View {
         let customSound = timerService.isBreak ? wakeUpVoiceService.getNotificationSound() : nil
         Task { await notificationService.scheduleTimerCompletion(in: timerService.remainingTime, mode: timerService.mode, taskTitle: timerService.selectedTask?.title, customBreakSound: customSound) }
         timerService.togglePlayPause()
+        // Start ambient sound when focus session begins (not during breaks)
+        if !timerService.isBreak {
+            ambientSoundService.play()
+        }
     }
 
     private func startTimerAfterPrediction(level: Int) {
@@ -375,6 +401,10 @@ public struct TimerView: View {
         let customSound = timerService.isBreak ? wakeUpVoiceService.getNotificationSound() : nil
         Task { await notificationService.scheduleTimerCompletion(in: timerService.remainingTime, mode: timerService.mode, taskTitle: timerService.selectedTask?.title, customBreakSound: customSound) }
         timerService.togglePlayPause()
+        // Start ambient sound when focus session begins (not during breaks)
+        if !timerService.isBreak {
+            ambientSoundService.play()
+        }
     }
 
     private func calculateActualFocus() -> Int {
@@ -405,6 +435,8 @@ public struct TimerView: View {
         timerService.onComplete = { mode in
             soundService.playTimerComplete(settings: settings)
             soundService.successHaptic(settings: settings)
+            // Stop ambient sound when timer completes
+            ambientSoundService.stop()
 
             if mode == .focus {
                 sessionWasCompleted = true

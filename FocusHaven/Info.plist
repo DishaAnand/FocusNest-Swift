@@ -6,6 +6,10 @@
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>FocusHaven needs microphone access to record your personal wake-up message that plays when breaks end.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
