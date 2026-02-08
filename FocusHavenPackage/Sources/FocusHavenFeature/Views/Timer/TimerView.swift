@@ -42,145 +42,146 @@ public struct TimerView: View {
     @State private var oceanChoppiness: Double = 0
     private let distractionThreshold: TimeInterval = 15
 
+    // Flexible session planning (user picks count, duration decided per-session)
+    @State private var sessionPlan = SessionPlan()
+    @State private var pendingSessionPlan: SessionPlan? = nil  // Temp storage for energy overlay flow
+    @State private var showSessionPlannerOverlay = false  // Shows session count picker
+    @State private var continuousFocusTime: Int = 0  // For 45min auto-lock threshold
+    @State private var sessionPlanTotalDistractions = 0
+    @State private var sessionPlanTotalFocusTime = 0
+    @State private var showFinalCelebration = false  // For last session enhanced celebration
+    @Query(filter: #Predicate<FocusTask> { !$0.isCompleted }) private var availableTasks: [FocusTask]
+
     public init() {}
 
     public var body: some View {
         GeometryReader { geometry in
             let isCompact = geometry.size.width < 500
-            VStack {
+            let timerSize: CGFloat = isCompact ? 220 : 280
+
+            VStack(spacing: 0) {
+                // Session progress indicator (when plan is active)
+                if sessionPlan.isActive {
+                    sessionProgressIndicator
+                        .padding(.top, Theme.spacingS)
+                }
+
                 Spacer()
-                VStack(spacing: Theme.spacingXL) {
-                    Text(timerService.mode.displayName)
-                        .font(Theme.titleFont)
-                        .foregroundStyle(timerService.isBreak ? Theme.breakColor : Theme.focusColor)
 
-                    ZStack {
-                        CircularProgressView(progress: timerService.progress, lineWidth: 12, size: isCompact ? 260 : 320, color: timerService.isBreak ? Theme.breakColor : Theme.focusColor)
-                        VStack(spacing: Theme.spacingS) {
-                            Text(timerService.formattedTime)
-                                .font(isCompact ? Theme.timerFontSmall : Theme.timerFont)
-                                .foregroundStyle(Theme.textPrimary)
-                                .monospacedDigit()
-                                .contentTransition(.numericText())
-                            if timerService.state == .paused {
-                                Text("PAUSED").font(Theme.captionFont).foregroundStyle(Theme.pausedColor).textCase(.uppercase)
-                            } else if timerService.state == .idle && !timerService.isBreak {
-                                Text("Tap to change")
-                                    .font(Theme.captionFont)
-                                    .foregroundStyle(Theme.textTertiary)
-                            }
-                        }
-                    }
-                    .padding(.vertical, Theme.spacingL)
-                    .onTapGesture {
-                        if timerService.state == .idle && !timerService.isBreak {
-                            soundService.lightImpact(settings: settings)
-                            showDurationPicker = true
-                        }
-                    }
+                // Mode label
+                Text(timerService.mode.displayName)
+                    .font(Theme.titleFont)
+                    .foregroundStyle(timerService.isBreak ? Theme.breakColor : Theme.focusColor)
 
-                    if let task = timerService.selectedTask {
-                        Button { showTaskSelector = true } label: {
-                            HStack(spacing: Theme.spacingS) {
-                                Image(systemName: "target").foregroundStyle(Theme.focusColor)
-                                Text(task.title).font(Theme.bodyFont).foregroundStyle(Theme.textPrimary).lineLimit(1)
-                                Image(systemName: "chevron.right").font(.caption).foregroundStyle(Theme.textTertiary)
-                            }
-                            .padding(.horizontal, Theme.spacingM).padding(.vertical, Theme.spacingS)
-                            .background(Theme.backgroundSecondary).clipShape(Capsule())
-                        }
-                        .disabled(timerService.isRunning)
-                    }
-
-                    HStack(spacing: Theme.spacingL) {
-                        if timerService.state != .idle {
-                            Button {
-                                soundService.lightImpact(settings: settings)
-                                sessionWasCompleted = false
-                                // Stop ambient sound when stopping timer
-                                ambientSoundService.stop()
-                                // If we had a prediction and stopped early during focus, show result
-                                if let predicted = predictedFocus, !timerService.isBreak {
-                                    let actualFocus = calculateActualFocus()
-                                    let dur = settings.focusDuration
-                                    let dist = distractionCount
-
-                                    let record = FocusRecord(
-                                        duration: dur - timerService.remainingTime,
-                                        isBreak: false,
-                                        taskId: timerService.selectedTask?.id,
-                                        taskTitle: timerService.selectedTask?.title,
-                                        wasCompleted: false,
-                                        predictedFocus: predicted,
-                                        actualFocus: actualFocus,
-                                        distractionCount: dist
-                                    )
-                                    modelContext.insert(record)
-                                    timerService.stop()
-                                    notificationService.cancelTimerNotifications()
-
-                                    // Set result data to show sheet
-                                    focusResult = FocusResultData(
-                                        predicted: predicted,
-                                        actual: actualFocus,
-                                        duration: dur,
-                                        distractions: dist,
-                                        wasCompleted: false
-                                    )
-                                } else {
-                                    timerService.stop()
-                                    notificationService.cancelTimerNotifications()
-                                    resetPredictionState()
-                                }
-                            } label: {
-                                Image(systemName: "stop.fill").font(.title2).foregroundStyle(.white).frame(width: 56, height: 56).background(Theme.errorColor.opacity(0.8)).clipShape(Circle())
-                            }
-                        }
-                        Button { soundService.mediumImpact(settings: settings); handlePlayPause() } label: {
-                            Image(systemName: timerService.isRunning ? "pause.fill" : "play.fill")
-                                .font(.title).foregroundStyle(.white).frame(width: 80, height: 80)
-                                .background(timerService.isBreak ? Theme.breakGradient : Theme.focusGradient).clipShape(Circle())
-                                .shadow(color: (timerService.isBreak ? Theme.breakColor : Theme.focusColor).opacity(0.3), radius: 10, x: 0, y: 4)
-                        }
-                        Button { soundService.lightImpact(settings: settings); timerService.skip(); notificationService.cancelTimerNotifications(); ambientSoundService.stop() } label: {
-                            Image(systemName: "forward.end.fill").font(.title2).foregroundStyle(.white).frame(width: 56, height: 56).background(Theme.textSecondary).clipShape(Circle())
-                        }
-                    }
-                    .padding(.vertical, Theme.spacingM)
-
-                    // Session options (only show when idle and in focus mode)
-                    if timerService.state == .idle && !timerService.isBreak {
-                        VStack(spacing: 10) {
-                            // Ambient sound button
-                            AmbientSoundButton(
-                                sound: ambientSoundService.selectedSound,
-                                isPlaying: false
-                            ) {
-                                soundService.lightImpact(settings: settings)
-                                showAmbientSoundPicker = true
-                            }
-
-                            // Predict your focus button
-                            EnergyPredictionPill(lastPrediction: lastPrediction) {
-                                soundService.lightImpact(settings: settings)
-                                showEnergyOverlay = true
-                            }
-                        }
-                    } else if timerService.isRunning || timerService.state == .paused {
-                        // Show sound button with playing state when timer is active
-                        AmbientSoundButton(
-                            sound: ambientSoundService.selectedSound,
-                            isPlaying: ambientSoundService.isPlaying
-                        ) {
-                            soundService.lightImpact(settings: settings)
-                            showAmbientSoundPicker = true
+                // Timer circle
+                ZStack {
+                    CircularProgressView(progress: timerService.progress, lineWidth: 10, size: timerSize, color: timerService.isBreak ? Theme.breakColor : Theme.focusColor)
+                    VStack(spacing: 4) {
+                        Text(timerService.formattedTime)
+                            .font(.system(size: isCompact ? 48 : 56, weight: .light, design: .rounded))
+                            .foregroundStyle(Theme.textPrimary)
+                            .monospacedDigit()
+                            .contentTransition(.numericText())
+                        if timerService.state == .paused {
+                            Text("PAUSED").font(Theme.captionFont).foregroundStyle(Theme.pausedColor).textCase(.uppercase)
+                        } else if timerService.state == .idle && !timerService.isBreak {
+                            Text("Tap to change")
+                                .font(.system(size: 13))
+                                .foregroundStyle(Theme.textTertiary)
                         }
                     }
                 }
-                .padding(Theme.spacingL)
+                .padding(.vertical, Theme.spacingM)
+                .onTapGesture {
+                    if timerService.state == .idle && !timerService.isBreak {
+                        soundService.lightImpact(settings: settings)
+                        showDurationPicker = true
+                    }
+                }
+
+                // Selected task pill
+                if let task = timerService.selectedTask {
+                    Button { showTaskSelector = true } label: {
+                        HStack(spacing: Theme.spacingS) {
+                            Image(systemName: "target").foregroundStyle(Theme.focusColor)
+                            Text(task.title).font(.system(size: 14)).foregroundStyle(Theme.textPrimary).lineLimit(1)
+                            Image(systemName: "chevron.right").font(.caption2).foregroundStyle(Theme.textTertiary)
+                        }
+                        .padding(.horizontal, 14).padding(.vertical, 8)
+                        .background(Theme.backgroundSecondary).clipShape(Capsule())
+                    }
+                    .disabled(timerService.isRunning)
+                    .padding(.bottom, Theme.spacingS)
+                }
+
+                // Control buttons
+                HStack(spacing: Theme.spacingL) {
+                    if timerService.state != .idle {
+                        // Stop button when running/paused
+                        Button {
+                            soundService.lightImpact(settings: settings)
+                            sessionWasCompleted = false
+                            ambientSoundService.stop()
+                            if let predicted = predictedFocus, !timerService.isBreak {
+                                let actualFocus = calculateActualFocus()
+                                let dur = settings.focusDuration
+                                let dist = distractionCount
+
+                                let record = FocusRecord(
+                                    duration: dur - timerService.remainingTime,
+                                    isBreak: false,
+                                    taskId: timerService.selectedTask?.id,
+                                    taskTitle: timerService.selectedTask?.title,
+                                    wasCompleted: false,
+                                    predictedFocus: predicted,
+                                    actualFocus: actualFocus,
+                                    distractionCount: dist
+                                )
+                                modelContext.insert(record)
+                                timerService.stop()
+                                notificationService.cancelTimerNotifications()
+
+                                focusResult = FocusResultData(
+                                    predicted: predicted,
+                                    actual: actualFocus,
+                                    duration: dur,
+                                    distractions: dist,
+                                    wasCompleted: false
+                                )
+                            } else {
+                                timerService.stop()
+                                notificationService.cancelTimerNotifications()
+                                resetPredictionState()
+                            }
+                        } label: {
+                            Image(systemName: "stop.fill").font(.title3).foregroundStyle(.white).frame(width: 50, height: 50).background(Theme.errorColor.opacity(0.8)).clipShape(Circle())
+                        }
+                    }
+                    Button { soundService.mediumImpact(settings: settings); handlePlayPause() } label: {
+                        Image(systemName: timerService.isRunning ? "pause.fill" : "play.fill")
+                            .font(.title2).foregroundStyle(.white).frame(width: 72, height: 72)
+                            .background(timerService.isBreak ? Theme.breakGradient : Theme.focusGradient).clipShape(Circle())
+                            .shadow(color: (timerService.isBreak ? Theme.breakColor : Theme.focusColor).opacity(0.3), radius: 8, x: 0, y: 3)
+                    }
+                    Button { soundService.lightImpact(settings: settings); timerService.skip(); notificationService.cancelTimerNotifications(); ambientSoundService.stop() } label: {
+                        Image(systemName: "forward.end.fill").font(.title3).foregroundStyle(.white).frame(width: 50, height: 50).background(Theme.textSecondary).clipShape(Circle())
+                    }
+                }
+                .padding(.vertical, Theme.spacingM)
+
+                // Ambient sound button
+                AmbientSoundButton(
+                    sound: ambientSoundService.selectedSound,
+                    isPlaying: ambientSoundService.isPlaying
+                ) {
+                    soundService.lightImpact(settings: settings)
+                    showAmbientSoundPicker = true
+                }
+
                 Spacer()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.horizontal, Theme.spacingM)
         }
         .background(Theme.backgroundPrimary)
         .sheet(isPresented: $showTaskSelector) { TaskSelectorSheet(selectedTask: Bindable(timerService).selectedTask) }
@@ -209,17 +210,87 @@ public struct TimerView: View {
                 EnergyPredictionOverlay(
                     onStart: { level in
                         showEnergyOverlay = false
-                        startTimerAfterPrediction(level: level)
+                        if let plan = pendingSessionPlan {
+                            // Start session plan with prediction
+                            sessionPlan = plan
+                            pendingSessionPlan = nil
+                            startSessionPlanWithPrediction(level: level)
+                        } else {
+                            // Start single task with prediction
+                            startTimerAfterPrediction(level: level)
+                        }
                     },
                     onDismiss: {
                         showEnergyOverlay = false
+                        pendingSessionPlan = nil
                     }
                 )
                 .transition(.opacity.combined(with: .scale(scale: 0.95)))
                 .zIndex(100)
             }
+
+            if showSessionPlannerOverlay {
+                SessionPlannerOverlay(
+                    plan: $sessionPlan,
+                    isPresented: $showSessionPlannerOverlay,
+                    onStart: {
+                        startSessionPlan()
+                    }
+                )
+                .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                .zIndex(99)
+            }
         }
         .animation(.spring(response: 0.3), value: showEnergyOverlay)
+        .animation(.spring(response: 0.4), value: showSessionPlannerOverlay)
+        .onReceive(NotificationCenter.default.publisher(for: .showSessionPlanner)) { _ in
+            // Show session planner overlay (triggered from Home tab)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                if timerService.state == .idle && !sessionPlan.isActive {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                        showSessionPlannerOverlay = true
+                    }
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .startSessionPlan)) { notification in
+            if let userInfo = notification.userInfo,
+               let plan = userInfo["sessionPlan"] as? SessionPlan,
+               plan.totalSessions > 0 {
+                sessionPlan = plan
+                startSessionPlan()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .autoStartTimer)) { _ in
+            // Auto-start timer when triggered from task list (with small delay for tab switch)
+            if timerService.state == .idle && !timerService.isBreak {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    if timerService.state == .idle {
+                        startTimerWithoutPrediction()
+                    }
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .showEnergyPrediction)) { _ in
+            // Show energy prediction overlay for single task (with small delay for tab switch)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                if timerService.state == .idle && !timerService.isBreak {
+                    pendingSessionPlan = nil  // Not a session plan
+                    showEnergyOverlay = true
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .startSessionPlanWithPrediction)) { notification in
+            // Store session plan and show energy overlay
+            if let userInfo = notification.userInfo,
+               let plan = userInfo["sessionPlan"] as? SessionPlan,
+               plan.totalSessions > 0 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    pendingSessionPlan = plan
+                    showEnergyOverlay = true
+                }
+            }
+        }
         .sheet(item: $focusResult) { result in
             FocusPredictionResultView(
                 predictedLevel: result.predicted,
@@ -252,14 +323,35 @@ public struct TimerView: View {
                 distractionCount: completedDistractionCount,
                 onTakeBreak: {
                     showSessionComplete = false
-                    resetPredictionState()
-                    // Break auto-starts via timerService
+                    if sessionPlan.isActive {
+                        // Session plan: start break, then next session
+                        handleSessionPlanTakeBreak()
+                    } else {
+                        resetPredictionState()
+                        // Normal flow: Break auto-starts via timerService
+                    }
                 },
                 onExtend: { extensionSeconds in
                     showSessionComplete = false
-                    // Start a new focus session with the extension duration
-                    timerService.startExtension(duration: extensionSeconds)
-                    Task { await notificationService.scheduleTimerCompletion(in: extensionSeconds, mode: .focus, taskTitle: timerService.selectedTask?.title) }
+                    if sessionPlan.isActive {
+                        // Session plan: skip break, go to next session
+                        handleSessionPlanContinue()
+                    } else {
+                        // Normal flow: extend current session
+                        timerService.startExtension(duration: extensionSeconds)
+                        Task { await notificationService.scheduleTimerCompletion(in: extensionSeconds, mode: .focus, taskTitle: timerService.selectedTask?.title) }
+                    }
+                }
+            )
+        }
+        .fullScreenCover(isPresented: $showFinalCelebration) {
+            FinalSessionCelebrationView(
+                totalSessions: sessionPlan.totalSessions,
+                totalMinutes: sessionPlanTotalFocusTime / 60,
+                totalDistractions: sessionPlanTotalDistractions,
+                onDone: {
+                    showFinalCelebration = false
+                    finishSessionPlan()
                 }
             )
         }
@@ -444,11 +536,66 @@ public struct TimerView: View {
 
     private func setupTimerCallbacks() {
         timerService.onComplete = { mode in
-            soundService.playTimerComplete(settings: settings)
+            // Play appropriate completion sound
+            if mode == .shortBreak || mode == .longBreak {
+                // Break complete - play custom wake-up voice if available
+                wakeUpVoiceService.playDefaultVoice()
+            } else {
+                // Focus complete - play generic sound
+                soundService.playTimerComplete(settings: settings)
+            }
             soundService.successHaptic(settings: settings)
             // Stop ambient sound when timer completes
             ambientSoundService.stop()
 
+            // Handle flexible session plan flow
+            if sessionPlan.isActive {
+                // Prevent TimerService from doing default mode transition - we handle it ourselves
+                timerService.skipDefaultTransition = true
+
+                if mode == .focus {
+                    // Accumulate stats
+                    sessionPlanTotalDistractions += distractionCount
+                    sessionPlanTotalFocusTime += settings.focusDuration
+                    continuousFocusTime += settings.focusDuration
+
+                    // Save record for this session
+                    let record = FocusRecord(
+                        duration: settings.focusDuration,
+                        isBreak: false,
+                        taskId: timerService.selectedTask?.id,
+                        taskTitle: timerService.selectedTask?.title,
+                        wasCompleted: true,
+                        predictedFocus: predictedFocus,
+                        actualFocus: nil,
+                        distractionCount: distractionCount
+                    )
+                    modelContext.insert(record)
+
+                    if sessionPlan.isLastSession {
+                        // Last session complete - show final celebration
+                        completedSessionDuration = sessionPlanTotalFocusTime
+                        completedDistractionCount = sessionPlanTotalDistractions
+                        showFinalCelebration = true
+                    } else {
+                        // Not last session - show completion with choice (break or continue)
+                        // SessionCompleteView will handle the choice
+                        completedSessionDuration = settings.focusDuration
+                        completedDistractionCount = distractionCount
+                        showSessionComplete = true
+                    }
+                } else {
+                    // Break complete - set up next session (don't auto-start)
+                    sessionPlan.nextSession()
+                    continuousFocusTime = 0  // Reset continuous time after break
+                    distractionCount = 0
+                    // Timer is now idle, user will tap to set duration and start
+                    timerService.setMode(.focus, duration: settings.focusDuration)
+                }
+                return
+            }
+
+            // Normal (non-session-plan) flow
             if mode == .focus {
                 sessionWasCompleted = true
 
@@ -477,12 +624,112 @@ public struct TimerView: View {
                 } else {
                     // No prediction - show celebration with choice to extend or break
                     completedSessionDuration = settings.focusDuration
-                    completedDistractionCount = distractionCount  // Capture before showing
-                    print("🎉 SESSION COMPLETE - distractionCount: \(distractionCount), completedDistractionCount: \(completedDistractionCount)")
+                    completedDistractionCount = distractionCount
                     showSessionComplete = true
                 }
             }
         }
+    }
+
+    private func calculateActualFocusForSessionPlan() -> Int {
+        // Calculate focus score based on total distractions across all sessions
+        var score = 5
+
+        // More lenient for session plans: -1 per 2 distractions
+        score -= sessionPlanTotalDistractions / 2
+
+        return max(1, min(5, score))
+    }
+
+    // MARK: - Session Plan Helpers
+
+    private var sessionProgressIndicator: some View {
+        HStack(spacing: 8) {
+            ForEach(0..<sessionPlan.totalSessions, id: \.self) { index in
+                Circle()
+                    .fill(index < sessionPlan.currentSession
+                          ? LinearGradient(colors: [.green, .mint], startPoint: .top, endPoint: .bottom)
+                          : index == sessionPlan.currentSession
+                          ? (timerService.isBreak
+                             ? LinearGradient(colors: [Theme.breakColor, Theme.breakColor.opacity(0.7)], startPoint: .top, endPoint: .bottom)
+                             : LinearGradient(colors: [.purple, .pink], startPoint: .top, endPoint: .bottom))
+                          : LinearGradient(colors: [Theme.textTertiary.opacity(0.3), Theme.textTertiary.opacity(0.3)], startPoint: .top, endPoint: .bottom))
+                    .frame(width: index == sessionPlan.currentSession ? 12 : 8, height: index == sessionPlan.currentSession ? 12 : 8)
+                    .animation(.spring(response: 0.3), value: sessionPlan.currentSession)
+                    .animation(.spring(response: 0.3), value: timerService.isBreak)
+            }
+
+            if timerService.isBreak {
+                Text("Break before Session \(sessionPlan.currentSession + 2)")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Theme.breakColor)
+            } else {
+                Text("Session \(sessionPlan.displayCurrentSession) of \(sessionPlan.totalSessions)")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Theme.textSecondary)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(
+            Capsule()
+                .fill(Theme.backgroundSecondary)
+        )
+        .animation(.spring(response: 0.3), value: timerService.isBreak)
+    }
+
+    private func startSessionPlan() {
+        guard sessionPlan.totalSessions > 0 else { return }
+
+        // Initialize session plan state
+        sessionPlanTotalDistractions = 0
+        sessionPlanTotalFocusTime = 0
+        continuousFocusTime = 0
+        distractionCount = 0
+
+        // Timer is ready - user will tap to set duration and start
+        timerService.setMode(.focus, duration: settings.focusDuration)
+    }
+
+    private func startSessionPlanWithPrediction(level: Int) {
+        guard sessionPlan.totalSessions > 0 else { return }
+
+        // Initialize session plan state
+        sessionPlanTotalDistractions = 0
+        sessionPlanTotalFocusTime = 0
+        continuousFocusTime = 0
+        distractionCount = 0
+
+        // Set prediction and start with current duration
+        predictedFocus = level
+        lastPrediction = level
+        startTimerWithoutPrediction()
+    }
+
+    // Handle session plan choices from SessionCompleteView
+    private func handleSessionPlanTakeBreak() {
+        // Start a break using user's break setting, after which user will set up next session
+        timerService.setMode(.shortBreak, duration: settings.breakDuration)
+        timerService.start()
+    }
+
+    private func handleSessionPlanContinue() {
+        // Skip break, move to next session setup
+        sessionPlan.nextSession()
+        continuousFocusTime += 0  // Continuous time keeps accumulating (no break taken)
+        distractionCount = 0
+        timerService.setMode(.focus, duration: settings.focusDuration)
+        // User will tap to change duration and start
+    }
+
+    private func finishSessionPlan() {
+        // Reset all session plan state
+        sessionPlan.reset()
+        sessionPlanTotalDistractions = 0
+        sessionPlanTotalFocusTime = 0
+        continuousFocusTime = 0
+        distractionCount = 0
+        predictedFocus = nil
     }
 }
 

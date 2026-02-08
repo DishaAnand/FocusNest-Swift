@@ -28,7 +28,7 @@ struct SessionCompleteView: View {
     @State private var pulseScale: CGFloat = 1.0
     @State private var confettiTrigger = false
     @State private var showExtendOptions = false
-    @State private var countedMinutes: Int = 0
+    @State private var countedMinutes: Int = 1  // Start at 1 to avoid showing 0
     @State private var streakScale: CGFloat = 0
     @State private var buttonOffset: CGFloat = 100
 

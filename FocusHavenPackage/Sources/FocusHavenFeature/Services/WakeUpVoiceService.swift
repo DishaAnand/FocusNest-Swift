@@ -1,5 +1,6 @@
 import Foundation
 import AVFoundation
+import AudioToolbox
 import UserNotifications
 
 @MainActor
@@ -297,6 +298,16 @@ public final class WakeUpVoiceService: @unchecked Sendable {
     public func playVoice(_ voice: WakeUpVoice) {
         let fileURL = getNotificationSoundURL(for: voice)
         playAudio(from: fileURL)
+    }
+
+    /// Plays the default wake-up voice if enabled and available
+    public func playDefaultVoice() {
+        guard isEnabled, let voice = getDefaultVoice() else {
+            // No custom voice - play system sound as fallback
+            AudioServicesPlaySystemSound(1007)
+            return
+        }
+        playVoice(voice)
     }
 
     public func playAudio(from url: URL) {

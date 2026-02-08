@@ -33,6 +33,9 @@ public final class TimerService: @unchecked Sendable {
     public var onComplete: ((TimerMode) -> Void)?
     public var onTick: (() -> Void)?
 
+    /// Set to true in onComplete callback to prevent default mode transition
+    public var skipDefaultTransition = false
+
     private var timer: Timer?
     private var displayTimer: Timer? // High-frequency timer for smooth progress
     private var backgroundTaskId: UIBackgroundTaskIdentifier = .invalid
@@ -324,6 +327,14 @@ public final class TimerService: @unchecked Sendable {
         state = .idle
         let completedMode = mode
         onComplete?(completedMode)
+
+        // If the callback handled the transition (session plan flow),
+        // don't override with default mode transition
+        if state == .running || mode != completedMode || skipDefaultTransition {
+            skipDefaultTransition = false
+            return
+        }
+
         if completedMode == .focus {
             completedSessions += 1
             selectedTask?.addFocusTime(totalDuration)

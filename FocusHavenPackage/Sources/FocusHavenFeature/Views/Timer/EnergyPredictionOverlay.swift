@@ -42,7 +42,7 @@ struct EnergyPredictionOverlay: View {
             // Floating card
             VStack(spacing: 20) {
                 // Header
-                Text("How's your energy?")
+                Text("How focused can you be?")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(Theme.textPrimary)
                     .padding(.top, 24)
