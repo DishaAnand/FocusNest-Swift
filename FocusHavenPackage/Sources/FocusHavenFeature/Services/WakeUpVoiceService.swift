@@ -219,6 +219,77 @@ public final class WakeUpVoiceService: @unchecked Sendable {
         }
     }
 
+    // MARK: - Import Audio File
+
+    /// Import result with success/failure info
+    public enum ImportResult {
+        case success(WakeUpVoice)
+        case tooLong(duration: TimeInterval)
+        case failed(Error)
+    }
+
+    /// Import an audio file (mp3, m4a, wav, etc.) and convert for notification use
+    /// - Returns: ImportResult indicating success or why it failed
+    public func importAudioFile(from sourceURL: URL, name: String) async -> ImportResult {
+        let maxDuration: TimeInterval = 30
+
+        conversionProgress = "Checking audio..."
+        print("🎤 [WakeUp] Importing audio from: \(sourceURL.path)")
+
+        do {
+            // Need to access security-scoped resource for files from document picker
+            let accessing = sourceURL.startAccessingSecurityScopedResource()
+            defer {
+                if accessing {
+                    sourceURL.stopAccessingSecurityScopedResource()
+                }
+            }
+
+            // Get duration of the audio file
+            let asset = AVAsset(url: sourceURL)
+            let duration = try await asset.load(.duration)
+            let durationSeconds = CMTimeGetSeconds(duration)
+
+            print("🎤 [WakeUp] Audio duration: \(durationSeconds) seconds")
+
+            // Check if duration exceeds limit
+            if durationSeconds > maxDuration {
+                conversionProgress = nil
+                return .tooLong(duration: durationSeconds)
+            }
+
+            // Copy to temp location first (in case source is security-scoped)
+            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + "." + sourceURL.pathExtension)
+            try FileManager.default.copyItem(at: sourceURL, to: tempURL)
+
+            conversionProgress = "Converting audio..."
+
+            // Convert to WAV
+            let wavFileName = "\(UUID().uuidString).wav"
+            let wavURL = notificationSoundsDirectory.appendingPathComponent(wavFileName)
+
+            try await convertToWAV(sourceURL: tempURL, destinationURL: wavURL)
+
+            // Clean up temp file
+            try? FileManager.default.removeItem(at: tempURL)
+
+            // Verify file exists
+            let exists = FileManager.default.fileExists(atPath: wavURL.path)
+            print("🎤 [WakeUp] Imported WAV file exists: \(exists)")
+
+            let voice = WakeUpVoice(name: name, fileName: wavFileName, duration: durationSeconds)
+            addVoice(voice)
+
+            conversionProgress = nil
+            return .success(voice)
+
+        } catch {
+            print("🎤 [WakeUp] Import failed: \(error)")
+            conversionProgress = nil
+            return .failed(error)
+        }
+    }
+
     // MARK: - Audio Conversion (M4A to WAV)
     private func convertToWAV(sourceURL: URL, destinationURL: URL) async throws {
         let asset = AVAsset(url: sourceURL)

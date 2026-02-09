@@ -1,9 +1,17 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 @MainActor
 struct WakeUpVoicesSettingsView: View {
     @Environment(WakeUpVoiceService.self) private var voiceService
     @State private var showingRecordSheet = false
+    @State private var showingFileImporter = false
+    @State private var showingNamePrompt = false
+    @State private var importedFileURL: URL?
+    @State private var importName = ""
+    @State private var isImporting = false
+    @State private var importError: String?
+    @State private var showingImportError = false
 
     var body: some View {
         @Bindable var voiceService = voiceService
@@ -31,9 +39,6 @@ struct WakeUpVoicesSettingsView: View {
                             Text("No recordings yet")
                                 .font(Theme.bodyFont)
                                 .foregroundStyle(Theme.textSecondary)
-                            Text("Record a short message (max 30 sec)")
-                                .font(Theme.captionFont)
-                                .foregroundStyle(Theme.textTertiary)
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 24)
@@ -52,14 +57,28 @@ struct WakeUpVoicesSettingsView: View {
                         showingRecordSheet = true
                     } label: {
                         HStack {
-                            Image(systemName: "plus.circle.fill")
+                            Image(systemName: "mic.circle.fill")
                                 .foregroundStyle(Theme.focusColor)
                             Text("Record New Voice")
                                 .foregroundStyle(Theme.focusColor)
                         }
                     }
+
+                    Button {
+                        showingFileImporter = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "square.and.arrow.down.fill")
+                                .foregroundStyle(.orange)
+                            Text("Import Audio File")
+                                .foregroundStyle(.orange)
+                        }
+                    }
                 } header: {
                     Text("Your Recordings")
+                } footer: {
+                    Text("⏱ Maximum 30 seconds. Longer files will be rejected.")
+                        .foregroundStyle(.orange)
                 }
 
                 Section {
@@ -78,6 +97,153 @@ struct WakeUpVoicesSettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showingRecordSheet) {
             RecordVoiceView()
+        }
+        .fileImporter(
+            isPresented: $showingFileImporter,
+            allowedContentTypes: [.audio, .mp3, .mpeg4Audio, .wav, .aiff],
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let urls):
+                if let url = urls.first {
+                    importedFileURL = url
+                    importName = url.deletingPathExtension().lastPathComponent
+                    showingNamePrompt = true
+                }
+            case .failure(let error):
+                importError = error.localizedDescription
+                showingImportError = true
+            }
+        }
+        .sheet(isPresented: $showingNamePrompt) {
+            ImportNamePromptView(
+                fileName: importedFileURL?.lastPathComponent ?? "audio",
+                name: $importName,
+                isImporting: isImporting,
+                progress: voiceService.conversionProgress,
+                onCancel: {
+                    importedFileURL = nil
+                    importName = ""
+                    showingNamePrompt = false
+                },
+                onImport: {
+                    guard let url = importedFileURL else { return }
+                    isImporting = true
+                    Task {
+                        let result = await voiceService.importAudioFile(from: url, name: importName)
+                        isImporting = false
+                        switch result {
+                        case .success:
+                            importedFileURL = nil
+                            importName = ""
+                            showingNamePrompt = false
+                        case .tooLong(let duration):
+                            importError = "Audio is \(Int(duration)) seconds. Maximum allowed is 30 seconds."
+                            showingNamePrompt = false
+                            showingImportError = true
+                        case .failed(let error):
+                            importError = error.localizedDescription
+                            showingNamePrompt = false
+                            showingImportError = true
+                        }
+                    }
+                }
+            )
+            .presentationDetents([.height(280)])
+            .interactiveDismissDisabled(isImporting)
+        }
+        .alert("Import Failed", isPresented: $showingImportError) {
+            Button("OK") {
+                importError = nil
+            }
+        } message: {
+            Text(importError ?? "Unknown error")
+        }
+    }
+}
+
+// MARK: - Import Name Prompt
+
+private struct ImportNamePromptView: View {
+    let fileName: String
+    @Binding var name: String
+    let isImporting: Bool
+    let progress: String?
+    let onCancel: () -> Void
+    let onImport: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 24) {
+                // File info
+                HStack(spacing: 12) {
+                    Image(systemName: "doc.fill")
+                        .font(.title2)
+                        .foregroundStyle(.orange)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Importing")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(fileName)
+                            .font(.body)
+                            .lineLimit(1)
+                    }
+                    Spacer()
+                }
+                .padding()
+                .background(Color(.secondarySystemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                // Name input
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Give it a name")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    TextField("e.g. Morning alarm", text: $name)
+                        .textFieldStyle(.roundedBorder)
+                        .disabled(isImporting)
+                }
+
+                Spacer()
+
+                // Import button
+                Button {
+                    onImport()
+                } label: {
+                    if isImporting {
+                        HStack(spacing: 8) {
+                            ProgressView()
+                                .tint(.white)
+                            Text(progress ?? "Importing...")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.gray)
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    } else {
+                        Text("Import")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(name.isEmpty ? Color.gray : Color.orange)
+                            .foregroundStyle(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                }
+                .disabled(name.isEmpty || isImporting)
+            }
+            .padding()
+            .navigationTitle("Import Audio")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        onCancel()
+                    }
+                    .disabled(isImporting)
+                }
+            }
         }
     }
 }

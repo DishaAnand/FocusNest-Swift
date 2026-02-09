@@ -25,14 +25,6 @@ public struct HomeView: View {
     private var todoTasks: [FocusTask] { allTasks.filter { !$0.isCompleted } }
     private var doneTasks: [FocusTask] { allTasks.filter { $0.isCompleted } }
 
-    private var totalFocusTime: String {
-        let totalMinutes = todoTasks.reduce(0) { $0 + ($1.totalFocusTime / 60) }
-        if totalMinutes >= 60 {
-            return "\(totalMinutes / 60)h \(totalMinutes % 60)m"
-        }
-        return "\(totalMinutes)m"
-    }
-
     public var body: some View {
         NavigationStack {
             List {
@@ -175,35 +167,6 @@ public struct HomeView: View {
 
     private var summaryCard: some View {
         VStack(spacing: 16) {
-            // Stats row
-            HStack(spacing: 24) {
-                // Tasks count
-                VStack(spacing: 4) {
-                    Text("\(todoTasks.count)")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundStyle(.primary)
-                    Text("tasks")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Divider()
-                    .frame(height: 36)
-
-                // Focus time
-                VStack(spacing: 4) {
-                    Text(totalFocusTime)
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundStyle(.primary)
-                    Text("focused")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-            }
-            .padding(.horizontal, 4)
-
             // Plan sessions button - navigates to Timer tab with session planner
             Button {
                 NotificationCenter.default.post(name: .switchToTimerTab, object: nil)
@@ -289,14 +252,10 @@ public struct HomeView: View {
         showStartPrompt = false
 
         if let task = pendingTask {
-            // Single task start
+            // Select the task and navigate to Timer screen
+            // User will pick duration and start themselves
             timerService.selectedTask = task
             NotificationCenter.default.post(name: .switchToTimerTab, object: nil)
-            if withPrediction {
-                NotificationCenter.default.post(name: .showEnergyPrediction, object: nil)
-            } else {
-                NotificationCenter.default.post(name: .autoStartTimer, object: nil)
-            }
         }
 
         pendingTask = nil
@@ -402,7 +361,7 @@ private struct StartPromptSheet: View {
                 .padding(.top, 8)
 
             HStack(spacing: 16) {
-                // Predict button
+                // Predict button - matches start with gradient
                 Button {
                     dismiss()
                     onPredict()
@@ -411,12 +370,18 @@ private struct StartPromptSheet: View {
                         Image(systemName: "sparkles")
                             .font(.system(size: 14))
                         Text("Predict")
-                            .font(.system(size: 15, weight: .medium))
+                            .font(.system(size: 15, weight: .semibold))
                     }
-                    .foregroundStyle(.purple)
+                    .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .background(Color.purple.opacity(0.12))
+                    .background(
+                        LinearGradient(
+                            colors: [Theme.focusColor, Theme.pausedColor],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
 
@@ -429,7 +394,7 @@ private struct StartPromptSheet: View {
                         Image(systemName: "play.fill")
                             .font(.system(size: 14))
                         Text("Start")
-                            .font(.system(size: 15, weight: .medium))
+                            .font(.system(size: 15, weight: .semibold))
                     }
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)

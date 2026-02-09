@@ -10,35 +10,23 @@ struct AmbientSoundButton: View {
 
     var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 8) {
+            HStack(spacing: 10) {
                 Image(systemName: isPlaying ? "waveform" : sound.iconName)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [.cyan, .blue],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Theme.focusColor)
                     .scaleEffect(isPlaying && isAnimating ? 1.1 : 1.0)
 
                 Text(sound.displayName)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(Theme.textPrimary)
 
                 if isPlaying {
-                    // Small animated dots
-                    HStack(spacing: 2) {
+                    // Animated dots
+                    HStack(spacing: 3) {
                         ForEach(0..<3, id: \.self) { i in
                             Circle()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [.cyan, .blue],
-                                        startPoint: .top,
-                                        endPoint: .bottom
-                                    )
-                                )
-                                .frame(width: 4, height: 4)
+                                .fill(Theme.focusColor)
+                                .frame(width: 5, height: 5)
                                 .scaleEffect(isAnimating ? [1.0, 1.4, 0.8][i] : [0.8, 1.0, 1.2][i])
                                 .animation(
                                     .easeInOut(duration: 0.5)
@@ -50,27 +38,20 @@ struct AmbientSoundButton: View {
                     }
                 }
             }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 11)
+            .padding(.horizontal, 22)
+            .padding(.vertical, 14)
             .background(
-                RoundedRectangle(cornerRadius: 22)
-                    .fill(Theme.backgroundSecondary.opacity(0.8))
+                Capsule()
+                    .fill(Theme.backgroundSecondary)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 22)
+                        Capsule()
                             .stroke(
-                                LinearGradient(
-                                    colors: isPlaying
-                                        ? [.cyan.opacity(0.6), .blue.opacity(0.5), .purple.opacity(0.3)]
-                                        : [.cyan.opacity(0.4), .blue.opacity(0.3), .teal.opacity(0.2)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1.5
+                                isPlaying ? Theme.focusColor : Theme.focusColor.opacity(0.4),
+                                lineWidth: 2
                             )
                     )
-                    .shadow(color: .cyan.opacity(isPlaying ? 0.25 : 0.12), radius: 8, x: 0, y: 2)
+                    .shadow(color: Theme.focusColor.opacity(isPlaying ? 0.25 : 0.12), radius: 10, x: 0, y: 4)
             )
-            .scaleEffect(isAnimating && !isPlaying ? 1.02 : 1.0)
         }
         .buttonStyle(.plain)
         .onAppear {

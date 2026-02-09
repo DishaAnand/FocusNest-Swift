@@ -1,10 +1,18 @@
 import SwiftUI
 
+/// Task breakdown item for celebration display
+struct TaskBreakdownItem: Identifiable {
+    let id: UUID
+    let name: String
+    let sessionCount: Int
+}
+
 /// Enhanced celebration view for completing all sessions in a plan
 struct FinalSessionCelebrationView: View {
     let totalSessions: Int
     let totalMinutes: Int
     let totalDistractions: Int
+    let taskBreakdown: [TaskBreakdownItem]  // Empty if no tasks assigned
     let onDone: () -> Void
 
     @Environment(SoundService.self) private var soundService
@@ -235,6 +243,24 @@ struct FinalSessionCelebrationView: View {
                             color: totalDistractions == 0 ? .green : .orange
                         )
                     }
+
+                    // Task breakdown section (only shown if tasks were assigned)
+                    if !taskBreakdown.isEmpty {
+                        VStack(spacing: 10) {
+                            Text("Tasks Completed")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(.white.opacity(0.5))
+                                .textCase(.uppercase)
+                                .tracking(1)
+
+                            VStack(spacing: 8) {
+                                ForEach(taskBreakdown) { item in
+                                    TaskBreakdownRow(item: item)
+                                }
+                            }
+                        }
+                        .padding(.top, 8)
+                    }
                 }
                 .offset(y: statsOffset)
                 .opacity(phase == .complete ? 1 : 0)
@@ -400,6 +426,76 @@ private struct StatBadge: View {
             RoundedRectangle(cornerRadius: 12)
                 .fill(.ultraThinMaterial)
         )
+    }
+}
+
+// MARK: - Task Breakdown Row
+
+private struct TaskBreakdownRow: View {
+    let item: TaskBreakdownItem
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Task icon with gradient
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [.purple.opacity(0.3), .pink.opacity(0.2)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 32, height: 32)
+
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 16))
+                    .foregroundStyle(.green)
+            }
+
+            // Task name
+            Text(item.name)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+
+            Spacer()
+
+            // Session count pill
+            Text("\(item.sessionCount) session\(item.sessionCount > 1 ? "s" : "")")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.8))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [.purple.opacity(0.4), .pink.opacity(0.3)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                )
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(
+                            LinearGradient(
+                                colors: [.purple.opacity(0.2), .pink.opacity(0.1)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                )
+        )
+        .padding(.horizontal, 20)
     }
 }
 
@@ -672,6 +768,10 @@ private struct FinalConfettiPiece: View {
         totalSessions: 3,
         totalMinutes: 75,
         totalDistractions: 1,
+        taskBreakdown: [
+            TaskBreakdownItem(id: UUID(), name: "Build login feature", sessionCount: 2),
+            TaskBreakdownItem(id: UUID(), name: "Write documentation", sessionCount: 1)
+        ],
         onDone: { print("Done!") }
     )
     .environment(SoundService())

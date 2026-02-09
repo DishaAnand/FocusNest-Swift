@@ -7,6 +7,14 @@ struct SessionCompleteView: View {
     let onTakeBreak: () -> Void
     let onExtend: (Int) -> Void // extension duration in seconds
 
+    // Session plan context (optional)
+    var currentSession: Int? = nil
+    var totalSessions: Int? = nil
+
+    private var isSessionPlan: Bool {
+        currentSession != nil && totalSessions != nil
+    }
+
     @Environment(SoundService.self) private var soundService
     @Environment(UserSettings.self) private var settings
 
@@ -186,6 +194,31 @@ struct SessionCompleteView: View {
                     .offset(y: phase == .reveal || phase == .complete ? 0 : 20)
                     .padding(.bottom, 24)
 
+                // Session progress (for session plans)
+                if isSessionPlan, let current = currentSession, let total = totalSessions {
+                    HStack(spacing: 8) {
+                        ForEach(0..<total, id: \.self) { index in
+                            Circle()
+                                .fill(index < current
+                                      ? LinearGradient(colors: [.green, .mint], startPoint: .top, endPoint: .bottom)
+                                      : LinearGradient(colors: [.white.opacity(0.3), .white.opacity(0.2)], startPoint: .top, endPoint: .bottom))
+                                .frame(width: index < current ? 10 : 8, height: index < current ? 10 : 8)
+                        }
+                        Text("Session \(current) of \(total)")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.7))
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(
+                        Capsule()
+                            .fill(.ultraThinMaterial)
+                    )
+                    .scaleEffect(streakScale)
+                    .opacity(phase == .complete ? 1 : 0)
+                    .padding(.bottom, 8)
+                }
+
                 // Achievement badge
                 HStack(spacing: 12) {
                     // Focus emoji with bounce
@@ -227,16 +260,16 @@ struct SessionCompleteView: View {
 
                 // Action buttons
                 VStack(spacing: 16) {
-                    // Primary: Take a Break
+                    // Primary: Take a Break / Start Break
                     Button {
                         soundService.mediumImpact(settings: settings)
                         onTakeBreak()
                     } label: {
                         HStack(spacing: 12) {
-                            Image(systemName: "leaf.fill")
+                            Image(systemName: isSessionPlan ? "cup.and.saucer.fill" : "leaf.fill")
                                 .font(.system(size: 18))
                                 .symbolEffect(.pulse)
-                            Text("Take a Break")
+                            Text(isSessionPlan ? "Start Break" : "Take a Break")
                                 .font(.system(size: 17, weight: .semibold))
                         }
                         .foregroundStyle(.white)
@@ -260,8 +293,8 @@ struct SessionCompleteView: View {
                         .shadow(color: .green.opacity(0.4), radius: 15, x: 0, y: 8)
                     }
 
-                    // Secondary: Keep Focusing (only show if NOT mandatory break)
-                    if !needsMandatoryBreak {
+                    // Secondary: Keep Focusing (only for single sessions, not session plans)
+                    if !isSessionPlan && !needsMandatoryBreak {
                         VStack(spacing: 14) {
                             Button {
                                 print("🔔 Keep momentum tapped - effectiveDuration: \(effectiveDuration)s, threshold: \(playfulNudgeThreshold)s, needsPlayfulNudge: \(needsPlayfulNudge)")

@@ -21,6 +21,8 @@ public struct TimerView: View {
     @State private var showDurationPicker = false
     @State private var showWakeUpVoiceOnboarding = false
     @State private var showRecordVoice = false
+    @State private var sessionPlanPendingOnboarding: SessionPlan? = nil  // Session plan waiting for onboarding
+    @State private var startWithPredictionAfterOnboarding = false  // Whether to show energy prediction after onboarding
     @State private var lastPrediction: Int? = nil
     @State private var completedSessionDuration: Int = 0
     @State private var completedDistractionCount: Int = 0  // Captured at session end for display
@@ -45,19 +47,29 @@ public struct TimerView: View {
     // Flexible session planning (user picks count, duration decided per-session)
     @State private var sessionPlan = SessionPlan()
     @State private var pendingSessionPlan: SessionPlan? = nil  // Temp storage for energy overlay flow
-    @State private var showSessionPlannerOverlay = false  // Shows session count picker
+    @State private var showSessionPlannerSheet = false  // Shows session planner sheet
     @State private var continuousFocusTime: Int = 0  // For 45min auto-lock threshold
     @State private var sessionPlanTotalDistractions = 0
     @State private var sessionPlanTotalFocusTime = 0
     @State private var showFinalCelebration = false  // For last session enhanced celebration
     @Query(filter: #Predicate<FocusTask> { !$0.isCompleted }) private var availableTasks: [FocusTask]
+    @Query private var allTasks: [FocusTask]  // All tasks for looking up names in breakdown
+
+    /// Build task breakdown items for celebration display
+    private var taskBreakdownItems: [TaskBreakdownItem] {
+        let breakdown = sessionPlan.getTaskBreakdown()
+        return breakdown.compactMap { item in
+            guard let task = allTasks.first(where: { $0.id == item.taskId }) else { return nil }
+            return TaskBreakdownItem(id: item.taskId, name: task.title, sessionCount: item.sessionCount)
+        }
+    }
 
     public init() {}
 
     public var body: some View {
         GeometryReader { geometry in
             let isCompact = geometry.size.width < 500
-            let timerSize: CGFloat = isCompact ? 220 : 280
+            let timerSize: CGFloat = isCompact ? 260 : 320
 
             VStack(spacing: 0) {
                 // Session progress indicator (when plan is active)
@@ -78,7 +90,7 @@ public struct TimerView: View {
                     CircularProgressView(progress: timerService.progress, lineWidth: 10, size: timerSize, color: timerService.isBreak ? Theme.breakColor : Theme.focusColor)
                     VStack(spacing: 4) {
                         Text(timerService.formattedTime)
-                            .font(.system(size: isCompact ? 48 : 56, weight: .light, design: .rounded))
+                            .font(.system(size: isCompact ? 52 : 60, weight: .light, design: .rounded))
                             .foregroundStyle(Theme.textPrimary)
                             .monospacedDigit()
                             .contentTransition(.numericText())
@@ -97,21 +109,6 @@ public struct TimerView: View {
                         soundService.lightImpact(settings: settings)
                         showDurationPicker = true
                     }
-                }
-
-                // Selected task pill
-                if let task = timerService.selectedTask {
-                    Button { showTaskSelector = true } label: {
-                        HStack(spacing: Theme.spacingS) {
-                            Image(systemName: "target").foregroundStyle(Theme.focusColor)
-                            Text(task.title).font(.system(size: 14)).foregroundStyle(Theme.textPrimary).lineLimit(1)
-                            Image(systemName: "chevron.right").font(.caption2).foregroundStyle(Theme.textTertiary)
-                        }
-                        .padding(.horizontal, 14).padding(.vertical, 8)
-                        .background(Theme.backgroundSecondary).clipShape(Capsule())
-                    }
-                    .disabled(timerService.isRunning)
-                    .padding(.bottom, Theme.spacingS)
                 }
 
                 // Control buttons
@@ -229,27 +226,24 @@ public struct TimerView: View {
                 .zIndex(100)
             }
 
-            if showSessionPlannerOverlay {
-                SessionPlannerOverlay(
-                    plan: $sessionPlan,
-                    isPresented: $showSessionPlannerOverlay,
-                    onStart: {
-                        startSessionPlan()
-                    }
-                )
-                .transition(.opacity.combined(with: .scale(scale: 0.95)))
-                .zIndex(99)
-            }
         }
         .animation(.spring(response: 0.3), value: showEnergyOverlay)
-        .animation(.spring(response: 0.4), value: showSessionPlannerOverlay)
+        .sheet(isPresented: $showSessionPlannerSheet) {
+            SessionPlannerSheet(
+                plan: $sessionPlan,
+                isPresented: $showSessionPlannerSheet,
+                onStart: {
+                    startSessionPlan()
+                }
+            )
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
+        }
         .onReceive(NotificationCenter.default.publisher(for: .showSessionPlanner)) { _ in
-            // Show session planner overlay (triggered from Home tab)
+            // Show session planner sheet (triggered from Home tab)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 if timerService.state == .idle && !sessionPlan.isActive {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                        showSessionPlannerOverlay = true
-                    }
+                    showSessionPlannerSheet = true
                 }
             }
         }
@@ -257,8 +251,15 @@ public struct TimerView: View {
             if let userInfo = notification.userInfo,
                let plan = userInfo["sessionPlan"] as? SessionPlan,
                plan.totalSessions > 0 {
-                sessionPlan = plan
-                startSessionPlan()
+                // Check if we should show wake-up voice onboarding first
+                if !settings.hasSeenWakeUpVoiceOnboarding && wakeUpVoiceService.voices.isEmpty {
+                    sessionPlanPendingOnboarding = plan
+                    startWithPredictionAfterOnboarding = false
+                    showWakeUpVoiceOnboarding = true
+                } else {
+                    sessionPlan = plan
+                    startSessionPlan()
+                }
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .autoStartTimer)) { _ in
@@ -266,7 +267,14 @@ public struct TimerView: View {
             if timerService.state == .idle && !timerService.isBreak {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                     if timerService.state == .idle {
-                        startTimerWithoutPrediction()
+                        // Check if we should show wake-up voice onboarding first
+                        if !settings.hasSeenWakeUpVoiceOnboarding && wakeUpVoiceService.voices.isEmpty {
+                            sessionPlanPendingOnboarding = nil
+                            startWithPredictionAfterOnboarding = false
+                            showWakeUpVoiceOnboarding = true
+                        } else {
+                            startTimerWithoutPrediction()
+                        }
                     }
                 }
             }
@@ -275,19 +283,33 @@ public struct TimerView: View {
             // Show energy prediction overlay for single task (with small delay for tab switch)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 if timerService.state == .idle && !timerService.isBreak {
-                    pendingSessionPlan = nil  // Not a session plan
-                    showEnergyOverlay = true
+                    // Check if we should show wake-up voice onboarding first
+                    if !settings.hasSeenWakeUpVoiceOnboarding && wakeUpVoiceService.voices.isEmpty {
+                        sessionPlanPendingOnboarding = nil
+                        startWithPredictionAfterOnboarding = true
+                        showWakeUpVoiceOnboarding = true
+                    } else {
+                        pendingSessionPlan = nil  // Not a session plan
+                        showEnergyOverlay = true
+                    }
                 }
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .startSessionPlanWithPrediction)) { notification in
-            // Store session plan and show energy overlay
+            // Store session plan and show energy overlay (or onboarding first)
             if let userInfo = notification.userInfo,
                let plan = userInfo["sessionPlan"] as? SessionPlan,
                plan.totalSessions > 0 {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    pendingSessionPlan = plan
-                    showEnergyOverlay = true
+                    // Check if we should show wake-up voice onboarding first
+                    if !settings.hasSeenWakeUpVoiceOnboarding && wakeUpVoiceService.voices.isEmpty {
+                        sessionPlanPendingOnboarding = plan
+                        startWithPredictionAfterOnboarding = true
+                        showWakeUpVoiceOnboarding = true
+                    } else {
+                        pendingSessionPlan = plan
+                        showEnergyOverlay = true
+                    }
                 }
             }
         }
@@ -341,7 +363,10 @@ public struct TimerView: View {
                         timerService.startExtension(duration: extensionSeconds)
                         Task { await notificationService.scheduleTimerCompletion(in: extensionSeconds, mode: .focus, taskTitle: timerService.selectedTask?.title) }
                     }
-                }
+                },
+                // Pass session plan context
+                currentSession: sessionPlan.isActive ? sessionPlan.displayCurrentSession : nil,
+                totalSessions: sessionPlan.isActive ? sessionPlan.totalSessions : nil
             )
         }
         .fullScreenCover(isPresented: $showFinalCelebration) {
@@ -349,6 +374,7 @@ public struct TimerView: View {
                 totalSessions: sessionPlan.totalSessions,
                 totalMinutes: sessionPlanTotalFocusTime / 60,
                 totalDistractions: sessionPlanTotalDistractions,
+                taskBreakdown: taskBreakdownItems,
                 onDone: {
                     showFinalCelebration = false
                     finishSessionPlan()
@@ -374,12 +400,28 @@ public struct TimerView: View {
                     showWakeUpVoiceOnboarding = false
                     // Go directly to record screen
                     showRecordVoice = true
+                    // Note: Session plan will start after recording (handled in showRecordVoice dismiss)
                 },
                 onSkip: {
                     settings.hasSeenWakeUpVoiceOnboarding = true
                     showWakeUpVoiceOnboarding = false
-                    // Continue to start timer
-                    startTimerWithoutPrediction()
+                    // Continue with session plan, energy prediction, or regular timer
+                    if let plan = sessionPlanPendingOnboarding {
+                        sessionPlanPendingOnboarding = nil
+                        if startWithPredictionAfterOnboarding {
+                            pendingSessionPlan = plan
+                            showEnergyOverlay = true
+                        } else {
+                            sessionPlan = plan
+                            startSessionPlan()
+                        }
+                    } else if startWithPredictionAfterOnboarding {
+                        // Single task with prediction
+                        pendingSessionPlan = nil
+                        showEnergyOverlay = true
+                    } else {
+                        startTimerWithoutPrediction()
+                    }
                 }
             )
             .presentationDetents([.large])
@@ -388,8 +430,23 @@ public struct TimerView: View {
         .sheet(isPresented: $showRecordVoice) {
             RecordVoiceView()
                 .onDisappear {
-                    // After recording, start the timer
-                    startTimerWithoutPrediction()
+                    // After recording, continue with session plan, energy prediction, or regular timer
+                    if let plan = sessionPlanPendingOnboarding {
+                        sessionPlanPendingOnboarding = nil
+                        if startWithPredictionAfterOnboarding {
+                            pendingSessionPlan = plan
+                            showEnergyOverlay = true
+                        } else {
+                            sessionPlan = plan
+                            startSessionPlan()
+                        }
+                    } else if startWithPredictionAfterOnboarding {
+                        // Single task with prediction
+                        pendingSessionPlan = nil
+                        showEnergyOverlay = true
+                    } else {
+                        startTimerWithoutPrediction()
+                    }
                 }
         }
         .sheet(isPresented: $showAmbientSoundPicker) {
