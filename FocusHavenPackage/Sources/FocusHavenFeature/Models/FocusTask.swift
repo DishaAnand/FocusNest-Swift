@@ -4,12 +4,12 @@ import SwiftData
 /// A task that the user can focus on during a Pomodoro session
 @Model
 public final class FocusTask: @unchecked Sendable {
-    public var id: UUID
-    public var title: String
-    public var isCompleted: Bool
-    public var createdAt: Date
+    public var id: UUID = UUID()
+    public var title: String = ""
+    public var isCompleted: Bool = false
+    public var createdAt: Date = Date()
     public var completedAt: Date?
-    public var totalFocusTime: Int
+    public var totalFocusTime: Int = 0
 
     public init(
         id: UUID = UUID(),

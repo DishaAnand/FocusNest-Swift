@@ -4,19 +4,19 @@ import SwiftData
 /// A record of a completed focus session
 @Model
 public final class FocusRecord: @unchecked Sendable {
-    public var id: UUID
-    public var date: Date
-    public var duration: Int
-    public var isBreak: Bool
+    public var id: UUID = UUID()
+    public var date: Date = Date()
+    public var duration: Int = 0
+    public var isBreak: Bool = false
     public var taskId: UUID?
     public var taskTitle: String?
-    public var wasCompleted: Bool
-    public var wasBuddySession: Bool
+    public var wasCompleted: Bool = true
+    public var wasBuddySession: Bool = false
     public var predictedFocus: Int?  // 1-5, nil if skipped
     public var actualFocus: Int?     // 1-5, calculated from session
-    public var distractionCount: Int // For solo sessions
+    public var distractionCount: Int = 0 // For solo sessions
     public var rechargePercentage: Double?  // 0-100, nil for focus sessions
-    public var wasFullyRecharged: Bool  // true if previous break was 100%
+    public var wasFullyRecharged: Bool = false  // true if previous break was 100%
 
     public init(
         id: UUID = UUID(),
