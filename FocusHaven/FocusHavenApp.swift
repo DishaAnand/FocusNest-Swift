@@ -2,6 +2,11 @@ import SwiftUI
 import SwiftData
 import FocusHavenFeature
 
+let focusModelContainer: ModelContainer = {
+    let config = ModelConfiguration(cloudKitDatabase: .automatic)
+    return try! ModelContainer(for: FocusTask.self, FocusRecord.self, configurations: config)
+}()
+
 @main
 @MainActor
 struct FocusHavenApp: App {
@@ -53,6 +58,6 @@ struct FocusHavenApp: App {
                     _ = await notificationService.requestAuthorization()
                 }
         }
-        .modelContainer(for: [FocusTask.self, FocusRecord.self])
+        .modelContainer(focusModelContainer)
     }
 }
