@@ -105,7 +105,11 @@ struct WakeUpVoiceOnboardingView: View {
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 32)
+            .frame(maxWidth: 400)  // iPad: constrain button width
+            .frame(maxWidth: .infinity)  // Center on larger screens
         }
+        .frame(maxWidth: 500)  // iPad: constrain overall content width
+        .frame(maxWidth: .infinity)  // Center on larger screens
         .background(Theme.backgroundPrimary)
     }
 }

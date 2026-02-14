@@ -12,8 +12,10 @@ public struct TimerView: View {
     @Environment(SoundService.self) private var soundService
     @Environment(WakeUpVoiceService.self) private var wakeUpVoiceService
     @Environment(AmbientSoundService.self) private var ambientSoundService
+    @Environment(MotionService.self) private var motionService
 
     @State private var showTaskSelector = false
+    @State private var showRechargeMode = false
     @State private var showAmbientSoundPicker = false
     @State private var showEnergyOverlay = false
     @State private var showSessionComplete = false
@@ -28,6 +30,8 @@ public struct TimerView: View {
     @State private var completedDistractionCount: Int = 0  // Captured at session end for display
     @State private var predictedFocus: Int? = nil
     @State private var distractionCount = 0
+    @State private var lastBreakRechargePercentage: Double = 0  // Recharge from previous break for halo effect
+
     // Result data for sheet (set before presenting)
     @State private var focusResult: FocusResultData? = nil
 
@@ -54,6 +58,8 @@ public struct TimerView: View {
     @State private var showFinalCelebration = false  // For last session enhanced celebration
     @Query(filter: #Predicate<FocusTask> { !$0.isCompleted }) private var availableTasks: [FocusTask]
     @Query private var allTasks: [FocusTask]  // All tasks for looking up names in breakdown
+    @Query private var celestialBodies: [CelestialBody]  // For planet evolution check
+    @Query private var focusRecords: [FocusRecord]  // For total hours calculation
 
     /// Build task breakdown items for celebration display
     private var taskBreakdownItems: [TaskBreakdownItem] {
@@ -132,9 +138,19 @@ public struct TimerView: View {
                                     wasCompleted: false,
                                     predictedFocus: predicted,
                                     actualFocus: actualFocus,
-                                    distractionCount: dist
+                                    distractionCount: dist,
+                                    wasFullyRecharged: lastBreakRechargePercentage >= 100
                                 )
                                 modelContext.insert(record)
+                                // Create celestial body for the universe (if session >= 5 min)
+                                if let star = CelestialBody.createStar(from: record, previousRechargeLevel: lastBreakRechargePercentage) {
+                                    modelContext.insert(star)
+                                }
+                                // Sync milestone planets based on total focus hours
+                                let totalHours = CelestialBody.totalFocusHours(from: focusRecords)
+                                CelestialBody.syncMilestonePlanets(totalHours: totalHours, existingBodies: celestialBodies, modelContext: modelContext)
+                                try? modelContext.save()
+                                lastBreakRechargePercentage = 0  // Reset after use
                                 timerService.stop()
                                 notificationService.cancelTimerNotifications()
 
@@ -322,18 +338,48 @@ public struct TimerView: View {
                 wasCompleted: result.wasCompleted,
                 onDone: {
                     focusResult = nil
+                    if sessionPlan.isActive {
+                        // Session plan: check if last session for final celebration
+                        if sessionPlan.isLastSession {
+                            completedSessionDuration = sessionPlanTotalFocusTime
+                            completedDistractionCount = sessionPlanTotalDistractions
+                            showFinalCelebration = true
+                        }
+                        // Otherwise just dismiss, user can choose break or continue from timer
+                    }
                     resetPredictionState()
                 },
                 onTakeBreak: {
                     focusResult = nil
                     resetPredictionState()
-                    // Break auto-starts via timerService
+                    if sessionPlan.isActive {
+                        // Session plan: start break, then next session
+                        handleSessionPlanTakeBreak()
+                    }
+                    // Normal flow: Break auto-starts via timerService
                 },
                 onExtend: { extensionSeconds in
                     focusResult = nil
-                    // Start a new focus session with the extension duration
-                    timerService.startExtension(duration: extensionSeconds)
-                    Task { await notificationService.scheduleTimerCompletion(in: extensionSeconds, mode: .focus, taskTitle: timerService.selectedTask?.title) }
+                    if sessionPlan.isActive {
+                        // Session plan: skip break, go to next session
+                        handleSessionPlanContinue()
+                    } else {
+                        // Normal flow: Start a new focus session with the extension duration
+                        timerService.startExtension(duration: extensionSeconds)
+                        Task { await notificationService.scheduleTimerCompletion(in: extensionSeconds, mode: .focus, taskTitle: timerService.selectedTask?.title) }
+                    }
+                },
+                onDismiss: {
+                    focusResult = nil
+                    if sessionPlan.isActive {
+                        // Session plan: check if last session for final celebration
+                        if sessionPlan.isLastSession {
+                            completedSessionDuration = sessionPlanTotalFocusTime
+                            completedDistractionCount = sessionPlanTotalDistractions
+                            showFinalCelebration = true
+                        }
+                    }
+                    resetPredictionState()
                 }
             )
             .presentationDetents([.large])
@@ -350,7 +396,15 @@ public struct TimerView: View {
                         handleSessionPlanTakeBreak()
                     } else {
                         resetPredictionState()
-                        // Normal flow: Break auto-starts via timerService
+                        // Normal flow: Start break timer and show RechargeView
+                        timerService.setMode(.shortBreak, duration: settings.breakDuration)
+                        timerService.start()
+                        // Show RechargeView after a brief delay to let sheet dismiss
+                        if motionService.isAvailable {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                showRechargeMode = true
+                            }
+                        }
                     }
                 },
                 onExtend: { extensionSeconds in
@@ -363,6 +417,10 @@ public struct TimerView: View {
                         timerService.startExtension(duration: extensionSeconds)
                         Task { await notificationService.scheduleTimerCompletion(in: extensionSeconds, mode: .focus, taskTitle: timerService.selectedTask?.title) }
                     }
+                },
+                onDismiss: {
+                    showSessionComplete = false
+                    resetPredictionState()
                 },
                 // Pass session plan context
                 currentSession: sessionPlan.isActive ? sessionPlan.displayCurrentSession : nil,
@@ -378,8 +436,15 @@ public struct TimerView: View {
                 onDone: {
                     showFinalCelebration = false
                     finishSessionPlan()
+                },
+                onDismiss: {
+                    showFinalCelebration = false
+                    finishSessionPlan()
                 }
             )
+        }
+        .fullScreenCover(isPresented: $showRechargeMode) {
+            RechargeView()
         }
         .sheet(isPresented: $showNotificationOnboarding) {
             NotificationOnboardingSheet(
@@ -505,6 +570,23 @@ public struct TimerView: View {
                 timerService.setMode(.longBreak, duration: newDuration)
             }
         }
+        .onChange(of: timerService.state) { oldState, newState in
+            // Show recharge mode when break starts running (mandatory for all breaks)
+            if newState == .running && oldState != .running && timerService.isBreak {
+                if motionService.isAvailable {
+                    showRechargeMode = true
+                }
+            }
+            // Note: We do NOT auto-dismiss RechargeView here when break ends.
+            // RechargeView handles its own flow: shows RechargeCompleteView, then dismisses itself.
+            // The recharge percentage is captured in onChange(of: showRechargeMode) when it actually dismisses.
+        }
+        .onChange(of: showRechargeMode) { wasShowing, isShowing in
+            // Capture recharge percentage when RechargeView dismisses (via skip, early exit, etc.)
+            if wasShowing && !isShowing {
+                lastBreakRechargePercentage = motionService.rechargePercentage
+            }
+        }
         .task { setupTimerCallbacks() }
     }
 
@@ -625,18 +707,39 @@ public struct TimerView: View {
                         wasCompleted: true,
                         predictedFocus: predictedFocus,
                         actualFocus: nil,
-                        distractionCount: distractionCount
+                        distractionCount: distractionCount,
+                        wasFullyRecharged: lastBreakRechargePercentage >= 100
                     )
                     modelContext.insert(record)
+                    // Create celestial body for the universe (if session >= 5 min)
+                    if let star = CelestialBody.createStar(from: record, previousRechargeLevel: lastBreakRechargePercentage) {
+                        modelContext.insert(star)
+                    }
+                    // Sync milestone planets based on total focus hours
+                    let totalHours = CelestialBody.totalFocusHours(from: focusRecords)
+                    CelestialBody.syncMilestonePlanets(totalHours: totalHours, existingBodies: celestialBodies, modelContext: modelContext)
+                    try? modelContext.save()
+                    lastBreakRechargePercentage = 0  // Reset after use
 
-                    if sessionPlan.isLastSession {
-                        // Last session complete - show final celebration
+                    // Check if user made a prediction - show prediction result first
+                    if let predicted = predictedFocus {
+                        let actualFocus = calculateActualFocus()
+                        focusResult = FocusResultData(
+                            predicted: predicted,
+                            actual: actualFocus,
+                            duration: settings.focusDuration,
+                            distractions: distractionCount,
+                            wasCompleted: true
+                        )
+                        // Note: After dismissing focusResult, user can take break or continue
+                        // The session plan state is preserved
+                    } else if sessionPlan.isLastSession {
+                        // Last session complete (no prediction) - show final celebration
                         completedSessionDuration = sessionPlanTotalFocusTime
                         completedDistractionCount = sessionPlanTotalDistractions
                         showFinalCelebration = true
                     } else {
-                        // Not last session - show completion with choice (break or continue)
-                        // SessionCompleteView will handle the choice
+                        // Not last session (no prediction) - show completion with choice
                         completedSessionDuration = settings.focusDuration
                         completedDistractionCount = distractionCount
                         showSessionComplete = true
@@ -665,9 +768,19 @@ public struct TimerView: View {
                     wasCompleted: true,
                     predictedFocus: predictedFocus,
                     actualFocus: actualFocus,
-                    distractionCount: distractionCount
+                    distractionCount: distractionCount,
+                    wasFullyRecharged: lastBreakRechargePercentage >= 100
                 )
                 modelContext.insert(record)
+                // Create celestial body for the universe (if session >= 5 min)
+                if let star = CelestialBody.createStar(from: record, previousRechargeLevel: lastBreakRechargePercentage) {
+                    modelContext.insert(star)
+                }
+                // Sync milestone planets based on total focus hours
+                let totalHours = CelestialBody.totalFocusHours(from: focusRecords)
+                CelestialBody.syncMilestonePlanets(totalHours: totalHours, existingBodies: celestialBodies, modelContext: modelContext)
+                try? modelContext.save()
+                lastBreakRechargePercentage = 0  // Reset after use
 
                 // Show prediction result if user made a prediction
                 if let predicted = predictedFocus {
@@ -683,6 +796,15 @@ public struct TimerView: View {
                     completedSessionDuration = settings.focusDuration
                     completedDistractionCount = distractionCount
                     showSessionComplete = true
+                }
+            } else {
+                // Break complete in normal mode - transition to focus mode
+                distractionCount = 0
+                timerService.setMode(.focus, duration: settings.focusDuration)
+
+                // Auto-start focus if enabled
+                if settings.autoStartFocus {
+                    timerService.start()
                 }
             }
         }
@@ -768,6 +890,12 @@ public struct TimerView: View {
         // Start a break using user's break setting, after which user will set up next session
         timerService.setMode(.shortBreak, duration: settings.breakDuration)
         timerService.start()
+        // Show RechargeView after a brief delay to let sheet dismiss
+        if motionService.isAvailable {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                showRechargeMode = true
+            }
+        }
     }
 
     private func handleSessionPlanContinue() {

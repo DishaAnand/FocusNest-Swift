@@ -57,6 +57,8 @@ struct NotificationOnboardingSheet: View {
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 16)
+            .frame(maxWidth: 400)  // iPad: constrain button width
+            .frame(maxWidth: .infinity)  // Center on larger screens
         }
         .background(Theme.backgroundPrimary)
     }

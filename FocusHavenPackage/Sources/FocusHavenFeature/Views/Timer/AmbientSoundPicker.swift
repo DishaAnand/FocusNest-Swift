@@ -3,7 +3,10 @@ import SwiftUI
 @MainActor
 struct AmbientSoundPicker: View {
     @Environment(AmbientSoundService.self) private var soundService
+    @Environment(SubscriptionService.self) private var subscriptionService
     @Environment(\.dismiss) private var dismiss
+
+    @State private var showUpgradePrompt = false
 
     var body: some View {
         NavigationStack {
@@ -30,15 +33,23 @@ struct AmbientSoundPicker: View {
                 ScrollView {
                     LazyVStack(spacing: Theme.spacingS) {
                         ForEach(AmbientSound.allCases) { sound in
+                            let isLocked = !sound.isFree && !subscriptionService.canAccessAllSounds
                             SoundOptionRow(
                                 sound: sound,
-                                isSelected: soundService.selectedSound == sound
+                                isSelected: soundService.selectedSound == sound,
+                                isLocked: isLocked
                             ) {
-                                soundService.changeSound(to: sound)
+                                if isLocked {
+                                    showUpgradePrompt = true
+                                } else {
+                                    soundService.changeSound(to: sound)
+                                }
                             }
                         }
                     }
                     .padding(Theme.spacingM)
+                    .frame(maxWidth: 500)  // iPad: constrain content width
+                    .frame(maxWidth: .infinity)  // Center on larger screens
                 }
             }
             .background(Theme.backgroundPrimary)
@@ -51,8 +62,32 @@ struct AmbientSoundPicker: View {
                     }
                 }
             }
+            .sheet(isPresented: $showUpgradePrompt) {
+                UpgradePromptSheet {
+                    UpgradePromptView.soundsLocked()
+                }
+            }
         }
         .presentationDetents([.medium])
+    }
+}
+
+// Helper to present UpgradePromptView in a sheet
+private struct UpgradePromptSheet<Content: View>: View {
+    @Environment(\.dismiss) private var dismiss
+    let content: () -> Content
+
+    init(@ViewBuilder content: @escaping () -> Content) {
+        self.content = content
+    }
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.3).ignoresSafeArea()
+                .onTapGesture { dismiss() }
+            content()
+        }
+        .presentationBackground(.clear)
     }
 }
 
@@ -60,6 +95,7 @@ struct AmbientSoundPicker: View {
 private struct SoundOptionRow: View {
     let sound: AmbientSound
     let isSelected: Bool
+    let isLocked: Bool
     let onTap: () -> Void
 
     var body: some View {
@@ -79,12 +115,16 @@ private struct SoundOptionRow: View {
                 // Name
                 Text(sound.displayName)
                     .font(Theme.bodyFont)
-                    .foregroundStyle(Theme.textPrimary)
+                    .foregroundStyle(isLocked ? Theme.textSecondary : Theme.textPrimary)
 
                 Spacer()
 
-                // Checkmark
-                if isSelected {
+                // Lock or Checkmark
+                if isLocked {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 16))
+                        .foregroundStyle(Theme.textTertiary)
+                } else if isSelected {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 22))
                         .foregroundStyle(Theme.focusColor)

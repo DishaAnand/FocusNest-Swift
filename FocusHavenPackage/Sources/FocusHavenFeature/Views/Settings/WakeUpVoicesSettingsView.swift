@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 @MainActor
 struct WakeUpVoicesSettingsView: View {
     @Environment(WakeUpVoiceService.self) private var voiceService
+    @Environment(SubscriptionService.self) private var subscriptionService
     @State private var showingRecordSheet = false
     @State private var showingFileImporter = false
     @State private var showingNamePrompt = false
@@ -12,6 +13,11 @@ struct WakeUpVoicesSettingsView: View {
     @State private var isImporting = false
     @State private var importError: String?
     @State private var showingImportError = false
+    @State private var showUpgradePrompt = false
+
+    private var canAddMoreVoices: Bool {
+        subscriptionService.canAddWakeUpVoice(currentCount: voiceService.voices.count)
+    }
 
     var body: some View {
         @Bindable var voiceService = voiceService
@@ -54,24 +60,44 @@ struct WakeUpVoicesSettingsView: View {
                     }
 
                     Button {
-                        showingRecordSheet = true
+                        if canAddMoreVoices {
+                            showingRecordSheet = true
+                        } else {
+                            showUpgradePrompt = true
+                        }
                     } label: {
                         HStack {
                             Image(systemName: "mic.circle.fill")
                                 .foregroundStyle(Theme.focusColor)
                             Text("Record New Voice")
                                 .foregroundStyle(Theme.focusColor)
+                            if !canAddMoreVoices {
+                                Spacer()
+                                Image(systemName: "lock.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(Theme.textTertiary)
+                            }
                         }
                     }
 
                     Button {
-                        showingFileImporter = true
+                        if canAddMoreVoices {
+                            showingFileImporter = true
+                        } else {
+                            showUpgradePrompt = true
+                        }
                     } label: {
                         HStack {
                             Image(systemName: "square.and.arrow.down.fill")
                                 .foregroundStyle(.orange)
                             Text("Import Audio File")
                                 .foregroundStyle(.orange)
+                            if !canAddMoreVoices {
+                                Spacer()
+                                Image(systemName: "lock.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(Theme.textTertiary)
+                            }
                         }
                     }
                 } header: {
@@ -158,6 +184,14 @@ struct WakeUpVoicesSettingsView: View {
             }
         } message: {
             Text(importError ?? "Unknown error")
+        }
+        .sheet(isPresented: $showUpgradePrompt) {
+            ZStack {
+                Color.black.opacity(0.3).ignoresSafeArea()
+                    .onTapGesture { showUpgradePrompt = false }
+                UpgradePromptView.wakeUpVoiceLimit()
+            }
+            .presentationBackground(.clear)
         }
     }
 }

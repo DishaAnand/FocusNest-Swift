@@ -11,7 +11,6 @@ public struct HomeView: View {
 
     @State private var showAddTask = false
     @State private var showRenameTask = false
-    @State private var showBuddySession = false
     @State private var taskToRename: FocusTask?
     @State private var newTaskTitle = ""
     @State private var renameText = ""
@@ -125,11 +124,6 @@ public struct HomeView: View {
             .listStyle(.insetGrouped)
             .navigationTitle("Today")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button { showBuddySession = true } label: {
-                        Image(systemName: "person.2.fill")
-                    }
-                }
                 ToolbarItem(placement: .primaryAction) {
                     Button { showAddTask = true } label: {
                         Image(systemName: "plus")
@@ -148,9 +142,6 @@ public struct HomeView: View {
                 TextField("Task title", text: $renameText)
                 Button("Cancel", role: .cancel) { renameText = ""; taskToRename = nil }
                 Button("Rename") { renameTask() }.disabled(renameText.trimmingCharacters(in: .whitespaces).isEmpty)
-            }
-            .sheet(isPresented: $showBuddySession) {
-                BuddySessionView()
             }
             .sheet(isPresented: $showStartPrompt) {
                 StartPromptSheet(
@@ -193,6 +184,7 @@ public struct HomeView: View {
             .buttonStyle(.plain)
         }
         .padding(16)
+        .frame(maxWidth: 600)  // iPad: constrain content width
     }
 
     // MARK: - Actions
@@ -253,9 +245,13 @@ public struct HomeView: View {
 
         if let task = pendingTask {
             // Select the task and navigate to Timer screen
-            // User will pick duration and start themselves
             timerService.selectedTask = task
             NotificationCenter.default.post(name: .switchToTimerTab, object: nil)
+
+            // If prediction requested, show energy prediction overlay after tab switch
+            if withPrediction {
+                NotificationCenter.default.post(name: .showEnergyPrediction, object: nil)
+            }
         }
 
         pendingTask = nil

@@ -83,6 +83,32 @@ public struct FocusProgressView: View {
         return ((lastAvg - thisAvg) / lastAvg) * 100
     }
 
+    // MARK: - Recharge Score Data
+
+    private var breakSessions: [FocusRecord] {
+        records.filter { $0.isBreak }
+    }
+
+    private var thisWeekRechargeScore: Double {
+        let weekEnd = calendar.date(byAdding: .day, value: 7, to: thisWeekStart) ?? Date()
+        let weekBreaks = breakSessions.filter { $0.date >= thisWeekStart && $0.date < weekEnd }
+        let rechargePercentages = weekBreaks.compactMap { $0.rechargePercentage }
+        guard !rechargePercentages.isEmpty else { return 0 }
+        return rechargePercentages.reduce(0, +) / Double(rechargePercentages.count)
+    }
+
+    private var lastWeekRechargeScore: Double {
+        let weekBreaks = breakSessions.filter { $0.date >= lastWeekStart && $0.date < thisWeekStart }
+        let rechargePercentages = weekBreaks.compactMap { $0.rechargePercentage }
+        guard !rechargePercentages.isEmpty else { return 0 }
+        return rechargePercentages.reduce(0, +) / Double(rechargePercentages.count)
+    }
+
+    private var rechargeScoreChange: Double {
+        guard lastWeekRechargeScore > 0 else { return 0 }
+        return thisWeekRechargeScore - lastWeekRechargeScore
+    }
+
     private var dailyFocusData: [DayFocusData] {
         let maxMinutes = (0..<7).map { dayOffset -> Int in
             let date = calendar.date(byAdding: .day, value: dayOffset, to: thisWeekStart) ?? thisWeekStart
@@ -225,6 +251,8 @@ public struct FocusProgressView: View {
                 }
                 .padding(.horizontal, Theme.spacingM)
                 .padding(.bottom, Theme.spacingXL)
+                .frame(maxWidth: 700)  // iPad: constrain content width
+                .frame(maxWidth: .infinity)  // Center on larger screens
             }
             .background(Theme.backgroundPrimary)
             .navigationTitle("Progress")
@@ -351,35 +379,44 @@ public struct FocusProgressView: View {
     // MARK: - Stats Grid
 
     private var statsGrid: some View {
-        HStack(spacing: 12) {
-            // Streak
-            StatCard(
-                icon: "flame.fill",
-                iconColors: [.orange, .red],
-                value: "\(currentStreak)",
-                label: "day streak",
-                progress: chartAnimation ? min(Double(currentStreak) / 7.0, 1.0) : 0,
-                progressColor: .orange
-            )
+        VStack(spacing: 12) {
+            HStack(spacing: 12) {
+                // Streak
+                StatCard(
+                    icon: "flame.fill",
+                    iconColors: [.orange, .red],
+                    value: "\(currentStreak)",
+                    label: "day streak",
+                    progress: chartAnimation ? min(Double(currentStreak) / 7.0, 1.0) : 0,
+                    progressColor: .orange
+                )
 
-            // Focus Score
-            StatCard(
-                icon: "brain.head.profile.fill",
-                iconColors: [Theme.focusColor, .blue],
-                value: String(format: "%.1f", averageFocus),
-                label: "avg focus",
-                progress: chartAnimation ? averageFocus / 5.0 : 0,
-                progressColor: Theme.focusColor
-            )
+                // Focus Score
+                StatCard(
+                    icon: "brain.head.profile.fill",
+                    iconColors: [Theme.focusColor, .blue],
+                    value: String(format: "%.1f", averageFocus),
+                    label: "avg focus",
+                    progress: chartAnimation ? averageFocus / 5.0 : 0,
+                    progressColor: Theme.focusColor
+                )
 
-            // Distractions
-            StatCard(
-                icon: distractionChange >= 0 ? "arrow.down.circle.fill" : "arrow.up.circle.fill",
-                iconColors: distractionChange >= 0 ? [.green, .mint] : [.orange, .red],
-                value: abs(distractionChange) < 1 ? "--" : "\(Int(abs(distractionChange)))%",
-                label: distractionChange >= 0 ? "less dist." : "more dist.",
-                progress: nil,
-                progressColor: distractionChange >= 0 ? .green : .orange
+                // Distractions
+                StatCard(
+                    icon: distractionChange >= 0 ? "arrow.down.circle.fill" : "arrow.up.circle.fill",
+                    iconColors: distractionChange >= 0 ? [.green, .mint] : [.orange, .red],
+                    value: abs(distractionChange) < 1 ? "--" : "\(Int(abs(distractionChange)))%",
+                    label: distractionChange >= 0 ? "less dist." : "more dist.",
+                    progress: nil,
+                    progressColor: distractionChange >= 0 ? .green : .orange
+                )
+            }
+
+            // Recharge Score (full width)
+            RechargeScoreCard(
+                score: thisWeekRechargeScore,
+                change: rechargeScoreChange,
+                animate: chartAnimation
             )
         }
     }
@@ -836,4 +873,97 @@ private struct DonutSegment: Identifiable {
     let value: Double
     let percentage: Double
     let color: Color
+}
+
+// MARK: - Recharge Score Card
+
+private struct RechargeScoreCard: View {
+    let score: Double
+    let change: Double
+    let animate: Bool
+
+    private var hasData: Bool {
+        score > 0
+    }
+
+    private var changeText: String {
+        if abs(change) < 1 { return "" }
+        let direction = change >= 0 ? "↑" : "↓"
+        return "\(direction) \(Int(abs(change)))% vs last week"
+    }
+
+    var body: some View {
+        HStack(spacing: 16) {
+            // Icon
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [Theme.breakColor.opacity(0.15), Color.cyan.opacity(0.15)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 48, height: 48)
+
+                // Progress ring
+                Circle()
+                    .trim(from: 0, to: animate ? min(score / 100.0, 1.0) : 0)
+                    .stroke(
+                        LinearGradient(
+                            colors: [Theme.breakColor, .cyan],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        style: StrokeStyle(lineWidth: 3, lineCap: .round)
+                    )
+                    .frame(width: 48, height: 48)
+                    .rotationEffect(.degrees(-90))
+                    .animation(.spring(response: 0.8, dampingFraction: 0.7), value: animate)
+
+                Image(systemName: "bolt.fill")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [Theme.breakColor, .cyan],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Recharge Score")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(Theme.textSecondary)
+
+                HStack(spacing: 8) {
+                    Text(hasData ? "\(Int(score))%" : "--")
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundStyle(Theme.textPrimary)
+
+                    if !changeText.isEmpty {
+                        Text(changeText)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(change >= 0 ? .green : .orange)
+                    }
+                }
+            }
+
+            Spacer()
+
+            if !hasData {
+                Text("Move during breaks!")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(Theme.textTertiary)
+                    .multilineTextAlignment(.trailing)
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Theme.backgroundSecondary)
+                .shadow(color: .black.opacity(0.03), radius: 8, y: 2)
+        )
+    }
 }

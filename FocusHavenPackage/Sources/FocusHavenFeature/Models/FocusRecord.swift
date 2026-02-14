@@ -15,6 +15,8 @@ public final class FocusRecord: @unchecked Sendable {
     public var predictedFocus: Int?  // 1-5, nil if skipped
     public var actualFocus: Int?     // 1-5, calculated from session
     public var distractionCount: Int // For solo sessions
+    public var rechargePercentage: Double?  // 0-100, nil for focus sessions
+    public var wasFullyRecharged: Bool  // true if previous break was 100%
 
     public init(
         id: UUID = UUID(),
@@ -27,7 +29,9 @@ public final class FocusRecord: @unchecked Sendable {
         wasBuddySession: Bool = false,
         predictedFocus: Int? = nil,
         actualFocus: Int? = nil,
-        distractionCount: Int = 0
+        distractionCount: Int = 0,
+        rechargePercentage: Double? = nil,
+        wasFullyRecharged: Bool = false
     ) {
         self.id = id
         self.date = date
@@ -40,6 +44,8 @@ public final class FocusRecord: @unchecked Sendable {
         self.predictedFocus = predictedFocus
         self.actualFocus = actualFocus
         self.distractionCount = distractionCount
+        self.rechargePercentage = rechargePercentage
+        self.wasFullyRecharged = wasFullyRecharged
     }
 }
 

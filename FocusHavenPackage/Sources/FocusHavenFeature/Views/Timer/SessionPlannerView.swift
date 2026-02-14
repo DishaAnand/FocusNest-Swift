@@ -67,11 +67,17 @@ struct SessionPlannerCard: View {
     @Binding var showSheet: Bool
     @Environment(SoundService.self) private var soundService
     @Environment(UserSettings.self) private var settings
+    @Environment(SubscriptionService.self) private var subscriptionService
+    @State private var showUpgradePrompt = false
 
     var body: some View {
         Button {
             soundService.lightImpact(settings: settings)
-            showSheet = true
+            if subscriptionService.canUseSessionPlanning {
+                showSheet = true
+            } else {
+                showUpgradePrompt = true
+            }
         } label: {
             HStack(spacing: 14) {
                 // Icon with green background
@@ -128,6 +134,14 @@ struct SessionPlannerCard: View {
         }
         .buttonStyle(.plain)
         .padding(.horizontal, 20)
+        .sheet(isPresented: $showUpgradePrompt) {
+            ZStack {
+                Color.black.opacity(0.3).ignoresSafeArea()
+                    .onTapGesture { showUpgradePrompt = false }
+                UpgradePromptView.sessionPlanLimit()
+            }
+            .presentationBackground(.clear)
+        }
     }
 }
 
@@ -229,6 +243,8 @@ struct SessionPlannerSheet: View {
                 .padding(.horizontal, 20)
                 .padding(.vertical, 16)
                 .background(Theme.backgroundPrimary)
+                .frame(maxWidth: 500)  // iPad: constrain content width
+                .frame(maxWidth: .infinity)  // Center on larger screens
             }
             .navigationTitle("Plan Sessions")
             .navigationBarTitleDisplayMode(.inline)

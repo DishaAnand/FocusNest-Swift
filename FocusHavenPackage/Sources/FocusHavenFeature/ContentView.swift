@@ -11,7 +11,6 @@ struct SessionIdWrapper: Identifiable {
 public struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var selectedTab: AppTab = .timer
-    @State private var showBuddySession = false
     @State private var pendingSession: SessionIdWrapper?
 
     public init() {}
@@ -30,6 +29,12 @@ public struct ContentView: View {
                 }
                 .tag(AppTab.timer)
 
+            BuddyTabView()
+                .tabItem {
+                    Label("Buddy", systemImage: "person.2.fill")
+                }
+                .tag(AppTab.buddy)
+
             FocusProgressView()
                 .tabItem {
                     Label("Progress", systemImage: "chart.bar.fill")
@@ -43,14 +48,11 @@ public struct ContentView: View {
                 .tag(AppTab.settings)
         }
         .tint(Theme.focusColor)
-        .sheet(isPresented: $showBuddySession) {
-            BuddySessionView()
-        }
         .sheet(item: $pendingSession) { session in
             JoinSessionView(sessionId: session.sessionId) {
                 pendingSession = nil
-                // Show buddy session view after successfully joining
-                showBuddySession = true
+                // Switch to buddy tab after joining
+                selectedTab = .buddy
             }
         }
         .onOpenURL { url in
@@ -72,5 +74,5 @@ public struct ContentView: View {
 }
 
 enum AppTab: Hashable {
-    case home, timer, progress, settings
+    case home, timer, buddy, progress, settings
 }

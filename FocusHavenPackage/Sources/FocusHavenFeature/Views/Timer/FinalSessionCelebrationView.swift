@@ -14,9 +14,13 @@ struct FinalSessionCelebrationView: View {
     let totalDistractions: Int
     let taskBreakdown: [TaskBreakdownItem]  // Empty if no tasks assigned
     let onDone: () -> Void
+    var onDismiss: (() -> Void)? = nil // optional close button handler
 
     @Environment(SoundService.self) private var soundService
     @Environment(UserSettings.self) private var settings
+
+    // Universe view
+    @State private var showUniverse = false
 
     // Animation states
     @State private var phase: AnimationPhase = .initial
@@ -87,6 +91,26 @@ struct FinalSessionCelebrationView: View {
 
             // Main content
             VStack(spacing: 0) {
+                // Close button (top right) - always reserve space for consistent layout
+                HStack {
+                    Spacer()
+                    if let onDismiss = onDismiss {
+                        Button {
+                            soundService.lightImpact(settings: settings)
+                            onDismiss()
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 28))
+                                .foregroundStyle(.white.opacity(0.5))
+                                .symbolRenderingMode(.hierarchical)
+                        }
+                        .opacity(phase == .complete ? 1 : 0)
+                    }
+                }
+                .frame(height: 44)
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+
                 Spacer()
 
                 // Trophy/Achievement display
@@ -267,42 +291,75 @@ struct FinalSessionCelebrationView: View {
 
                 Spacer()
 
-                // Done button
-                Button {
-                    soundService.mediumImpact(settings: settings)
-                    onDone()
-                } label: {
-                    HStack(spacing: 10) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 18))
-                        Text("Done")
-                            .font(.system(size: 17, weight: .semibold))
-                    }
-                    .foregroundStyle(.black)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 18)
-                    .background(
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [.yellow, .orange],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(.white.opacity(0.15))
-                                .blur(radius: 0.5)
+                // Action buttons
+                VStack(spacing: 0) {
+                    // Done button
+                    Button {
+                        soundService.mediumImpact(settings: settings)
+                        onDone()
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 18))
+                            Text("Done")
+                                .font(.system(size: 17, weight: .semibold))
                         }
-                    )
-                    .shadow(color: .orange.opacity(0.5), radius: 15, x: 0, y: 8)
+                        .foregroundStyle(.black)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 18)
+                        .background(
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [.yellow, .orange],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(.white.opacity(0.15))
+                                    .blur(radius: 0.5)
+                            }
+                        )
+                        .shadow(color: .orange.opacity(0.5), radius: 15, x: 0, y: 8)
+                    }
+
+                    // View Universe button (locked for non-premium)
+                    Button {
+                        if settings.isPremium {
+                            showUniverse = true
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: settings.isPremium ? "sparkles" : "lock.fill")
+                                .font(.system(size: 12))
+                            Text("View Universe")
+                                .font(.system(size: 14, weight: .medium))
+                            if !settings.isPremium {
+                                Text("Premium")
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundStyle(.yellow.opacity(0.8))
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Capsule().fill(.yellow.opacity(0.2)))
+                            }
+                        }
+                        .foregroundStyle(.white.opacity(settings.isPremium ? 0.5 : 0.35))
+                    }
+                    .disabled(!settings.isPremium)
+                    .padding(.top, 16)
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 50)
                 .offset(y: buttonOffset)
                 .opacity(phase == .complete ? 1 : 0)
+                .frame(maxWidth: 400)  // iPad: constrain button width
+                .frame(maxWidth: .infinity)  // Center on larger screens
             }
+        }
+        .fullScreenCover(isPresented: $showUniverse) {
+            UniverseView()
         }
         .onAppear {
             startCelebration()

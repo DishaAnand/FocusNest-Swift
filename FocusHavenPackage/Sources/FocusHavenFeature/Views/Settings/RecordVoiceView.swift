@@ -31,6 +31,8 @@ struct RecordVoiceView: View {
                 Spacer()
             }
             .padding()
+            .frame(maxWidth: 400)  // iPad: constrain content width
+            .frame(maxWidth: .infinity)  // Center on larger screens
             .navigationTitle("Record Voice")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

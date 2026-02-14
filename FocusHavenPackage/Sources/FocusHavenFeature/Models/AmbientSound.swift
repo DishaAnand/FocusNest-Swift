@@ -52,4 +52,24 @@ public enum AmbientSound: String, CaseIterable, Identifiable, Sendable {
     public static var availableSounds: [AmbientSound] {
         allCases
     }
+
+    /// Whether this sound is available in the free tier
+    public var isFree: Bool {
+        switch self {
+        case .silence, .rain:
+            return true
+        case .oceanWaves, .brownNoise, .whiteNoise, .forest, .lofiBeats:
+            return false
+        }
+    }
+
+    /// Free sounds only
+    public static var freeSounds: [AmbientSound] {
+        allCases.filter { $0.isFree }
+    }
+
+    /// Premium sounds only
+    public static var premiumSounds: [AmbientSound] {
+        allCases.filter { !$0.isFree }
+    }
 }

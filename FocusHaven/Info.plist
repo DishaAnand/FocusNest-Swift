@@ -6,6 +6,8 @@
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>FocusHaven needs microphone access to record your personal wake-up message that plays when breaks end.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>FocusHaven uses motion data to track your movement during breaks and encourage physical activity.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

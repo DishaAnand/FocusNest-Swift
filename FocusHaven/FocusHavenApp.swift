@@ -13,6 +13,11 @@ struct FocusHavenApp: App {
     @State private var liveActivityService = LiveActivityService()
     @State private var wakeUpVoiceService: WakeUpVoiceService
     @State private var ambientSoundService = AmbientSoundService()
+    @State private var subscriptionService = SubscriptionService()
+    @State private var motionService = MotionService()
+
+    // TODO: Replace with your RevenueCat API key from https://app.revenuecat.com
+    private let revenueCatAPIKey = "YOUR_REVENUECAT_API_KEY"
 
     init() {
         let settings = UserSettings()
@@ -38,13 +43,16 @@ struct FocusHavenApp: App {
                 .environment(sessionService)
                 .environment(wakeUpVoiceService)
                 .environment(ambientSoundService)
+                .environment(subscriptionService)
+                .environment(motionService)
                 .preferredColorScheme(settings.theme.colorScheme)
                 .task {
                     sessionService.configure()
+                    subscriptionService.configure(apiKey: revenueCatAPIKey)
                     // Request notification permission on launch
                     _ = await notificationService.requestAuthorization()
                 }
         }
-        .modelContainer(for: [FocusTask.self, FocusRecord.self])
+        .modelContainer(for: [FocusTask.self, FocusRecord.self, CelestialBody.self])
     }
 }

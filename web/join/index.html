@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Join FocusHaven Session</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #61BA82 0%, #4A9B6A 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .emoji { font-size: 60px; margin-bottom: 20px; }
+        h1 { color: #333; margin-bottom: 10px; }
+        p { color: #666; margin-bottom: 20px; line-height: 1.5; }
+        .btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #61BA82 0%, #4A9B6A 100%);
+            color: white;
+            padding: 18px 50px;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 18px;
+            margin: 10px 0;
+            transition: transform 0.2s;
+        }
+        .btn:hover { transform: scale(1.05); }
+        .secondary {
+            display: block;
+            color: #61BA82;
+            margin-top: 15px;
+            text-decoration: none;
+        }
+        .note { font-size: 14px; color: #999; margin-top: 25px; padding-top: 20px; border-top: 1px solid #eee; }
+    </style>
+    <script>
+        // Get session ID from URL path
+        const pathParts = window.location.pathname.split('/');
+        const sessionId = pathParts[pathParts.length - 1] || pathParts[pathParts.length - 2];
+
+        // Build the deep link
+        const deepLink = 'focushaven://buddy/' + sessionId;
+
+        // Try to open the app automatically
+        window.onload = function() {
+            if (sessionId && sessionId !== 'join') {
+                // Update the button link
+                document.getElementById('openApp').href = deepLink;
+
+                // Try to open app automatically after short delay
+                setTimeout(function() {
+                    window.location.href = deepLink;
+                }, 500);
+            }
+        };
+    </script>
+</head>
+<body>
+    <div class="card">
+        <div class="emoji">🎯</div>
+        <h1>You're Invited!</h1>
+        <p>Someone wants to focus together with you on FocusHaven.</p>
+        <a id="openApp" href="#" class="btn">Join Session</a>
+        <a href="https://apps.apple.com/app/focushaven" class="secondary">Don't have the app? Download it here</a>
+        <p class="note">FocusHaven helps you stay focused with friends through buddy sessions.</p>
+    </div>
+</body>
+</html>

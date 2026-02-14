@@ -15,8 +15,17 @@ struct SessionSummaryView: View {
     @State private var celebrationEmoji = "🎉"
     @State private var emojiScale: CGFloat = 0
 
-    private var totalMinutes: Int {
-        (myDuration + buddyDuration) / 60
+    // Show combined only when both finished at same time, otherwise show individual
+    private var finishedTogether: Bool {
+        myDuration == buddyDuration
+    }
+
+    private var displayMinutes: Int {
+        finishedTogether ? (myDuration + buddyDuration) / 60 : myDuration / 60
+    }
+
+    private var displayLabel: String {
+        finishedTogether ? "min together" : "min focused"
     }
 
     private var totalDistractions: Int {
@@ -24,26 +33,45 @@ struct SessionSummaryView: View {
     }
 
     private var dynamicMessage: String {
-        if totalDistractions == 0 {
-            return "Laser focused together!"
-        } else if totalDistractions <= 2 {
-            return "You two are unstoppable!"
-        } else if myDistractions == 0 || buddyDistractions == 0 {
-            return "Great teamwork!"
+        if finishedTogether {
+            // Both finished at the same time
+            if totalDistractions == 0 {
+                return "Laser focused together!"
+            } else if totalDistractions <= 2 {
+                return "You two are unstoppable!"
+            } else {
+                return "Great teamwork!"
+            }
         } else {
-            return "Focus session complete!"
+            // User finished before buddy
+            if myDistractions == 0 {
+                return "You stayed focused!"
+            } else if myDistractions <= 2 {
+                return "Nice focus session!"
+            } else {
+                return "Session complete!"
+            }
         }
     }
 
     private var dynamicEmoji: String {
-        if totalDistractions == 0 {
-            return "🎯"
-        } else if totalDistractions <= 2 {
-            return "🔥"
-        } else if myDistractions == 0 || buddyDistractions == 0 {
-            return "🤝"
+        if finishedTogether {
+            if totalDistractions == 0 {
+                return "🎯"
+            } else if totalDistractions <= 2 {
+                return "🔥"
+            } else {
+                return "🤝"
+            }
         } else {
-            return "✨"
+            // Individual finish
+            if myDistractions == 0 {
+                return "⭐"
+            } else if myDistractions <= 2 {
+                return "💪"
+            } else {
+                return "✨"
+            }
         }
     }
 
@@ -117,6 +145,7 @@ struct SessionSummaryView: View {
             }
             .padding(.horizontal, Theme.spacingM)
             .padding(.bottom, 20)
+            .frame(maxWidth: .infinity)  // Ensure content is centered
         }
         .safeAreaInset(edge: .bottom) {
             // Done button - always visible at bottom
@@ -298,14 +327,14 @@ struct SessionSummaryView: View {
                 .frame(width: 120, height: 120)
                 .rotationEffect(.degrees(-90))
 
-            // Center text
+            // Center text - shows individual time or combined based on whether both finished together
             VStack(spacing: 2) {
-                Text("\(totalMinutes)")
+                Text("\(displayMinutes)")
                     .font(.system(size: 44, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
 
-                Text("min")
-                    .font(.system(size: 16, weight: .medium))
+                Text(displayLabel)
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(.white.opacity(0.7))
             }
         }

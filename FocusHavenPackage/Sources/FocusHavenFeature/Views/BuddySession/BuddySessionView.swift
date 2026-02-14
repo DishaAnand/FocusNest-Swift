@@ -11,9 +11,11 @@ public struct BuddySessionView: View {
     @Environment(UserSettings.self) private var settings
     @Environment(NotificationService.self) private var notificationService
     @Environment(SoundService.self) private var soundService
+    @Environment(SubscriptionService.self) private var subscriptionService
     @Query(filter: #Predicate<FocusTask> { !$0.isCompleted }, sort: \FocusTask.createdAt, order: .reverse) private var tasks: [FocusTask]
 
     @State private var currentStep: BuddySessionStep = .setup
+    @State private var showUpgradePrompt = false
     @State private var selectedTask: FocusTask?
     @State private var customTaskTitle = ""
     @State private var sessionDuration = 25
@@ -22,6 +24,9 @@ public struct BuddySessionView: View {
     @State private var showJoinWithCode = false
     @State private var showCreateSession = false
     @State private var joinCode = ""
+
+    // Track if user stayed in support mode (for accurate summary duration)
+    @State private var stayedInSupportMode = false
 
     // Distraction detection - only counted when user RETURNS after 15+ seconds
     @State private var wentAwayAt: Date?
@@ -159,7 +164,11 @@ public struct BuddySessionView: View {
                 VStack(spacing: Theme.spacingM) {
                     // Create Session Card
                     Button {
-                        showCreateSession = true
+                        if subscriptionService.canStartBuddySession {
+                            showCreateSession = true
+                        } else {
+                            showUpgradePrompt = true
+                        }
                     } label: {
                         HStack(spacing: Theme.spacingM) {
                             Image(systemName: "plus.circle.fill")
@@ -185,7 +194,11 @@ public struct BuddySessionView: View {
 
                     // Join Session Card
                     Button {
-                        showJoinWithCode = true
+                        if subscriptionService.canStartBuddySession {
+                            showJoinWithCode = true
+                        } else {
+                            showUpgradePrompt = true
+                        }
                     } label: {
                         HStack(spacing: Theme.spacingM) {
                             Image(systemName: "person.badge.plus")
@@ -211,13 +224,14 @@ public struct BuddySessionView: View {
                 }
             }
             .padding(Theme.spacingM)
+            .frame(maxWidth: 500)  // iPad: constrain content width
+            .frame(maxWidth: .infinity)  // Center on larger screens
         }
         .sheet(isPresented: $showCreateSession) {
             CreateSessionSheet(
                 userName: $userName,
                 taskTitle: $customTaskTitle,
                 duration: $sessionDuration,
-                tasks: tasks,
                 isPresented: $showCreateSession
             ) {
                 Task { await createSession() }
@@ -227,6 +241,29 @@ public struct BuddySessionView: View {
             JoinWithCodeSheet(userName: $userName, taskTitle: $customTaskTitle, isPresented: $showJoinWithCode, tasks: tasks) {
                 currentStep = .waiting
             }
+        }
+        .sheet(isPresented: $showUpgradePrompt) {
+            UpgradePromptSheet {
+                UpgradePromptView.buddySessionLimit()
+            }
+        }
+    }
+
+    private struct UpgradePromptSheet<Content: View>: View {
+        @Environment(\.dismiss) private var dismiss
+        let content: () -> Content
+
+        init(@ViewBuilder content: @escaping () -> Content) {
+            self.content = content
+        }
+
+        var body: some View {
+            ZStack {
+                Color.black.opacity(0.3).ignoresSafeArea()
+                    .onTapGesture { dismiss() }
+                content()
+            }
+            .presentationBackground(.clear)
         }
     }
 
@@ -294,7 +331,10 @@ public struct BuddySessionView: View {
                 }
             }
             Spacer()
-        }.padding(Theme.spacingM)
+        }
+        .padding(Theme.spacingM)
+        .frame(maxWidth: 500)  // iPad: constrain content width
+        .frame(maxWidth: .infinity)  // Center on larger screens
     }
 
     private var activeSessionView: some View {
@@ -305,7 +345,10 @@ public struct BuddySessionView: View {
                     currentStep = .celebrating
                 }
             }
-        }.padding(Theme.spacingM)
+        }
+        .padding(Theme.spacingM)
+        .frame(maxWidth: 500)  // iPad: constrain content width
+        .frame(maxWidth: .infinity)  // Center on larger screens
     }
 
     private var postCompletionView: some View {
@@ -330,6 +373,7 @@ public struct BuddySessionView: View {
 
                     VStack(spacing: Theme.spacingM) {
                         Button {
+                            stayedInSupportMode = true
                             currentStep = .supportMode
                         } label: {
                             Text("Focus Together").primaryButtonStyle()
@@ -348,6 +392,8 @@ public struct BuddySessionView: View {
             Spacer()
         }
         .padding(Theme.spacingM)
+        .frame(maxWidth: 500)  // iPad: constrain content width
+        .frame(maxWidth: .infinity)  // Center on larger screens
     }
 
     private var supportModeView: some View {
@@ -360,6 +406,8 @@ public struct BuddySessionView: View {
             }
         }
         .padding(Theme.spacingM)
+        .frame(maxWidth: 500)  // iPad: constrain content width
+        .frame(maxWidth: .infinity)  // Center on larger screens
     }
 
     private var summaryView: some View {
@@ -368,17 +416,22 @@ public struct BuddySessionView: View {
                 let me = session.participant(withId: sessionService.deviceId)
                 let buddy = session.otherParticipants(exceptId: sessionService.deviceId).first
 
+                // If user stayed in support mode, they focused for the full buddy duration
+                let myOriginalDuration = me?.duration ?? session.duration
+                let buddyOriginalDuration = buddy?.duration ?? session.duration
+                let myActualDuration = stayedInSupportMode ? max(myOriginalDuration, buddyOriginalDuration) : myOriginalDuration
+
                 SessionSummaryView(
                     myName: me?.name ?? userName,
                     buddyName: buddy?.name ?? "Buddy",
-                    myDuration: me?.duration ?? session.duration,
-                    buddyDuration: buddy?.duration ?? session.duration,
+                    myDuration: myActualDuration,
+                    buddyDuration: buddyOriginalDuration,
                     myDistractions: me?.violationCount ?? 0,
                     buddyDistractions: buddy?.violationCount ?? 0,
                     onDone: {
-                        // Save focus record
+                        // Save focus record with actual duration (including support time)
                         modelContext.insert(FocusRecord(
-                            duration: me?.duration ?? session.duration,
+                            duration: myActualDuration,
                             isBreak: false,
                             taskTitle: customTaskTitle.isEmpty ? (me?.taskTitle ?? "Focus session") : customTaskTitle,
                             wasCompleted: true,
@@ -466,6 +519,7 @@ public struct BuddySessionView: View {
         selectedTask = nil
         customTaskTitle = ""
         sessionDuration = 25
+        stayedInSupportMode = false
     }
 }
 
@@ -780,6 +834,8 @@ private struct JoinWithCodeSheet: View {
                     .padding(.top, Theme.spacingS)
                 }
                 .padding(Theme.spacingM)
+                .frame(maxWidth: 500)  // iPad: constrain content width
+                .frame(maxWidth: .infinity)  // Center on larger screens
             }
             .navigationTitle("Join Session")
             .navigationBarTitleDisplayMode(.inline)
@@ -812,10 +868,12 @@ private struct CreateSessionSheet: View {
     @Environment(SessionService.self) private var sessionService
     @Environment(SoundService.self) private var soundService
     @Environment(UserSettings.self) private var settings
+    @Environment(\.modelContext) private var modelContext
+    @Query(filter: #Predicate<FocusTask> { !$0.isCompleted }, sort: \FocusTask.createdAt, order: .reverse) private var tasks: [FocusTask]
+
     @Binding var userName: String
     @Binding var taskTitle: String
     @Binding var duration: Int
-    let tasks: [FocusTask]
     @Binding var isPresented: Bool
     let onCreate: () -> Void
 
@@ -823,13 +881,17 @@ private struct CreateSessionSheet: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
 
+    private var isFormValid: Bool {
+        !userName.isEmpty && !taskTitle.isEmpty
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: Theme.spacingL) {
                     // Header
                     Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 60))
+                        .font(.system(size: 56))
                         .foregroundStyle(Theme.focusColor)
                         .padding(.top, Theme.spacingM)
 
@@ -851,29 +913,105 @@ private struct CreateSessionSheet: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
 
-                    // Task field
+                    // Task selection - clean and simple
                     VStack(alignment: .leading, spacing: Theme.spacingS) {
                         Text("What are you working on?").font(Theme.headlineFont)
-                        HStack(spacing: 12) {
-                            Image(systemName: "target")
-                                .foregroundStyle(Theme.textTertiary)
-                            TextField("Enter your focus task", text: $taskTitle)
-                                .font(Theme.bodyFont)
-                        }
-                        .padding()
-                        .background(Theme.backgroundSecondary)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
 
+                        // Show tasks if available
                         if !tasks.isEmpty {
-                            Text("Or select:")
-                                .font(Theme.captionFont)
-                                .foregroundStyle(Theme.textSecondary)
-                            ForEach(tasks.prefix(3)) { task in
-                                TaskSelectionCardView(task: task, isSelected: selectedTask?.id == task.id) {
+                            ForEach(tasks.prefix(4)) { task in
+                                Button {
                                     selectedTask = task
                                     taskTitle = task.title
+                                } label: {
+                                    HStack(spacing: 12) {
+                                        Image(systemName: selectedTask?.id == task.id ? "checkmark.circle.fill" : "circle")
+                                            .font(.system(size: 22))
+                                            .foregroundStyle(selectedTask?.id == task.id ? Theme.focusColor : Theme.textTertiary)
+
+                                        Text(task.title)
+                                            .font(Theme.bodyFont)
+                                            .foregroundStyle(Theme.textPrimary)
+                                            .lineLimit(1)
+
+                                        Spacer()
+                                    }
+                                    .padding()
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .fill(selectedTask?.id == task.id ? Theme.focusColor.opacity(0.1) : Theme.backgroundSecondary)
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .strokeBorder(selectedTask?.id == task.id ? Theme.focusColor.opacity(0.4) : Color.clear, lineWidth: 1.5)
+                                    )
+                                }
+                                .buttonStyle(.plain)
+                            }
+
+                            // Show "type different" option when task is selected
+                            if selectedTask != nil {
+                                Button {
+                                    selectedTask = nil
+                                    taskTitle = ""
+                                } label: {
+                                    HStack {
+                                        Image(systemName: "pencil")
+                                            .font(.system(size: 14))
+                                        Text("Type a different task")
+                                            .font(Theme.captionFont)
+                                    }
+                                    .foregroundStyle(Theme.focusColor)
+                                    .padding(.top, 8)
                                 }
                             }
+
+                            // Only show text input option when no task selected
+                            if selectedTask == nil {
+                                // Or type custom divider
+                                HStack {
+                                    Rectangle()
+                                        .fill(Theme.textTertiary.opacity(0.3))
+                                        .frame(height: 1)
+                                    Text("or type your own")
+                                        .font(Theme.captionFont)
+                                        .foregroundStyle(Theme.textSecondary)
+                                    Rectangle()
+                                        .fill(Theme.textTertiary.opacity(0.3))
+                                        .frame(height: 1)
+                                }
+                                .padding(.vertical, 8)
+
+                                // Text input
+                                HStack(spacing: 12) {
+                                    Image(systemName: "pencil")
+                                        .foregroundStyle(Theme.textTertiary)
+                                    TextField("Type a task...", text: $taskTitle)
+                                        .font(Theme.bodyFont)
+                                }
+                                .padding()
+                                .background(Theme.backgroundSecondary)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .strokeBorder(!taskTitle.isEmpty ? Theme.focusColor.opacity(0.4) : Color.clear, lineWidth: 1.5)
+                                )
+                            }
+                        } else {
+                            // No tasks - show text input directly
+                            HStack(spacing: 12) {
+                                Image(systemName: "pencil")
+                                    .foregroundStyle(Theme.textTertiary)
+                                TextField("Type a task...", text: $taskTitle)
+                                    .font(Theme.bodyFont)
+                            }
+                            .padding()
+                            .background(Theme.backgroundSecondary)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .strokeBorder(!taskTitle.isEmpty ? Theme.focusColor.opacity(0.4) : Color.clear, lineWidth: 1.5)
+                            )
                         }
                     }
 
@@ -892,6 +1030,7 @@ private struct CreateSessionSheet: View {
                         }
                         .pickerStyle(.segmented)
                     }
+                    .opacity(isFormValid ? 1.0 : 0.6)
 
                     if let error = errorMessage {
                         Text(error)
@@ -906,12 +1045,20 @@ private struct CreateSessionSheet: View {
                         isPresented = false
                         onCreate()
                     } label: {
-                        Text("Create & Get Code").primaryButtonStyle()
+                        Text("Create & Get Code")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(isFormValid ? Theme.focusGradient : LinearGradient(colors: [Color.gray.opacity(0.4), Color.gray.opacity(0.3)], startPoint: .leading, endPoint: .trailing))
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
                     }
-                    .disabled(userName.isEmpty || taskTitle.isEmpty)
+                    .disabled(!isFormValid)
                     .padding(.top, Theme.spacingS)
                 }
                 .padding(Theme.spacingM)
+                .frame(maxWidth: 500)  // iPad: constrain content width
+                .frame(maxWidth: .infinity)  // Center on larger screens
             }
             .navigationTitle("Create Session")
             .navigationBarTitleDisplayMode(.inline)

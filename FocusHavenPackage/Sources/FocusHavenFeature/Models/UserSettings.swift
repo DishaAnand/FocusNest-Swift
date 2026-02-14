@@ -17,6 +17,9 @@ public final class UserSettings: @unchecked Sendable {
     private static let soundKeyKey = "soundKey"
     private static let hasSeenNotificationOnboardingKey = "hasSeenNotificationOnboarding"
     private static let hasSeenWakeUpVoiceOnboardingKey = "hasSeenWakeUpVoiceOnboarding"
+    private static let dailyGoalTargetKey = "dailyGoalTarget"
+    private static let rechargeDetectionModeKey = "rechargeDetectionMode"
+    private static let isPremiumKey = "isPremium"
 
     public var focusDuration: Int { didSet { save() } }
     public var breakDuration: Int { didSet { save() } }
@@ -34,6 +37,12 @@ public final class UserSettings: @unchecked Sendable {
     public var hasSeenNotificationOnboarding: Bool { didSet { save() } }
     /// Whether user has seen the wake-up voice onboarding prompt
     public var hasSeenWakeUpVoiceOnboarding: Bool { didSet { save() } }
+    /// Daily goal: number of focus sessions to complete each day
+    public var dailyGoalTarget: Int { didSet { save() } }
+    /// Detection mode for recharge (any movement vs walking only)
+    public var rechargeDetectionMode: RechargeDetectionMode { didSet { save() } }
+    /// Whether user has premium access (unlocks Universe and other features)
+    public var isPremium: Bool { didSet { save() } }
 
     public init() {
         let defaults = UserDefaults.standard
@@ -49,6 +58,15 @@ public final class UserSettings: @unchecked Sendable {
         self.soundKey = defaults.string(forKey: Self.soundKeyKey) ?? "chimes"  // RN default
         self.hasSeenNotificationOnboarding = defaults.bool(forKey: Self.hasSeenNotificationOnboardingKey)
         self.hasSeenWakeUpVoiceOnboarding = defaults.bool(forKey: Self.hasSeenWakeUpVoiceOnboardingKey)
+        self.dailyGoalTarget = defaults.object(forKey: Self.dailyGoalTargetKey) as? Int ?? 4
+        self.isPremium = true  // TESTING: Always premium, change back before release
+
+        if let modeRaw = defaults.string(forKey: Self.rechargeDetectionModeKey),
+           let savedMode = RechargeDetectionMode(rawValue: modeRaw) {
+            self.rechargeDetectionMode = savedMode
+        } else {
+            self.rechargeDetectionMode = .anyMovement
+        }
 
         if let themeRaw = defaults.string(forKey: Self.themeKey),
            let savedTheme = AppTheme(rawValue: themeRaw) {
@@ -73,6 +91,9 @@ public final class UserSettings: @unchecked Sendable {
         defaults.set(soundKey, forKey: Self.soundKeyKey)
         defaults.set(hasSeenNotificationOnboarding, forKey: Self.hasSeenNotificationOnboardingKey)
         defaults.set(hasSeenWakeUpVoiceOnboarding, forKey: Self.hasSeenWakeUpVoiceOnboardingKey)
+        defaults.set(dailyGoalTarget, forKey: Self.dailyGoalTargetKey)
+        defaults.set(rechargeDetectionMode.rawValue, forKey: Self.rechargeDetectionModeKey)
+        defaults.set(isPremium, forKey: Self.isPremiumKey)
     }
 
     public var focusDurationMinutes: Int {
