@@ -869,6 +869,16 @@ public struct SettingsView: View {
 
                                 Divider().padding(.leading, 60)
 
+                                CleanSettingsRow(
+                                    icon: "icloud.fill",
+                                    iconColor: FileManager.default.ubiquityIdentityToken != nil ? .green : .gray,
+                                    title: "iCloud Sync",
+                                    value: FileManager.default.ubiquityIdentityToken != nil ? "Active" : "Unavailable",
+                                    showChevron: false
+                                )
+
+                                Divider().padding(.leading, 60)
+
                                 Button {
                                     if let url = URL(string: "https://focushaven.app/privacy") {
                                         UIApplication.shared.open(url)
