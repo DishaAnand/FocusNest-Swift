@@ -3,17 +3,13 @@ import SwiftData
 import StoreKit
 import UIKit
 
-// MARK: - Settings Hero Header (Simplified - Universe + Pro)
+// MARK: - Settings Hero Header
 
 struct SettingsHeroHeader: View {
     let isPro: Bool
-    let universeStars: Int
     let onUpgrade: () -> Void
-    let onUniverseTap: () -> Void
 
     @State private var appeared = false
-    @State private var sparkleRotation: Double = 0
-    @State private var starGlow: Bool = false
 
     var greeting: String {
         let hour = Calendar.current.component(.hour, from: Date())
@@ -44,90 +40,6 @@ struct SettingsHeroHeader: View {
                 .opacity(appeared ? 1 : 0)
                 .scaleEffect(appeared ? 1 : 0.9)
                 .padding(.top, 12)
-
-            // Universe Card - Gateway to gamification
-            Button(action: onUniverseTap) {
-                HStack(spacing: 14) {
-                    ZStack {
-                        Circle()
-                            .fill(
-                                RadialGradient(
-                                    colors: [.purple.opacity(0.25), .indigo.opacity(0.15), .clear],
-                                    center: .center,
-                                    startRadius: 0,
-                                    endRadius: 30
-                                )
-                            )
-                            .frame(width: 52, height: 52)
-
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 22, weight: .medium))
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [.purple, .pink],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .rotationEffect(.degrees(sparkleRotation))
-                    }
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("My Universe")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(Theme.textPrimary)
-
-                        HStack(spacing: 5) {
-                            Image(systemName: "star.fill")
-                                .font(.system(size: 11))
-                                .foregroundStyle(.yellow)
-                                .shadow(color: starGlow ? .yellow.opacity(0.6) : .clear, radius: 4)
-                            Text("\(universeStars) stars collected")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundStyle(Theme.textSecondary)
-                        }
-                    }
-
-                    Spacer()
-
-                    if isPro {
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(Theme.textTertiary)
-                            .padding(8)
-                            .background(Theme.textTertiary.opacity(0.08))
-                            .clipShape(Circle())
-                    } else {
-                        HStack(spacing: 5) {
-                            Image(systemName: "lock.fill")
-                                .font(.system(size: 11))
-                            Text("PRO")
-                                .font(.system(size: 11, weight: .bold))
-                        }
-                        .foregroundStyle(.white.opacity(0.9))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(
-                            LinearGradient(
-                                colors: [.purple.opacity(0.8), .indigo.opacity(0.8)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .clipShape(Capsule())
-                    }
-                }
-                .padding(16)
-                .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Theme.backgroundSecondary)
-                        .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
-                )
-            }
-            .buttonStyle(PressableButtonStyle())
-            .padding(.horizontal, 16)
-            .opacity(appeared ? 1 : 0)
-            .offset(y: appeared ? 0 : 15)
 
             // Pro banner (if not pro)
             if !isPro {
@@ -182,12 +94,6 @@ struct SettingsHeroHeader: View {
         .onAppear {
             withAnimation(.spring(response: 0.6, dampingFraction: 0.75).delay(0.1)) {
                 appeared = true
-            }
-            withAnimation(.linear(duration: 10).repeatForever(autoreverses: false).delay(0.5)) {
-                sparkleRotation = 360
-            }
-            withAnimation(.easeInOut(duration: 2).repeatForever(autoreverses: true).delay(1)) {
-                starGlow = true
             }
         }
     }
@@ -501,18 +407,12 @@ public struct SettingsView: View {
     @Environment(SoundService.self) private var soundService
 
     @State private var showingResetAlert = false
-    @State private var showingUniverse = false
-    @State private var showUpgradePrompt = false
     @State private var showPaywall = false
     @State private var showWakeUpVoice = false
     @State private var showDailyGoalEditor = false
     @State private var sectionsAppeared = false
 
-    // Universe stars count (from celestial bodies)
-    @Query private var celestialBodies: [CelestialBody]
-    private var universeStars: Int {
-        celestialBodies.filter { $0.type == .star }.count
-    }
+
 
     public init() {}
 
@@ -522,19 +422,11 @@ public struct SettingsView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 0) {
-                    // Hero Header (Universe + Pro only - Daily Goal moved to Timer)
+                    // Hero Header
                     SettingsHeroHeader(
                         isPro: subscriptionService.isPro,
-                        universeStars: universeStars,
                         onUpgrade: {
                             showPaywall = true
-                        },
-                        onUniverseTap: {
-                            if subscriptionService.canAccessUniverse {
-                                showingUniverse = true
-                            } else {
-                                showUpgradePrompt = true
-                            }
                         }
                     )
 
@@ -1082,9 +974,6 @@ public struct SettingsView: View {
             } message: {
                 Text("This will reset all settings to their default values.")
             }
-            .fullScreenCover(isPresented: $showingUniverse) {
-                UniverseView()
-            }
             .sheet(isPresented: $showPaywall) {
                 PaywallView()
             }
@@ -1092,14 +981,6 @@ public struct SettingsView: View {
                 NavigationStack {
                     WakeUpVoicesSettingsView()
                 }
-            }
-            .sheet(isPresented: $showUpgradePrompt) {
-                ZStack {
-                    Color.black.opacity(0.3).ignoresSafeArea()
-                        .onTapGesture { showUpgradePrompt = false }
-                    UpgradePromptView.universeLocked()
-                }
-                .presentationBackground(.clear)
             }
             .sheet(isPresented: $showDailyGoalEditor) {
                 DailyGoalEditorSheet(dailyGoalTarget: Bindable(settings))

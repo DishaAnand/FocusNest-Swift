@@ -65,7 +65,7 @@ public final class SubscriptionService: @unchecked Sendable {
     public var canAccessAllSounds: Bool { isPro }
     public var canAccessFullStats: Bool { isPro }
     public var canAccessInsights: Bool { isPro }
-    public var canAccessUniverse: Bool { isPro }
+
 
     // MARK: - Free Sounds
 

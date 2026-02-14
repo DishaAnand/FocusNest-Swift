@@ -107,13 +107,6 @@ extension UpgradePromptView {
         )
     }
 
-    public static func universeLocked() -> UpgradePromptView {
-        UpgradePromptView(
-            title: "Personal Universe",
-            message: "Watch your focus sessions become stars and planets! Available with Pro.",
-            icon: "sparkles"
-        )
-    }
 
     public static func insightsLocked() -> UpgradePromptView {
         UpgradePromptView(

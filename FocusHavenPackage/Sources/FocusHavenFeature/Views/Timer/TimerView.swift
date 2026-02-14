@@ -58,7 +58,6 @@ public struct TimerView: View {
     @State private var showFinalCelebration = false  // For last session enhanced celebration
     @Query(filter: #Predicate<FocusTask> { !$0.isCompleted }) private var availableTasks: [FocusTask]
     @Query private var allTasks: [FocusTask]  // All tasks for looking up names in breakdown
-    @Query private var celestialBodies: [CelestialBody]  // For planet evolution check
     @Query private var focusRecords: [FocusRecord]  // For total hours calculation
 
     /// Build task breakdown items for celebration display
@@ -142,14 +141,6 @@ public struct TimerView: View {
                                     wasFullyRecharged: lastBreakRechargePercentage >= 100
                                 )
                                 modelContext.insert(record)
-                                // Create celestial body for the universe (if session >= 5 min)
-                                if let star = CelestialBody.createStar(from: record, previousRechargeLevel: lastBreakRechargePercentage) {
-                                    modelContext.insert(star)
-                                }
-                                // Sync milestone planets based on total focus hours
-                                let totalHours = CelestialBody.totalFocusHours(from: focusRecords)
-                                CelestialBody.syncMilestonePlanets(totalHours: totalHours, existingBodies: celestialBodies, modelContext: modelContext)
-                                try? modelContext.save()
                                 lastBreakRechargePercentage = 0  // Reset after use
                                 timerService.stop()
                                 notificationService.cancelTimerNotifications()
@@ -711,14 +702,6 @@ public struct TimerView: View {
                         wasFullyRecharged: lastBreakRechargePercentage >= 100
                     )
                     modelContext.insert(record)
-                    // Create celestial body for the universe (if session >= 5 min)
-                    if let star = CelestialBody.createStar(from: record, previousRechargeLevel: lastBreakRechargePercentage) {
-                        modelContext.insert(star)
-                    }
-                    // Sync milestone planets based on total focus hours
-                    let totalHours = CelestialBody.totalFocusHours(from: focusRecords)
-                    CelestialBody.syncMilestonePlanets(totalHours: totalHours, existingBodies: celestialBodies, modelContext: modelContext)
-                    try? modelContext.save()
                     lastBreakRechargePercentage = 0  // Reset after use
 
                     // Check if user made a prediction - show prediction result first
@@ -772,14 +755,6 @@ public struct TimerView: View {
                     wasFullyRecharged: lastBreakRechargePercentage >= 100
                 )
                 modelContext.insert(record)
-                // Create celestial body for the universe (if session >= 5 min)
-                if let star = CelestialBody.createStar(from: record, previousRechargeLevel: lastBreakRechargePercentage) {
-                    modelContext.insert(star)
-                }
-                // Sync milestone planets based on total focus hours
-                let totalHours = CelestialBody.totalFocusHours(from: focusRecords)
-                CelestialBody.syncMilestonePlanets(totalHours: totalHours, existingBodies: celestialBodies, modelContext: modelContext)
-                try? modelContext.save()
                 lastBreakRechargePercentage = 0  // Reset after use
 
                 // Show prediction result if user made a prediction

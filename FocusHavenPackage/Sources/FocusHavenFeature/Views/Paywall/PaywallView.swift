@@ -101,7 +101,7 @@ public struct PaywallView: View {
             FeatureRow(icon: "waveform", title: "All 7 Ambient Sounds", description: "Rain, ocean, lo-fi & more")
             FeatureRow(icon: "mic.fill", title: "Unlimited Wake-Up Voices", description: "Record custom alerts")
             FeatureRow(icon: "chart.bar.fill", title: "Full Stats & Insights", description: "Track all your progress")
-            FeatureRow(icon: "sparkles", title: "Personal Universe", description: "Watch your stars grow")
+
         }
         .padding(Theme.spacingM)
         .background(Theme.backgroundSecondary)

@@ -12,8 +12,6 @@ struct SessionCompleteView: View {
     var currentSession: Int? = nil
     var totalSessions: Int? = nil
 
-    // Universe view
-    @State private var showUniverse = false
 
     private var isSessionPlan: Bool {
         currentSession != nil && totalSessions != nil
@@ -371,30 +369,6 @@ struct SessionCompleteView: View {
                         }
                     }
 
-                    // View Universe button (locked for non-premium)
-                    Button {
-                        if settings.isPremium {
-                            showUniverse = true
-                        }
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: settings.isPremium ? "sparkles" : "lock.fill")
-                                .font(.system(size: 12))
-                            Text("View Universe")
-                                .font(.system(size: 14, weight: .medium))
-                            if !settings.isPremium {
-                                Text("Premium")
-                                    .font(.system(size: 10, weight: .semibold))
-                                    .foregroundStyle(.yellow.opacity(0.8))
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background(Capsule().fill(.yellow.opacity(0.2)))
-                            }
-                        }
-                        .foregroundStyle(.white.opacity(settings.isPremium ? 0.5 : 0.35))
-                    }
-                    .disabled(!settings.isPremium)
-                    .padding(.top, 8)
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 50)
@@ -403,9 +377,6 @@ struct SessionCompleteView: View {
                 .frame(maxWidth: 400)  // iPad: constrain button width
                 .frame(maxWidth: .infinity)  // Center on larger screens
             }
-        }
-        .fullScreenCover(isPresented: $showUniverse) {
-            UniverseView()
         }
         .onAppear {
             print("🎉 SessionCompleteView appeared - duration: \(duration)s, effectiveDuration: \(effectiveDuration)s (\(effectiveDuration/60) min), needsPlayfulNudge: \(needsPlayfulNudge), needsMandatoryBreak: \(needsMandatoryBreak)")

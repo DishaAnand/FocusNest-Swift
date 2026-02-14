@@ -53,6 +53,6 @@ struct FocusHavenApp: App {
                     _ = await notificationService.requestAuthorization()
                 }
         }
-        .modelContainer(for: [FocusTask.self, FocusRecord.self, CelestialBody.self])
+        .modelContainer(for: [FocusTask.self, FocusRecord.self])
     }
 }

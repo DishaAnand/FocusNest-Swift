@@ -19,8 +19,6 @@ struct FinalSessionCelebrationView: View {
     @Environment(SoundService.self) private var soundService
     @Environment(UserSettings.self) private var settings
 
-    // Universe view
-    @State private var showUniverse = false
 
     // Animation states
     @State private var phase: AnimationPhase = .initial
@@ -325,30 +323,6 @@ struct FinalSessionCelebrationView: View {
                         .shadow(color: .orange.opacity(0.5), radius: 15, x: 0, y: 8)
                     }
 
-                    // View Universe button (locked for non-premium)
-                    Button {
-                        if settings.isPremium {
-                            showUniverse = true
-                        }
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: settings.isPremium ? "sparkles" : "lock.fill")
-                                .font(.system(size: 12))
-                            Text("View Universe")
-                                .font(.system(size: 14, weight: .medium))
-                            if !settings.isPremium {
-                                Text("Premium")
-                                    .font(.system(size: 10, weight: .semibold))
-                                    .foregroundStyle(.yellow.opacity(0.8))
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background(Capsule().fill(.yellow.opacity(0.2)))
-                            }
-                        }
-                        .foregroundStyle(.white.opacity(settings.isPremium ? 0.5 : 0.35))
-                    }
-                    .disabled(!settings.isPremium)
-                    .padding(.top, 16)
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 50)
@@ -357,9 +331,6 @@ struct FinalSessionCelebrationView: View {
                 .frame(maxWidth: 400)  // iPad: constrain button width
                 .frame(maxWidth: .infinity)  // Center on larger screens
             }
-        }
-        .fullScreenCover(isPresented: $showUniverse) {
-            UniverseView()
         }
         .onAppear {
             startCelebration()
