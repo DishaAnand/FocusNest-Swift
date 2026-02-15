@@ -31,7 +31,7 @@ public struct DailyChartView: View {
     }
 
     private var maxMinutes: Int {
-        max(1, dailyData.map { $0.focusMinutes + $0.breakMinutes }.max() ?? 1)
+        max(1, dailyData.map(\.focusMinutes).max() ?? 1)
     }
 
     private var totalFocusThisWeek: Int {
@@ -102,22 +102,6 @@ public struct DailyChartView: View {
                 )
                 .cornerRadius(8)
                 .opacity(selectedDay == nil || selectedDay?.id == data.id ? 1 : 0.35)
-
-                if data.breakMinutes > 0 {
-                    BarMark(
-                        x: .value("Day", data.dayName),
-                        y: .value("Break", animateChart ? data.breakMinutes : 0)
-                    )
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [Theme.breakColor, Theme.breakColor.opacity(0.5)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .cornerRadius(8)
-                    .opacity(selectedDay == nil || selectedDay?.id == data.id ? 1 : 0.35)
-                }
 
                 // Today highlight
                 if data.isToday {
@@ -192,27 +176,9 @@ public struct DailyChartView: View {
 
                     Spacer()
 
-                    HStack(spacing: 16) {
-                        HStack(spacing: 4) {
-                            Text("\(selected.focusMinutes)m")
-                                .font(.system(size: 14, weight: .bold, design: .rounded))
-                                .foregroundStyle(Theme.focusColor)
-                            Text("focus")
-                                .font(.system(size: 12))
-                                .foregroundStyle(Theme.textSecondary)
-                        }
-
-                        if selected.breakMinutes > 0 {
-                            HStack(spacing: 4) {
-                                Text("\(selected.breakMinutes)m")
-                                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                                    .foregroundStyle(Theme.breakColor)
-                                Text("break")
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(Theme.textSecondary)
-                            }
-                        }
-                    }
+                    Text("\(selected.focusMinutes)m")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundStyle(Theme.focusColor)
                 }
                 .padding(12)
                 .background(
@@ -229,11 +195,6 @@ public struct DailyChartView: View {
                 ))
             }
 
-            // Legend
-            HStack(spacing: 20) {
-                LegendItem(color: Theme.focusColor, label: "Focus")
-                LegendItem(color: Theme.breakColor, label: "Break")
-            }
         }
         .padding(16)
         .background(
