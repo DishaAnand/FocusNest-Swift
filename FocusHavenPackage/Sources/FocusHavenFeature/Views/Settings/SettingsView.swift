@@ -309,93 +309,6 @@ struct CleanStepperRow: View {
     }
 }
 
-// MARK: - Daily Goal Editor Sheet (Public for use in TimerView too)
-
-public struct DailyGoalEditorSheet: View {
-    @Bindable var settings: UserSettings
-    @Environment(\.dismiss) private var dismiss
-    @Environment(SoundService.self) private var soundService
-
-    public init(dailyGoalTarget: Bindable<UserSettings>) {
-        self._settings = dailyGoalTarget
-    }
-
-    public var body: some View {
-        NavigationStack {
-            VStack(spacing: 16) {
-                Spacer()
-
-                // Large number display
-                Text("\(settings.dailyGoalTarget)")
-                    .font(.system(size: 100, weight: .bold, design: .rounded))
-                    .foregroundStyle(Theme.focusColor)
-                    .contentTransition(.numericText())
-
-                Text("sessions per day")
-                    .font(.system(size: 17, weight: .medium))
-                    .foregroundStyle(Theme.textSecondary)
-
-                Spacer()
-                    .frame(height: 20)
-
-                // Stepper buttons
-                HStack(spacing: 60) {
-                    Button {
-                        if settings.dailyGoalTarget > 1 {
-                            soundService.lightImpact(settings: settings)
-                            withAnimation(.spring(response: 0.25)) {
-                                settings.dailyGoalTarget -= 1
-                            }
-                        }
-                    } label: {
-                        Image(systemName: "minus")
-                            .font(.system(size: 28, weight: .semibold))
-                            .foregroundStyle(settings.dailyGoalTarget > 1 ? .white : Theme.textTertiary)
-                            .frame(width: 72, height: 72)
-                            .background(
-                                Circle()
-                                    .fill(settings.dailyGoalTarget > 1 ? Theme.focusColor : Theme.backgroundSecondary)
-                            )
-                    }
-                    .disabled(settings.dailyGoalTarget <= 1)
-
-                    Button {
-                        if settings.dailyGoalTarget < 12 {
-                            soundService.lightImpact(settings: settings)
-                            withAnimation(.spring(response: 0.25)) {
-                                settings.dailyGoalTarget += 1
-                            }
-                        }
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: 28, weight: .semibold))
-                            .foregroundStyle(settings.dailyGoalTarget < 12 ? .white : Theme.textTertiary)
-                            .frame(width: 72, height: 72)
-                            .background(
-                                Circle()
-                                    .fill(settings.dailyGoalTarget < 12 ? Theme.focusColor : Theme.backgroundSecondary)
-                            )
-                    }
-                    .disabled(settings.dailyGoalTarget >= 12)
-                }
-
-                Spacer()
-            }
-            .frame(maxWidth: .infinity)
-            .background(Theme.backgroundPrimary)
-            .navigationTitle("Daily Goal")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                    .fontWeight(.semibold)
-                }
-            }
-        }
-    }
-}
 
 // MARK: - Main Settings View
 
@@ -409,7 +322,6 @@ public struct SettingsView: View {
     @State private var showingResetAlert = false
     @State private var showPaywall = false
     @State private var showWakeUpVoice = false
-    @State private var showDailyGoalEditor = false
     @State private var sectionsAppeared = false
 
 
@@ -433,57 +345,6 @@ public struct SettingsView: View {
                     // List sections with staggered animations
                     VStack(spacing: 24) {
 
-                        // MARK: - Goals
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("GOALS")
-                                .font(.system(size: 12, weight: .bold, design: .rounded))
-                                .foregroundStyle(Theme.textTertiary)
-                                .padding(.horizontal, 20)
-
-                            VStack(spacing: 0) {
-                                Button {
-                                    showDailyGoalEditor = true
-                                } label: {
-                                    HStack(spacing: 14) {
-                                        ZStack {
-                                            RoundedRectangle(cornerRadius: 8)
-                                                .fill(Theme.focusColor.opacity(0.15))
-                                                .frame(width: 32, height: 32)
-                                            Image(systemName: "target")
-                                                .font(.system(size: 15, weight: .semibold))
-                                                .foregroundStyle(Theme.focusColor)
-                                        }
-
-                                        Text("Daily Goal")
-                                            .font(.system(size: 16))
-                                            .foregroundStyle(Theme.textPrimary)
-
-                                        Spacer()
-
-                                        Text("\(settings.dailyGoalTarget) sessions")
-                                            .font(.system(size: 15))
-                                            .foregroundStyle(Theme.textSecondary)
-
-                                        Image(systemName: "chevron.right")
-                                            .font(.system(size: 13, weight: .semibold))
-                                            .foregroundStyle(Theme.textTertiary)
-                                    }
-                                    .padding(.vertical, 6)
-                                    .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                            }
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 10)
-                            .background(
-                                RoundedRectangle(cornerRadius: 18)
-                                    .fill(Theme.backgroundSecondary)
-                                    .shadow(color: .black.opacity(0.03), radius: 8, y: 2)
-                            )
-                            .padding(.horizontal, 16)
-                        }
-                        .opacity(sectionsAppeared ? 1 : 0)
-                        .offset(y: sectionsAppeared ? 0 : 20)
 
                         // MARK: - Timer Settings
                         VStack(alignment: .leading, spacing: 8) {
@@ -991,10 +852,6 @@ public struct SettingsView: View {
                 NavigationStack {
                     WakeUpVoicesSettingsView()
                 }
-            }
-            .sheet(isPresented: $showDailyGoalEditor) {
-                DailyGoalEditorSheet(dailyGoalTarget: Bindable(settings))
-                    .presentationDetents([.height(340)])
             }
         }
     }
