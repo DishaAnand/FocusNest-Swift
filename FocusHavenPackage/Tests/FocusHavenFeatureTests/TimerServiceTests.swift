@@ -32,9 +32,7 @@ struct TimerServiceTests {
         let service = TimerService(settings: settings, liveActivityService: LiveActivityService(), notificationService: NotificationService())
         service.setMode(.focus)
         #expect(service.isBreak == false)
-        service.setMode(.shortBreak)
-        #expect(service.isBreak == true)
-        service.setMode(.longBreak)
+        service.setMode(.breakTime)
         #expect(service.isBreak == true)
     }
 
@@ -43,17 +41,13 @@ struct TimerServiceTests {
         let settings = UserSettings()
         settings.focusDuration = 25 * 60
         settings.breakDuration = 5 * 60
-        settings.longBreakDuration = 15 * 60
         let service = TimerService(settings: settings, liveActivityService: LiveActivityService(), notificationService: NotificationService())
         service.setMode(.focus)
         #expect(service.mode == .focus)
         #expect(service.remainingTime == 25 * 60)
-        service.setMode(.shortBreak)
-        #expect(service.mode == .shortBreak)
+        service.setMode(.breakTime)
+        #expect(service.mode == .breakTime)
         #expect(service.remainingTime == 5 * 60)
-        service.setMode(.longBreak)
-        #expect(service.mode == .longBreak)
-        #expect(service.remainingTime == 15 * 60)
     }
 
     @Test("Timer service state transitions work correctly")
@@ -93,7 +87,7 @@ struct TimerServiceTests {
         let settings = UserSettings()
         settings.focusDuration = 25 * 60
         let service = TimerService(settings: settings, liveActivityService: LiveActivityService(), notificationService: NotificationService())
-        service.setMode(.shortBreak)
+        service.setMode(.breakTime)
         service.start()
         service.reset()
         #expect(service.state == .idle)
@@ -105,11 +99,10 @@ struct TimerServiceTests {
     @Test("Timer service skip advances to next mode")
     func timerServiceSkipAdvancesToNextMode() async throws {
         let settings = UserSettings()
-        settings.sessionsBeforeLongBreak = 4
         let service = TimerService(settings: settings, liveActivityService: LiveActivityService(), notificationService: NotificationService())
         service.setMode(.focus)
         service.skip()
-        #expect(service.mode == .shortBreak)
+        #expect(service.mode == .breakTime)
         service.skip()
         #expect(service.mode == .focus)
     }
@@ -171,15 +164,10 @@ struct TimerServiceTests {
         #expect(service.remainingTime == 10 * 60)
         #expect(service.state == .idle)
 
-        // Set short break with custom duration
-        service.setMode(.shortBreak, duration: 3 * 60)
-        #expect(service.mode == .shortBreak)
+        // Set break with custom duration
+        service.setMode(.breakTime, duration: 3 * 60)
+        #expect(service.mode == .breakTime)
         #expect(service.totalDuration == 3 * 60)
-
-        // Set long break with custom duration
-        service.setMode(.longBreak, duration: 20 * 60)
-        #expect(service.mode == .longBreak)
-        #expect(service.totalDuration == 20 * 60)
     }
 
     @Test("Timer service stop resets to current mode duration")
@@ -196,7 +184,7 @@ struct TimerServiceTests {
         #expect(service.remainingTime == 25 * 60)
 
         // Switch to break, start, and stop
-        service.setMode(.shortBreak)
+        service.setMode(.breakTime)
         service.start()
         service.stop()
         #expect(service.state == .idle)
@@ -256,15 +244,13 @@ struct TimerServiceTests {
     @Test("TimerMode has correct display names")
     func timerModeDisplayNames() async throws {
         #expect(TimerMode.focus.displayName == "Focus")
-        #expect(TimerMode.shortBreak.displayName == "Short Break")
-        #expect(TimerMode.longBreak.displayName == "Long Break")
+        #expect(TimerMode.breakTime.displayName == "Break")
     }
 
     @Test("TimerMode raw values are correct")
     func timerModeRawValues() async throws {
         #expect(TimerMode.focus.rawValue == "focus")
-        #expect(TimerMode.shortBreak.rawValue == "shortBreak")
-        #expect(TimerMode.longBreak.rawValue == "longBreak")
+        #expect(TimerMode.breakTime.rawValue == "shortBreak")
     }
 
     @Test("TimerState equality works correctly")

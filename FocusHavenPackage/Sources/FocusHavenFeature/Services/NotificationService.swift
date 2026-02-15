@@ -43,7 +43,7 @@ public final class NotificationService: @unchecked Sendable {
             content.title = "🎯 Focus Session Complete!"
             content.body = taskTitle.map { "Great work on \"\($0)\"! Time for a break." } ?? "Great work! Time for a well-deserved break."
             content.sound = UNNotificationSound(named: UNNotificationSoundName("focus-complete.aiff"))
-        case .shortBreak, .longBreak:
+        case .breakTime:
             content.title = "☕ Break Time Over"
             content.body = "Ready to focus again? Let's go!"
             // Use custom wake-up voice sound if provided, otherwise default

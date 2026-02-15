@@ -388,7 +388,7 @@ public struct TimerView: View {
                     } else {
                         resetPredictionState()
                         // Normal flow: Start break timer and show RechargeView
-                        timerService.setMode(.shortBreak, duration: settings.breakDuration)
+                        timerService.setMode(.breakTime, duration: settings.breakDuration)
                         timerService.start()
                         // Show RechargeView after a brief delay to let sheet dismiss
                         if motionService.isAvailable {
@@ -551,14 +551,8 @@ public struct TimerView: View {
         }
         .onChange(of: settings.breakDuration) { _, newDuration in
             // Sync timer when settings change while idle in short break mode
-            if timerService.state == .idle && timerService.mode == .shortBreak {
-                timerService.setMode(.shortBreak, duration: newDuration)
-            }
-        }
-        .onChange(of: settings.longBreakDuration) { _, newDuration in
-            // Sync timer when settings change while idle in long break mode
-            if timerService.state == .idle && timerService.mode == .longBreak {
-                timerService.setMode(.longBreak, duration: newDuration)
+            if timerService.state == .idle && timerService.mode == .breakTime {
+                timerService.setMode(.breakTime, duration: newDuration)
             }
         }
         .onChange(of: timerService.state) { oldState, newState in
@@ -667,7 +661,7 @@ public struct TimerView: View {
     private func setupTimerCallbacks() {
         timerService.onComplete = { mode in
             // Play appropriate completion sound
-            if mode == .shortBreak || mode == .longBreak {
+            if mode == .breakTime {
                 // Break complete - play custom wake-up voice if available
                 wakeUpVoiceService.playDefaultVoice()
             } else {
@@ -776,11 +770,6 @@ public struct TimerView: View {
                 // Break complete in normal mode - transition to focus mode
                 distractionCount = 0
                 timerService.setMode(.focus, duration: settings.focusDuration)
-
-                // Auto-start focus if enabled
-                if settings.autoStartFocus {
-                    timerService.start()
-                }
             }
         }
     }
@@ -863,7 +852,7 @@ public struct TimerView: View {
     // Handle session plan choices from SessionCompleteView
     private func handleSessionPlanTakeBreak() {
         // Start a break using user's break setting, after which user will set up next session
-        timerService.setMode(.shortBreak, duration: settings.breakDuration)
+        timerService.setMode(.breakTime, duration: settings.breakDuration)
         timerService.start()
         // Show RechargeView after a brief delay to let sheet dismiss
         if motionService.isAvailable {

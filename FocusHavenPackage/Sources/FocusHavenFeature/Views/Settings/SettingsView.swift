@@ -354,7 +354,7 @@ public struct SettingsView: View {
                                 .padding(.horizontal, 20)
 
                             VStack(spacing: 0) {
-                                // Short Break Duration
+                                // Break Duration
                                 HStack(spacing: 14) {
                                     ZStack {
                                         RoundedRectangle(cornerRadius: 8)
@@ -365,14 +365,14 @@ public struct SettingsView: View {
                                             .foregroundStyle(Theme.breakColor)
                                     }
 
-                                    Text("Short Break")
+                                    Text("Break Duration")
                                         .font(.system(size: 16))
                                         .foregroundStyle(Theme.textPrimary)
 
                                     Spacer()
 
                                     Picker("", selection: $settings.breakDurationMinutes) {
-                                        ForEach([3, 5, 10, 15], id: \.self) { minutes in
+                                        ForEach([5, 10, 15], id: \.self) { minutes in
                                             Text("\(minutes) min").tag(minutes)
                                         }
                                     }
@@ -380,84 +380,6 @@ public struct SettingsView: View {
                                     .tint(Theme.breakColor)
                                 }
                                 .padding(.vertical, 6)
-
-                                Divider().padding(.leading, 60)
-
-                                // Long Break Duration
-                                HStack(spacing: 14) {
-                                    ZStack {
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .fill(Color.green.opacity(0.15))
-                                            .frame(width: 32, height: 32)
-                                        Image(systemName: "leaf.fill")
-                                            .font(.system(size: 15, weight: .semibold))
-                                            .foregroundStyle(.green)
-                                    }
-
-                                    Text("Long Break")
-                                        .font(.system(size: 16))
-                                        .foregroundStyle(Theme.textPrimary)
-
-                                    Spacer()
-
-                                    Picker("", selection: $settings.longBreakDurationMinutes) {
-                                        ForEach([10, 15, 20, 30], id: \.self) { minutes in
-                                            Text("\(minutes) min").tag(minutes)
-                                        }
-                                    }
-                                    .pickerStyle(.menu)
-                                    .tint(.green)
-                                }
-                                .padding(.vertical, 6)
-
-                                Divider().padding(.leading, 60)
-
-                                // Sessions before long break
-                                HStack(spacing: 14) {
-                                    ZStack {
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .fill(Color.orange.opacity(0.15))
-                                            .frame(width: 32, height: 32)
-                                        Image(systemName: "repeat")
-                                            .font(.system(size: 15, weight: .semibold))
-                                            .foregroundStyle(.orange)
-                                    }
-
-                                    Text("Long Break After")
-                                        .font(.system(size: 16))
-                                        .foregroundStyle(Theme.textPrimary)
-
-                                    Spacer()
-
-                                    Picker("", selection: $settings.sessionsBeforeLongBreak) {
-                                        ForEach([2, 3, 4, 5, 6], id: \.self) { count in
-                                            Text("\(count) sessions").tag(count)
-                                        }
-                                    }
-                                    .pickerStyle(.menu)
-                                    .tint(.orange)
-                                }
-                                .padding(.vertical, 6)
-
-                                Divider().padding(.leading, 60)
-
-                                // Auto-start breaks
-                                CleanToggleRow(
-                                    icon: "play.fill",
-                                    iconColor: Theme.breakColor,
-                                    title: "Auto-Start Breaks",
-                                    isOn: $settings.autoStartBreaks
-                                )
-
-                                Divider().padding(.leading, 60)
-
-                                // Auto-start focus
-                                CleanToggleRow(
-                                    icon: "play.fill",
-                                    iconColor: Theme.focusColor,
-                                    title: "Auto-Start Focus",
-                                    isOn: $settings.autoStartFocus
-                                )
                             }
                             .padding(.horizontal, 20)
                             .padding(.vertical, 10)
@@ -832,12 +754,8 @@ public struct SettingsView: View {
                     withAnimation(.spring(response: 0.4)) {
                         settings.focusDuration = 25 * 60
                         settings.breakDuration = 5 * 60
-                        settings.longBreakDuration = 15 * 60
-                        settings.sessionsBeforeLongBreak = 4
                         settings.soundEnabled = true
                         settings.vibrationEnabled = true
-                        settings.autoStartBreaks = false
-                        settings.autoStartFocus = false
                         settings.theme = .system
                         settings.notificationsEnabled = true
                     }

@@ -3,14 +3,12 @@ import UIKit
 
 public enum TimerMode: String, Sendable {
     case focus = "focus"
-    case shortBreak = "shortBreak"
-    case longBreak = "longBreak"
+    case breakTime = "shortBreak"
 
     public var displayName: String {
         switch self {
         case .focus: return "Focus"
-        case .shortBreak: return "Short Break"
-        case .longBreak: return "Long Break"
+        case .breakTime: return "Break"
         }
     }
 }
@@ -75,7 +73,7 @@ public final class TimerService: @unchecked Sendable {
     }
 
     public var isBreak: Bool {
-        mode == .shortBreak || mode == .longBreak
+        mode == .breakTime
     }
 
     public init(settings: UserSettings, liveActivityService: LiveActivityService, notificationService: NotificationService, wakeUpVoiceService: WakeUpVoiceService) {
@@ -276,8 +274,7 @@ public final class TimerService: @unchecked Sendable {
 
         switch newMode {
         case .focus: totalDuration = duration ?? settings.focusDuration
-        case .shortBreak: totalDuration = duration ?? settings.breakDuration
-        case .longBreak: totalDuration = duration ?? settings.longBreakDuration
+        case .breakTime: totalDuration = duration ?? settings.breakDuration
         }
         remainingTime = totalDuration
         progress = 0
@@ -340,19 +337,15 @@ public final class TimerService: @unchecked Sendable {
             selectedTask?.addFocusTime(totalDuration)
         }
         advanceToNextMode()
-        let shouldAutoStart = (isBreak && settings.autoStartBreaks) || (!isBreak && settings.autoStartFocus)
-        if shouldAutoStart { start() }
+        // Auto-start breaks after focus; user manually starts focus after break
+        if isBreak { start() }
     }
 
     private func advanceToNextMode() {
         switch mode {
         case .focus:
-            if completedSessions > 0 && completedSessions % settings.sessionsBeforeLongBreak == 0 {
-                setMode(.longBreak)
-            } else {
-                setMode(.shortBreak)
-            }
-        case .shortBreak, .longBreak:
+            setMode(.breakTime)
+        case .breakTime:
             setMode(.focus)
         }
     }
@@ -360,8 +353,7 @@ public final class TimerService: @unchecked Sendable {
     private func resetToMode(_ targetMode: TimerMode) {
         switch targetMode {
         case .focus: totalDuration = settings.focusDuration
-        case .shortBreak: totalDuration = settings.breakDuration
-        case .longBreak: totalDuration = settings.longBreakDuration
+        case .breakTime: totalDuration = settings.breakDuration
         }
         remainingTime = totalDuration
     }

@@ -193,6 +193,7 @@ public struct HomeView: View {
         let trimmedTitle = newTaskTitle.trimmingCharacters(in: .whitespaces)
         guard !trimmedTitle.isEmpty else { return }
         modelContext.insert(FocusTask(title: trimmedTitle))
+        try? modelContext.save()
         newTaskTitle = ""
     }
 

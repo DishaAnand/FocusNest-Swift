@@ -14,12 +14,8 @@ struct UserSettingsTests {
         let defaults = UserDefaults.standard
         defaults.removeObject(forKey: "focusDuration")
         defaults.removeObject(forKey: "breakDuration")
-        defaults.removeObject(forKey: "longBreakDuration")
-        defaults.removeObject(forKey: "sessionsBeforeLongBreak")
         defaults.removeObject(forKey: "soundEnabled")
         defaults.removeObject(forKey: "vibrationEnabled")
-        defaults.removeObject(forKey: "autoStartBreaks")
-        defaults.removeObject(forKey: "autoStartFocus")
         defaults.removeObject(forKey: "theme")
         defaults.removeObject(forKey: "notificationsEnabled")
         defaults.removeObject(forKey: "soundKey")
@@ -30,15 +26,10 @@ struct UserSettingsTests {
         // RN: focusMin = 25, breakMin = 5
         #expect(settings.focusDuration == 25 * 60)  // 25 minutes
         #expect(settings.breakDuration == 5 * 60)   // 5 minutes
-        #expect(settings.longBreakDuration == 15 * 60)  // 15 minutes
-        #expect(settings.sessionsBeforeLongBreak == 4)
 
         // Boolean defaults
         #expect(settings.soundEnabled == true)
         #expect(settings.vibrationEnabled == true)
-        // CRITICAL: RN default for autoStartBreak is TRUE
-        #expect(settings.autoStartBreaks == true)  // Matches RN: autoStartBreak default = true
-        #expect(settings.autoStartFocus == false)
         #expect(settings.notificationsEnabled == true)
 
         // Theme default - RN: appearance = 'system'
@@ -98,28 +89,6 @@ struct UserSettingsTests {
 
         settings.breakDurationMinutes = 15
         #expect(settings.breakDuration == 15 * 60)
-    }
-
-    @Test("Long break duration minutes getter returns correct value")
-    func longBreakDurationMinutesGetterReturnsCorrectValue() async throws {
-        let settings = UserSettings()
-
-        settings.longBreakDuration = 15 * 60  // 15 minutes in seconds
-        #expect(settings.longBreakDurationMinutes == 15)
-
-        settings.longBreakDuration = 30 * 60  // 30 minutes in seconds
-        #expect(settings.longBreakDurationMinutes == 30)
-    }
-
-    @Test("Long break duration minutes setter updates seconds correctly")
-    func longBreakDurationMinutesSetterUpdatesSecondsCorrectly() async throws {
-        let settings = UserSettings()
-
-        settings.longBreakDurationMinutes = 20
-        #expect(settings.longBreakDuration == 20 * 60)
-
-        settings.longBreakDurationMinutes = 45
-        #expect(settings.longBreakDuration == 45 * 60)
     }
 
     @Test("Duration minutes handles edge cases")
@@ -226,12 +195,8 @@ struct UserSettingsTests {
         // Set custom values
         settings.focusDuration = 35 * 60
         settings.breakDuration = 8 * 60
-        settings.longBreakDuration = 20 * 60
-        settings.sessionsBeforeLongBreak = 3
         settings.soundEnabled = false
         settings.vibrationEnabled = false
-        settings.autoStartBreaks = false  // Changed from true (opposite of default)
-        settings.autoStartFocus = true
         settings.theme = .dark
         settings.notificationsEnabled = false
         settings.soundKey = "bell"
@@ -241,12 +206,8 @@ struct UserSettingsTests {
 
         #expect(loadedSettings.focusDuration == 35 * 60)
         #expect(loadedSettings.breakDuration == 8 * 60)
-        #expect(loadedSettings.longBreakDuration == 20 * 60)
-        #expect(loadedSettings.sessionsBeforeLongBreak == 3)
         #expect(loadedSettings.soundEnabled == false)
         #expect(loadedSettings.vibrationEnabled == false)
-        #expect(loadedSettings.autoStartBreaks == false)
-        #expect(loadedSettings.autoStartFocus == true)
         #expect(loadedSettings.theme == .dark)
         #expect(loadedSettings.notificationsEnabled == false)
         #expect(loadedSettings.soundKey == "bell")
