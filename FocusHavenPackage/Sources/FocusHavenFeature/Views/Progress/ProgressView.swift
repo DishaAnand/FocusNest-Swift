@@ -632,7 +632,6 @@ public struct FocusProgressView: View {
     private var chartsContent: some View {
         VStack(spacing: 16) {
             DailyChartView(records: records)
-            FocusQualityChartView(records: records)
         }
     }
 

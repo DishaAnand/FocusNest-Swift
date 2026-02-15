@@ -739,11 +739,17 @@ public struct TimerView: View {
                         showSessionComplete = true
                     }
                 } else {
-                    // Break complete - set up next session (don't auto-start)
+                    // Break complete — save break record, set up next session
+                    let breakRecord = FocusRecord(
+                        duration: settings.breakDuration,
+                        isBreak: true,
+                        rechargePercentage: lastBreakRechargePercentage > 0 ? lastBreakRechargePercentage : nil
+                    )
+                    modelContext.insert(breakRecord)
+                    lastBreakRechargePercentage = 0
                     sessionPlan.nextSession()
-                    continuousFocusTime = 0  // Reset continuous time after break
+                    continuousFocusTime = 0
                     distractionCount = 0
-                    // Timer is now idle, user will tap to set duration and start
                     timerService.setMode(.focus, duration: settings.focusDuration)
                 }
                 return
@@ -784,7 +790,14 @@ public struct TimerView: View {
                     showSessionComplete = true
                 }
             } else {
-                // Break complete in normal mode - transition to focus mode
+                // Break complete in normal mode — save break record, transition to focus
+                let breakRecord = FocusRecord(
+                    duration: settings.breakDuration,
+                    isBreak: true,
+                    rechargePercentage: lastBreakRechargePercentage > 0 ? lastBreakRechargePercentage : nil
+                )
+                modelContext.insert(breakRecord)
+                lastBreakRechargePercentage = 0
                 distractionCount = 0
                 timerService.setMode(.focus, duration: settings.focusDuration)
             }
