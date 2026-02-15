@@ -268,19 +268,30 @@ public struct FocusProgressView: View {
         }
     }
 
-    // MARK: - Hero Card
+    // MARK: - Glass Panel Helpers
+
+    private var glassBackground: some ShapeStyle {
+        .ultraThinMaterial
+    }
+
+    private var glassBorder: some View {
+        RoundedRectangle(cornerRadius: 20)
+            .strokeBorder(.white.opacity(0.15), lineWidth: 1)
+    }
+
+    // MARK: - Hero Panel
 
     private var heroCard: some View {
         VStack(spacing: 16) {
-            // Big focus time with gradient
+            // Big focus time with shimmer gradient
             VStack(spacing: 6) {
                 Text(formatMinutes(thisWeekMinutes))
-                    .font(.system(size: 56, weight: .bold, design: .rounded))
+                    .font(.system(size: 52, weight: .bold, design: .rounded))
                     .foregroundStyle(
                         LinearGradient(
-                            colors: [Theme.focusColor, Theme.focusColor.opacity(0.7)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+                            colors: [Theme.focusColor, .cyan, Theme.focusColor],
+                            startPoint: .leading,
+                            endPoint: .trailing
                         )
                     )
 
@@ -292,126 +303,221 @@ public struct FocusProgressView: View {
             // Comparison pill
             if weeklyDifference != 0 {
                 HStack(spacing: 6) {
-                    Image(systemName: weeklyDifference > 0 ? "arrow.up.right.circle.fill" : "arrow.down.right.circle.fill")
-                        .font(.system(size: 14))
+                    Image(systemName: weeklyDifference > 0 ? "arrow.up.right" : "arrow.down.right")
+                        .font(.system(size: 12, weight: .bold))
                     Text("\(formatMinutes(abs(weeklyDifference))) \(weeklyDifference > 0 ? "more" : "less") than last week")
                         .font(.system(size: 13, weight: .medium))
                 }
                 .foregroundStyle(weeklyDifference > 0 ? .green : .orange)
                 .padding(.horizontal, 14)
-                .padding(.vertical, 8)
+                .padding(.vertical, 7)
                 .background(
                     Capsule()
                         .fill((weeklyDifference > 0 ? Color.green : Color.orange).opacity(0.1))
-                        .overlay(
-                            Capsule()
-                                .strokeBorder((weeklyDifference > 0 ? Color.green : Color.orange).opacity(0.2), lineWidth: 1)
-                        )
                 )
             }
 
-            // Mini bar chart for week
-            weekMiniChart
-                .padding(.top, 8)
+            // Embedded sparkline
+            weekSparkline
+                .padding(.top, 4)
         }
         .padding(.vertical, 24)
         .padding(.horizontal, 20)
         .background(
             RoundedRectangle(cornerRadius: 24)
-                .fill(Theme.backgroundSecondary)
-                .shadow(color: .black.opacity(0.06), radius: 16, y: 6)
+                .fill(glassBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24)
+                        .strokeBorder(.white.opacity(0.15), lineWidth: 1)
+                )
         )
     }
 
-    // MARK: - Week Mini Chart
+    // MARK: - Week Sparkline
 
-    private var weekMiniChart: some View {
-        HStack(spacing: 8) {
-            ForEach(dailyFocusData) { day in
-                VStack(spacing: 8) {
-                    // Mini bar
-                    ZStack(alignment: .bottom) {
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(Theme.textTertiary.opacity(0.1))
-                            .frame(width: 28, height: 40)
+    private var weekSparkline: some View {
+        HStack(spacing: 0) {
+            ForEach(Array(dailyFocusData.enumerated()), id: \.element.id) { index, day in
+                VStack(spacing: 6) {
+                    // Dot sized by minutes
+                    let dotSize: CGFloat = day.isFuture ? 4 : (day.minutes > 0 ? max(8, min(20, CGFloat(day.minutes) / CGFloat(day.maxMinutes) * 20)) : 5)
 
-                        if !day.isFuture {
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(
-                                    day.minutes > 0
-                                        ? LinearGradient(
-                                            colors: [Theme.focusColor, Theme.focusColor.opacity(0.6)],
-                                            startPoint: .top,
-                                            endPoint: .bottom
-                                        )
-                                        : LinearGradient(
-                                            colors: [Theme.textTertiary.opacity(0.3), Theme.textTertiary.opacity(0.2)],
-                                            startPoint: .top,
-                                            endPoint: .bottom
-                                        )
-                                )
-                                .frame(width: 28, height: chartAnimation ? max(4, CGFloat(day.minutes) / CGFloat(day.maxMinutes) * 40) : 4)
-                                .animation(.spring(response: 0.8, dampingFraction: 0.7).delay(Double(dailyFocusData.firstIndex(where: { $0.id == day.id }) ?? 0) * 0.05), value: chartAnimation)
-                        }
-                    }
-                    .overlay(
-                        day.isToday ?
-                        RoundedRectangle(cornerRadius: 4)
-                            .strokeBorder(Theme.focusColor, lineWidth: 2)
-                            .frame(width: 28, height: 40)
-                        : nil
-                    )
+                    Circle()
+                        .fill(
+                            day.isFuture ? AnyShapeStyle(Theme.textTertiary.opacity(0.2)) :
+                            day.minutes > 0 ?
+                                AnyShapeStyle(LinearGradient(colors: [Theme.focusColor, .cyan], startPoint: .top, endPoint: .bottom)) :
+                                AnyShapeStyle(Theme.textTertiary.opacity(0.3))
+                        )
+                        .frame(width: chartAnimation ? dotSize : 4, height: chartAnimation ? dotSize : 4)
+                        .overlay(
+                            day.isToday ?
+                            Circle()
+                                .strokeBorder(Theme.focusColor, lineWidth: 2)
+                                .frame(width: dotSize + 6, height: dotSize + 6)
+                            : nil
+                        )
+                        .animation(.spring(response: 0.6, dampingFraction: 0.7).delay(Double(index) * 0.06), value: chartAnimation)
 
                     Text(day.dayInitial)
-                        .font(.system(size: 11, weight: day.isToday ? .bold : .medium))
+                        .font(.system(size: 10, weight: day.isToday ? .bold : .medium))
                         .foregroundStyle(day.isToday ? Theme.focusColor : Theme.textTertiary)
                 }
+                .frame(maxWidth: .infinity)
             }
         }
     }
 
-    // MARK: - Stats Grid
+    // MARK: - Asymmetric Stat Panels
 
     private var statsGrid: some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 12) {
-                // Streak
-                StatCard(
-                    icon: "flame.fill",
-                    iconColors: [.orange, .red],
-                    value: "\(currentStreak)",
-                    label: "day streak",
-                    progress: chartAnimation ? min(Double(currentStreak) / 7.0, 1.0) : 0,
-                    progressColor: .orange
+        VStack(spacing: 10) {
+            // Row 1: Large streak + small distractions
+            HStack(spacing: 10) {
+                // Streak — large panel
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "flame.fill")
+                            .font(.system(size: 22))
+                            .foregroundStyle(
+                                LinearGradient(colors: [.orange, .red], startPoint: .top, endPoint: .bottom)
+                            )
+                        Spacer()
+                        Text("\(currentStreak)")
+                            .font(.system(size: 36, weight: .bold, design: .rounded))
+                            .foregroundStyle(Theme.textPrimary)
+                    }
+
+                    Text("day streak")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Theme.textSecondary)
+
+                    // Week activity dots
+                    HStack(spacing: 6) {
+                        ForEach(dailyFocusData) { day in
+                            Circle()
+                                .fill(day.isFuture ? Theme.textTertiary.opacity(0.15) :
+                                      day.minutes > 0 ? Color.orange : Theme.textTertiary.opacity(0.25))
+                                .frame(width: 8, height: 8)
+                        }
+                    }
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(.ultraThinMaterial)
+                        .overlay(glassBorder)
                 )
 
-                // Focus Score
-                StatCard(
-                    icon: "brain.head.profile.fill",
-                    iconColors: [Theme.focusColor, .blue],
-                    value: String(format: "%.1f", averageFocus),
-                    label: "avg focus",
-                    progress: chartAnimation ? averageFocus / 5.0 : 0,
-                    progressColor: Theme.focusColor
-                )
+                // Distractions — small panel
+                VStack(spacing: 8) {
+                    Image(systemName: totalDistractionsThisWeek == 0 ? "shield.checkered" : "exclamationmark.triangle.fill")
+                        .font(.system(size: 20))
+                        .foregroundStyle(
+                            totalDistractionsThisWeek == 0 ? Color.green :
+                            totalDistractionsThisWeek <= 3 ? Color.yellow : Color.orange
+                        )
 
-                // Distractions
-                StatCard(
-                    icon: totalDistractionsThisWeek == 0 ? "shield.checkered" : "exclamationmark.triangle.fill",
-                    iconColors: totalDistractionsThisWeek == 0 ? [.green, .mint] : totalDistractionsThisWeek <= 3 ? [.yellow, .orange] : [.orange, .red],
-                    value: "\(totalDistractionsThisWeek)",
-                    label: "dist. this week",
-                    progress: nil,
-                    progressColor: totalDistractionsThisWeek == 0 ? .green : totalDistractionsThisWeek <= 3 ? .yellow : .orange
+                    Text("\(totalDistractionsThisWeek)")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundStyle(Theme.textPrimary)
+
+                    Text("dist.")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(Theme.textTertiary)
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: 110)
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(.ultraThinMaterial)
+                        .overlay(glassBorder)
                 )
+                .frame(width: 100)
             }
 
-            // Recharge Score (full width)
-            RechargeScoreCard(
-                score: thisWeekRechargeScore,
-                change: rechargeScoreChange,
-                animate: chartAnimation
-            )
+            // Row 2: Small focus score + large recharge
+            HStack(spacing: 10) {
+                // Focus score — small panel
+                VStack(spacing: 8) {
+                    Image(systemName: "brain.head.profile.fill")
+                        .font(.system(size: 20))
+                        .foregroundStyle(
+                            LinearGradient(colors: [Theme.focusColor, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)
+                        )
+
+                    Text(String(format: "%.1f", averageFocus))
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundStyle(Theme.textPrimary)
+
+                    Text("focus")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(Theme.textTertiary)
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: 110)
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(.ultraThinMaterial)
+                        .overlay(glassBorder)
+                )
+                .frame(width: 100)
+
+                // Recharge — large panel
+                HStack(spacing: 14) {
+                    ZStack {
+                        Circle()
+                            .stroke(Theme.textTertiary.opacity(0.1), lineWidth: 4)
+                            .frame(width: 52, height: 52)
+
+                        Circle()
+                            .trim(from: 0, to: chartAnimation ? min(thisWeekRechargeScore / 100.0, 1.0) : 0)
+                            .stroke(
+                                LinearGradient(colors: [Theme.breakColor, .cyan], startPoint: .topLeading, endPoint: .bottomTrailing),
+                                style: StrokeStyle(lineWidth: 4, lineCap: .round)
+                            )
+                            .frame(width: 52, height: 52)
+                            .rotationEffect(.degrees(-90))
+                            .animation(.spring(response: 0.8, dampingFraction: 0.7), value: chartAnimation)
+
+                        Image(systemName: "bolt.fill")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(
+                                LinearGradient(colors: [Theme.breakColor, .cyan], startPoint: .top, endPoint: .bottom)
+                            )
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Recharge")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(Theme.textSecondary)
+
+                        HStack(spacing: 6) {
+                            Text(thisWeekRechargeScore > 0 ? "\(Int(thisWeekRechargeScore))%" : "--")
+                                .font(.system(size: 28, weight: .bold, design: .rounded))
+                                .foregroundStyle(Theme.textPrimary)
+
+                            if abs(rechargeScoreChange) >= 1 {
+                                Text("\(rechargeScoreChange >= 0 ? "+" : "")\(Int(rechargeScoreChange))%")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(rechargeScoreChange >= 0 ? .green : .orange)
+                            }
+                        }
+                    }
+
+                    Spacer()
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(.ultraThinMaterial)
+                        .overlay(glassBorder)
+                )
+            }
         }
     }
 
@@ -488,8 +594,11 @@ public struct FocusProgressView: View {
         .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 20)
-                .fill(Theme.backgroundSecondary)
-                .shadow(color: .black.opacity(0.04), radius: 12, y: 4)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20)
+                        .strokeBorder(.white.opacity(0.15), lineWidth: 1)
+                )
         )
     }
 
@@ -497,7 +606,7 @@ public struct FocusProgressView: View {
 
     private var tabSection: some View {
         VStack(spacing: 16) {
-            // Custom tab picker
+            // Custom tab picker — glass style
             HStack(spacing: 0) {
                 ForEach(InsightTab.allCases, id: \.self) { tab in
                     Button {
@@ -520,9 +629,8 @@ public struct FocusProgressView: View {
             .padding(4)
             .background(
                 Capsule()
-                    .fill(Theme.backgroundSecondary)
-                    .shadow(color: .black.opacity(0.03), radius: 4, y: 2)
-            )
+                    .fill(.ultraThinMaterial)
+                )
 
             // Tab content
             switch selectedTab {
@@ -537,47 +645,30 @@ public struct FocusProgressView: View {
     // MARK: - Insights Content
 
     private var insightsContent: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 0) {
             if hasEnoughData {
-                HStack(spacing: 12) {
-                    InsightCard(
-                        icon: "sun.horizon.fill",
-                        iconColors: [.orange, .yellow],
-                        title: "Peak Time",
-                        value: bestTimeOfDay
-                    )
-                    InsightCard(
-                        icon: "calendar.badge.checkmark",
-                        iconColors: [.blue, .cyan],
-                        title: "Best Day",
-                        value: bestDayOfWeek
-                    )
+                VStack(spacing: 0) {
+                    InsightRow(icon: "sun.horizon.fill", iconColor: .orange, title: "Peak Time", value: bestTimeOfDay)
+                    Divider().padding(.leading, 48)
+                    InsightRow(icon: "calendar.badge.checkmark", iconColor: .blue, title: "Best Day", value: bestDayOfWeek)
+                    Divider().padding(.leading, 48)
+                    InsightRow(icon: "checkmark.seal.fill", iconColor: .green, title: "Completion", value: "\(completionRate)%")
+                    Divider().padding(.leading, 48)
+                    InsightRow(icon: "number.circle.fill", iconColor: Theme.focusColor, title: "Sessions", value: "\(focusSessions.count)")
                 }
-
-                HStack(spacing: 12) {
-                    InsightCard(
-                        icon: "checkmark.seal.fill",
-                        iconColors: [.green, .mint],
-                        title: "Completion",
-                        value: "\(completionRate)%"
-                    )
-                    InsightCard(
-                        icon: "number.circle.fill",
-                        iconColors: [Theme.focusColor, .purple],
-                        title: "Sessions",
-                        value: "\(focusSessions.count)"
-                    )
-                }
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(.ultraThinMaterial)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20)
+                                .strokeBorder(.white.opacity(0.1), lineWidth: 1)
+                        )
+                )
             } else {
                 VStack(spacing: 12) {
-                    ZStack {
-                        Circle()
-                            .fill(Theme.focusColor.opacity(0.1))
-                            .frame(width: 64, height: 64)
-                        Image(systemName: "chart.bar.doc.horizontal.fill")
-                            .font(.system(size: 28))
-                            .foregroundStyle(Theme.focusColor.opacity(0.6))
-                    }
+                    Image(systemName: "chart.bar.doc.horizontal.fill")
+                        .font(.system(size: 28))
+                        .foregroundStyle(Theme.focusColor.opacity(0.6))
                     Text("Complete \(5 - focusSessions.count) more sessions")
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(Theme.textPrimary)
@@ -589,7 +680,7 @@ public struct FocusProgressView: View {
                 .padding(.vertical, 40)
                 .background(
                     RoundedRectangle(cornerRadius: 20)
-                        .fill(Theme.backgroundSecondary)
+                        .fill(.ultraThinMaterial)
                 )
             }
         }
@@ -624,123 +715,35 @@ private enum InsightTab: String, CaseIterable {
 
 // MARK: - Supporting Views
 
-private struct StatCard: View {
+private struct InsightRow: View {
     let icon: String
-    let iconColors: [Color]
-    let value: String
-    let label: String
-    let progress: Double?
-    let progressColor: Color
-
-    var body: some View {
-        VStack(spacing: 10) {
-            // Icon with gradient background
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: iconColors.map { $0.opacity(0.15) },
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 44, height: 44)
-
-                // Progress ring
-                if let progress = progress {
-                    Circle()
-                        .trim(from: 0, to: progress)
-                        .stroke(
-                            LinearGradient(
-                                colors: iconColors,
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            style: StrokeStyle(lineWidth: 3, lineCap: .round)
-                        )
-                        .frame(width: 44, height: 44)
-                        .rotationEffect(.degrees(-90))
-                        .animation(.spring(response: 0.8, dampingFraction: 0.7), value: progress)
-                }
-
-                Image(systemName: icon)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: iconColors,
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-            }
-
-            VStack(spacing: 2) {
-                Text(value)
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .foregroundStyle(Theme.textPrimary)
-
-                Text(label)
-                    .font(.system(size: 11))
-                    .foregroundStyle(Theme.textTertiary)
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Theme.backgroundSecondary)
-                .shadow(color: .black.opacity(0.03), radius: 8, y: 2)
-        )
-    }
-}
-
-private struct InsightCard: View {
-    let icon: String
-    let iconColors: [Color]
+    let iconColor: Color
     let title: String
     let value: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Icon
+        HStack(spacing: 14) {
             ZStack {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(
-                        LinearGradient(
-                            colors: iconColors.map { $0.opacity(0.15) },
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 36, height: 36)
-
+                Circle()
+                    .fill(iconColor.opacity(0.15))
+                    .frame(width: 34, height: 34)
                 Image(systemName: icon)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: iconColors,
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(iconColor)
             }
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(value)
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                    .foregroundStyle(Theme.textPrimary)
-                Text(title)
-                    .font(.system(size: 12))
-                    .foregroundStyle(Theme.textSecondary)
-            }
+            Text(title)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(Theme.textSecondary)
+
+            Spacer()
+
+            Text(value)
+                .font(.system(size: 17, weight: .bold, design: .rounded))
+                .foregroundStyle(Theme.textPrimary)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Theme.backgroundSecondary)
-                .shadow(color: .black.opacity(0.03), radius: 8, y: 2)
-        )
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 }
 
@@ -869,95 +872,4 @@ private struct DonutSegment: Identifiable {
     let color: Color
 }
 
-// MARK: - Recharge Score Card
 
-private struct RechargeScoreCard: View {
-    let score: Double
-    let change: Double
-    let animate: Bool
-
-    private var hasData: Bool {
-        score > 0
-    }
-
-    private var changeText: String {
-        if abs(change) < 1 { return "" }
-        let direction = change >= 0 ? "↑" : "↓"
-        return "\(direction) \(Int(abs(change)))% vs last week"
-    }
-
-    var body: some View {
-        HStack(spacing: 16) {
-            // Icon
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [Theme.breakColor.opacity(0.15), Color.cyan.opacity(0.15)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 48, height: 48)
-
-                // Progress ring
-                Circle()
-                    .trim(from: 0, to: animate ? min(score / 100.0, 1.0) : 0)
-                    .stroke(
-                        LinearGradient(
-                            colors: [Theme.breakColor, .cyan],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        style: StrokeStyle(lineWidth: 3, lineCap: .round)
-                    )
-                    .frame(width: 48, height: 48)
-                    .rotationEffect(.degrees(-90))
-                    .animation(.spring(response: 0.8, dampingFraction: 0.7), value: animate)
-
-                Image(systemName: "bolt.fill")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [Theme.breakColor, .cyan],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Recharge Score")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(Theme.textSecondary)
-
-                HStack(spacing: 8) {
-                    Text(hasData ? "\(Int(score))%" : "--")
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .foregroundStyle(Theme.textPrimary)
-
-                    if !changeText.isEmpty {
-                        Text(changeText)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(change >= 0 ? .green : .orange)
-                    }
-                }
-            }
-
-            Spacer()
-
-            if !hasData {
-                Text("Move during breaks!")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(Theme.textTertiary)
-                    .multilineTextAlignment(.trailing)
-            }
-        }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Theme.backgroundSecondary)
-                .shadow(color: .black.opacity(0.03), radius: 8, y: 2)
-        )
-    }
-}
