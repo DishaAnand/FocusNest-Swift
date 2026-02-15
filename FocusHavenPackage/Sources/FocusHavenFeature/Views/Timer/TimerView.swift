@@ -337,6 +337,9 @@ public struct TimerView: View {
                             showFinalCelebration = true
                         }
                         // Otherwise just dismiss, user can choose break or continue from timer
+                    } else {
+                        // Normal flow: Break already auto-running — show RechargeView
+                        showRechargeAfterSheetDismiss()
                     }
                     resetPredictionState()
                 },
@@ -346,8 +349,10 @@ public struct TimerView: View {
                     if sessionPlan.isActive {
                         // Session plan: start break, then next session
                         handleSessionPlanTakeBreak()
+                    } else {
+                        // Normal flow: Break already auto-running — show RechargeView
+                        showRechargeAfterSheetDismiss()
                     }
-                    // Normal flow: Break auto-starts via timerService
                 },
                 onExtend: { extensionSeconds in
                     focusResult = nil
@@ -368,6 +373,9 @@ public struct TimerView: View {
                             completedDistractionCount = sessionPlanTotalDistractions
                             showFinalCelebration = true
                         }
+                    } else {
+                        // Normal flow: Break already auto-running — show RechargeView
+                        showRechargeAfterSheetDismiss()
                     }
                     resetPredictionState()
                 }
@@ -386,9 +394,12 @@ public struct TimerView: View {
                         handleSessionPlanTakeBreak()
                     } else {
                         resetPredictionState()
-                        // Normal flow: Start break timer and show RechargeView
-                        timerService.setMode(.breakTime, duration: settings.breakDuration)
-                        timerService.start()
+                        // Break is already auto-started by TimerService — just show RechargeView
+                        // If break isn't running yet for some reason, start it
+                        if !timerService.isRunning || !timerService.isBreak {
+                            timerService.setMode(.breakTime, duration: settings.breakDuration)
+                            timerService.start()
+                        }
                         // Show RechargeView after a brief delay to let sheet dismiss
                         if motionService.isAvailable {
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -410,6 +421,12 @@ public struct TimerView: View {
                 onDismiss: {
                     showSessionComplete = false
                     resetPredictionState()
+                    // Break is already auto-running — show RechargeView
+                    if timerService.isRunning && timerService.isBreak && motionService.isAvailable {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            showRechargeMode = true
+                        }
+                    }
                 },
                 // Pass session plan context
                 currentSession: sessionPlan.isActive ? sessionPlan.displayCurrentSession : nil,
@@ -554,9 +571,9 @@ public struct TimerView: View {
             }
         }
         .onChange(of: timerService.state) { oldState, newState in
-            // Show recharge mode when break starts running (mandatory for all breaks)
+            // Show recharge mode when break starts running — but only if no sheet is blocking
             if newState == .running && oldState != .running && timerService.isBreak {
-                if motionService.isAvailable {
+                if motionService.isAvailable && !showSessionComplete && focusResult == nil {
                     showRechargeMode = true
                 }
             }
@@ -640,6 +657,14 @@ public struct TimerView: View {
 
         // Clamp to 1-5
         return max(1, min(5, score))
+    }
+
+    private func showRechargeAfterSheetDismiss() {
+        if timerService.isRunning && timerService.isBreak && motionService.isAvailable {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                showRechargeMode = true
+            }
+        }
     }
 
     private func resetPredictionState() {
@@ -726,9 +751,6 @@ public struct TimerView: View {
 
             // Normal (non-session-plan) flow
             if mode == .focus {
-                // Prevent TimerService from auto-starting break — user will choose from summary sheet
-                timerService.skipDefaultTransition = true
-
                 sessionWasCompleted = true
 
                 let actualFocus = calculateActualFocus()
