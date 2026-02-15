@@ -15,7 +15,6 @@ struct UserSettingsTests {
         defaults.removeObject(forKey: "focusDuration")
         defaults.removeObject(forKey: "breakDuration")
         defaults.removeObject(forKey: "soundEnabled")
-        defaults.removeObject(forKey: "vibrationEnabled")
         defaults.removeObject(forKey: "theme")
         defaults.removeObject(forKey: "notificationsEnabled")
         defaults.removeObject(forKey: "soundKey")
@@ -29,7 +28,7 @@ struct UserSettingsTests {
 
         // Boolean defaults
         #expect(settings.soundEnabled == true)
-        #expect(settings.vibrationEnabled == true)
+        #expect(settings.soundEnabled == true)
         #expect(settings.notificationsEnabled == true)
 
         // Theme default - RN: appearance = 'system'
@@ -196,7 +195,7 @@ struct UserSettingsTests {
         settings.focusDuration = 35 * 60
         settings.breakDuration = 8 * 60
         settings.soundEnabled = false
-        settings.vibrationEnabled = false
+        settings.soundEnabled = false
         settings.theme = .dark
         settings.notificationsEnabled = false
         settings.soundKey = "bell"
@@ -207,7 +206,7 @@ struct UserSettingsTests {
         #expect(loadedSettings.focusDuration == 35 * 60)
         #expect(loadedSettings.breakDuration == 8 * 60)
         #expect(loadedSettings.soundEnabled == false)
-        #expect(loadedSettings.vibrationEnabled == false)
+        #expect(loadedSettings.soundEnabled == false)
         #expect(loadedSettings.theme == .dark)
         #expect(loadedSettings.notificationsEnabled == false)
         #expect(loadedSettings.soundKey == "bell")

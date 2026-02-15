@@ -404,16 +404,8 @@ public struct SettingsView: View {
                                 CleanToggleRow(
                                     icon: "speaker.wave.2.fill",
                                     iconColor: .blue,
-                                    title: "Sounds",
+                                    title: "Sounds & Haptics",
                                     isOn: $settings.soundEnabled
-                                )
-                                Divider().padding(.leading, 60)
-
-                                CleanToggleRow(
-                                    icon: "iphone.radiowaves.left.and.right",
-                                    iconColor: .pink,
-                                    title: "Vibration",
-                                    isOn: $settings.vibrationEnabled
                                 )
                                 Divider().padding(.leading, 60)
 
@@ -755,7 +747,6 @@ public struct SettingsView: View {
                         settings.focusDuration = 25 * 60
                         settings.breakDuration = 5 * 60
                         settings.soundEnabled = true
-                        settings.vibrationEnabled = true
                         settings.theme = .system
                         settings.notificationsEnabled = true
                     }

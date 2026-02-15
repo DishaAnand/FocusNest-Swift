@@ -31,37 +31,37 @@ public final class SoundService: @unchecked Sendable {
     }
 
     public func lightImpact(settings: UserSettings) {
-        guard settings.vibrationEnabled else { return }
+        guard settings.soundEnabled else { return }
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
 
     public func mediumImpact(settings: UserSettings) {
-        guard settings.vibrationEnabled else { return }
+        guard settings.soundEnabled else { return }
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
     }
 
     public func heavyImpact(settings: UserSettings) {
-        guard settings.vibrationEnabled else { return }
+        guard settings.soundEnabled else { return }
         UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
     }
 
     public func successHaptic(settings: UserSettings) {
-        guard settings.vibrationEnabled else { return }
+        guard settings.soundEnabled else { return }
         UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
 
     public func warningHaptic(settings: UserSettings) {
-        guard settings.vibrationEnabled else { return }
+        guard settings.soundEnabled else { return }
         UINotificationFeedbackGenerator().notificationOccurred(.warning)
     }
 
     public func errorHaptic(settings: UserSettings) {
-        guard settings.vibrationEnabled else { return }
+        guard settings.soundEnabled else { return }
         UINotificationFeedbackGenerator().notificationOccurred(.error)
     }
 
     public func selectionChanged(settings: UserSettings) {
-        guard settings.vibrationEnabled else { return }
+        guard settings.soundEnabled else { return }
         UISelectionFeedbackGenerator().selectionChanged()
     }
 }

@@ -7,7 +7,6 @@ public final class UserSettings: @unchecked Sendable {
     private static let focusDurationKey = "focusDuration"
     private static let breakDurationKey = "breakDuration"
     private static let soundEnabledKey = "soundEnabled"
-    private static let vibrationEnabledKey = "vibrationEnabled"
     private static let themeKey = "theme"
     private static let notificationsEnabledKey = "notificationsEnabled"
     private static let soundKeyKey = "soundKey"
@@ -19,7 +18,6 @@ public final class UserSettings: @unchecked Sendable {
     public var focusDuration: Int { didSet { save() } }
     public var breakDuration: Int { didSet { save() } }
     public var soundEnabled: Bool { didSet { save() } }
-    public var vibrationEnabled: Bool { didSet { save() } }
     public var theme: AppTheme { didSet { save() } }
     public var notificationsEnabled: Bool { didSet { save() } }
     /// Selected notification sound (matches RN soundKey)
@@ -38,7 +36,6 @@ public final class UserSettings: @unchecked Sendable {
         self.focusDuration = defaults.object(forKey: Self.focusDurationKey) as? Int ?? 25 * 60
         self.breakDuration = defaults.object(forKey: Self.breakDurationKey) as? Int ?? 5 * 60
         self.soundEnabled = defaults.object(forKey: Self.soundEnabledKey) as? Bool ?? true
-        self.vibrationEnabled = defaults.object(forKey: Self.vibrationEnabledKey) as? Bool ?? true
         self.notificationsEnabled = defaults.object(forKey: Self.notificationsEnabledKey) as? Bool ?? true
         self.soundKey = defaults.string(forKey: Self.soundKeyKey) ?? "chimes"  // RN default
         self.hasSeenNotificationOnboarding = defaults.bool(forKey: Self.hasSeenNotificationOnboardingKey)
@@ -65,7 +62,6 @@ public final class UserSettings: @unchecked Sendable {
         defaults.set(focusDuration, forKey: Self.focusDurationKey)
         defaults.set(breakDuration, forKey: Self.breakDurationKey)
         defaults.set(soundEnabled, forKey: Self.soundEnabledKey)
-        defaults.set(vibrationEnabled, forKey: Self.vibrationEnabledKey)
         defaults.set(theme.rawValue, forKey: Self.themeKey)
         defaults.set(notificationsEnabled, forKey: Self.notificationsEnabledKey)
         defaults.set(soundKey, forKey: Self.soundKeyKey)
