@@ -726,6 +726,9 @@ public struct TimerView: View {
 
             // Normal (non-session-plan) flow
             if mode == .focus {
+                // Prevent TimerService from auto-starting break — user will choose from summary sheet
+                timerService.skipDefaultTransition = true
+
                 sessionWasCompleted = true
 
                 let actualFocus = calculateActualFocus()
