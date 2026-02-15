@@ -321,6 +321,7 @@ public final class TimerService: @unchecked Sendable {
 
     private func completeCurrentSession() {
         stopTimer()
+        notificationService.cancelTimerNotifications()
         state = .idle
         let completedMode = mode
         onComplete?(completedMode)
