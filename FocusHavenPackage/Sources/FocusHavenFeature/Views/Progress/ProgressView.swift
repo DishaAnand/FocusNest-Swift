@@ -71,11 +71,10 @@ public struct FocusProgressView: View {
         return Double(focusScores.reduce(0, +)) / Double(focusScores.count)
     }
 
-    private var avgDistractionsPerSession: Double {
+    private var totalDistractionsThisWeek: Int {
         let weekEnd = calendar.date(byAdding: .day, value: 7, to: thisWeekStart) ?? Date()
         let thisWeekSessions = focusSessions.filter { $0.date >= thisWeekStart && $0.date < weekEnd }
-        guard !thisWeekSessions.isEmpty else { return 0 }
-        return Double(thisWeekSessions.map(\.distractionCount).reduce(0, +)) / Double(thisWeekSessions.count)
+        return thisWeekSessions.map(\.distractionCount).reduce(0, +)
     }
 
     // MARK: - Recharge Score Data
@@ -398,12 +397,12 @@ public struct FocusProgressView: View {
 
                 // Distractions
                 StatCard(
-                    icon: avgDistractionsPerSession < 1 ? "shield.checkered" : "exclamationmark.triangle.fill",
-                    iconColors: avgDistractionsPerSession < 1 ? [.green, .mint] : avgDistractionsPerSession <= 2 ? [.yellow, .orange] : [.orange, .red],
-                    value: focusSessions.isEmpty ? "--" : String(format: "%.1f", avgDistractionsPerSession),
-                    label: "dist./session",
+                    icon: totalDistractionsThisWeek == 0 ? "shield.checkered" : "exclamationmark.triangle.fill",
+                    iconColors: totalDistractionsThisWeek == 0 ? [.green, .mint] : totalDistractionsThisWeek <= 3 ? [.yellow, .orange] : [.orange, .red],
+                    value: "\(totalDistractionsThisWeek)",
+                    label: "dist. this week",
                     progress: nil,
-                    progressColor: avgDistractionsPerSession < 1 ? .green : avgDistractionsPerSession <= 2 ? .yellow : .orange
+                    progressColor: totalDistractionsThisWeek == 0 ? .green : totalDistractionsThisWeek <= 3 ? .yellow : .orange
                 )
             }
 
