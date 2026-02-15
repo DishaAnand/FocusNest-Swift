@@ -71,16 +71,11 @@ public struct FocusProgressView: View {
         return Double(focusScores.reduce(0, +)) / Double(focusScores.count)
     }
 
-    private var distractionChange: Double {
+    private var avgDistractionsPerSession: Double {
         let weekEnd = calendar.date(byAdding: .day, value: 7, to: thisWeekStart) ?? Date()
         let thisWeekSessions = focusSessions.filter { $0.date >= thisWeekStart && $0.date < weekEnd }
-        let lastWeekSessions = focusSessions.filter { $0.date >= lastWeekStart && $0.date < thisWeekStart }
-
-        let thisAvg = thisWeekSessions.isEmpty ? 0 : Double(thisWeekSessions.map(\.distractionCount).reduce(0, +)) / Double(thisWeekSessions.count)
-        let lastAvg = lastWeekSessions.isEmpty ? 0 : Double(lastWeekSessions.map(\.distractionCount).reduce(0, +)) / Double(lastWeekSessions.count)
-
-        guard lastAvg > 0 else { return 0 }
-        return ((lastAvg - thisAvg) / lastAvg) * 100
+        guard !thisWeekSessions.isEmpty else { return 0 }
+        return Double(thisWeekSessions.map(\.distractionCount).reduce(0, +)) / Double(thisWeekSessions.count)
     }
 
     // MARK: - Recharge Score Data
@@ -403,12 +398,12 @@ public struct FocusProgressView: View {
 
                 // Distractions
                 StatCard(
-                    icon: distractionChange >= 0 ? "arrow.down.circle.fill" : "arrow.up.circle.fill",
-                    iconColors: distractionChange >= 0 ? [.green, .mint] : [.orange, .red],
-                    value: abs(distractionChange) < 1 ? "--" : "\(Int(abs(distractionChange)))%",
-                    label: distractionChange >= 0 ? "less dist." : "more dist.",
+                    icon: avgDistractionsPerSession < 1 ? "shield.checkered" : "exclamationmark.triangle.fill",
+                    iconColors: avgDistractionsPerSession < 1 ? [.green, .mint] : avgDistractionsPerSession <= 2 ? [.yellow, .orange] : [.orange, .red],
+                    value: focusSessions.isEmpty ? "--" : String(format: "%.1f", avgDistractionsPerSession),
+                    label: "dist./session",
                     progress: nil,
-                    progressColor: distractionChange >= 0 ? .green : .orange
+                    progressColor: avgDistractionsPerSession < 1 ? .green : avgDistractionsPerSession <= 2 ? .yellow : .orange
                 )
             }
 
