@@ -301,7 +301,8 @@ struct RechargeView: View {
     private func handleBreakComplete() {
         finalRechargeLevel = motionService.rechargePercentage
         motionService.stopTracking()
-        showComplete = true
+        // Skip the break report — just dismiss and go to focus
+        dismiss()
     }
 
     private func handleEarlyExit() {

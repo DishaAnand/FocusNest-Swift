@@ -389,14 +389,6 @@ public struct FocusProgressView: View {
                     color: totalDistractionsThisWeek == 0 ? .green : totalDistractionsThisWeek <= 3 ? .yellow : .orange
                 )
 
-                // Recharge
-                AchievementPill(
-                    icon: "bolt.fill",
-                    label: "Recharge",
-                    value: thisWeekRechargeScore > 0 ? "\(Int(thisWeekRechargeScore))%" : "--",
-                    color: Theme.breakColor
-                )
-
                 // Completion rate
                 if hasEnoughData {
                     AchievementPill(
