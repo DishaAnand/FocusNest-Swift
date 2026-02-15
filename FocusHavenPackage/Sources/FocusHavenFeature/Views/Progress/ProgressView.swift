@@ -120,6 +120,17 @@ public struct FocusProgressView: View {
         }
     }
 
+    // MARK: - Weekly Goal (based on last week or default 2h)
+
+    private var weeklyGoalMinutes: Int {
+        lastWeekMinutes > 0 ? lastWeekMinutes : 120
+    }
+
+    private var ringProgress: Double {
+        guard weeklyGoalMinutes > 0 else { return 0 }
+        return min(Double(thisWeekMinutes) / Double(weeklyGoalMinutes), 1.5)
+    }
+
     // MARK: - Focus Profile Data
 
     private var bestTimeOfDay: String {
@@ -217,36 +228,42 @@ public struct FocusProgressView: View {
     public var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 20) {
-                    // Hero Card
-                    heroCard
+                VStack(spacing: 28) {
+                    // Focus Ring Hero
+                    focusRingHero
                         .opacity(appearAnimation ? 1 : 0)
-                        .offset(y: appearAnimation ? 0 : 20)
+                        .scaleEffect(appearAnimation ? 1 : 0.9)
 
-                    // Stats Grid
-                    statsGrid
+                    // Achievement Pills
+                    achievementPills
                         .opacity(appearAnimation ? 1 : 0)
-                        .offset(y: appearAnimation ? 0 : 20)
+                        .offset(y: appearAnimation ? 0 : 15)
                         .animation(.spring(response: 0.5).delay(0.1), value: appearAnimation)
 
-                    // Task Breakdown Card
+                    // Week Heatmap
+                    weekHeatmap
+                        .opacity(appearAnimation ? 1 : 0)
+                        .offset(y: appearAnimation ? 0 : 15)
+                        .animation(.spring(response: 0.5).delay(0.15), value: appearAnimation)
+
+                    // Task Breakdown
                     if !taskBreakdown.isEmpty {
                         taskBreakdownCard
                             .opacity(appearAnimation ? 1 : 0)
-                            .offset(y: appearAnimation ? 0 : 20)
-                            .animation(.spring(response: 0.5).delay(0.15), value: appearAnimation)
+                            .offset(y: appearAnimation ? 0 : 15)
+                            .animation(.spring(response: 0.5).delay(0.2), value: appearAnimation)
                     }
 
-                    // Tab Section
+                    // Insights / Charts
                     tabSection
                         .opacity(appearAnimation ? 1 : 0)
-                        .offset(y: appearAnimation ? 0 : 20)
-                        .animation(.spring(response: 0.5).delay(0.2), value: appearAnimation)
+                        .offset(y: appearAnimation ? 0 : 15)
+                        .animation(.spring(response: 0.5).delay(0.25), value: appearAnimation)
                 }
                 .padding(.horizontal, Theme.spacingM)
                 .padding(.bottom, Theme.spacingXL)
-                .frame(maxWidth: 700)  // iPad: constrain content width
-                .frame(maxWidth: .infinity)  // Center on larger screens
+                .frame(maxWidth: 700)
+                .frame(maxWidth: .infinity)
             }
             .background(Theme.backgroundPrimary)
             .navigationTitle("Progress")
@@ -255,7 +272,7 @@ public struct FocusProgressView: View {
                     appearAnimation = true
                 }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    withAnimation(.easeOut(duration: 1.0)) {
+                    withAnimation(.easeOut(duration: 1.2)) {
                         chartAnimation = true
                     }
                 }
@@ -268,43 +285,74 @@ public struct FocusProgressView: View {
         }
     }
 
-    // MARK: - Glass Panel Helpers
+    // MARK: - Focus Ring Hero
 
-    private var glassBackground: some ShapeStyle {
-        .ultraThinMaterial
-    }
+    private var focusRingHero: some View {
+        VStack(spacing: 20) {
+            ZStack {
+                // Background track
+                Circle()
+                    .stroke(Theme.focusColor.opacity(0.1), style: StrokeStyle(lineWidth: 18))
+                    .frame(width: 200, height: 200)
 
-    private var glassBorder: some View {
-        RoundedRectangle(cornerRadius: 20)
-            .strokeBorder(.white.opacity(0.15), lineWidth: 1)
-    }
-
-    // MARK: - Hero Panel
-
-    private var heroCard: some View {
-        VStack(spacing: 16) {
-            // Big focus time with shimmer gradient
-            VStack(spacing: 6) {
-                Text(formatMinutes(thisWeekMinutes))
-                    .font(.system(size: 52, weight: .bold, design: .rounded))
-                    .foregroundStyle(
-                        LinearGradient(
+                // Progress ring
+                Circle()
+                    .trim(from: 0, to: chartAnimation ? min(ringProgress, 1.0) : 0)
+                    .stroke(
+                        AngularGradient(
                             colors: [Theme.focusColor, .cyan, Theme.focusColor],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
+                            center: .center,
+                            startAngle: .degrees(-90),
+                            endAngle: .degrees(270)
+                        ),
+                        style: StrokeStyle(lineWidth: 18, lineCap: .round)
                     )
+                    .frame(width: 200, height: 200)
+                    .rotationEffect(.degrees(-90))
+                    .animation(.spring(response: 1.2, dampingFraction: 0.75), value: chartAnimation)
 
-                Text("focused this week")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(Theme.textSecondary)
+                // Overflow glow when exceeding goal
+                if ringProgress > 1.0 {
+                    Circle()
+                        .trim(from: 0, to: chartAnimation ? min(ringProgress - 1.0, 0.5) : 0)
+                        .stroke(
+                            Theme.focusColor.opacity(0.3),
+                            style: StrokeStyle(lineWidth: 24, lineCap: .round)
+                        )
+                        .frame(width: 200, height: 200)
+                        .rotationEffect(.degrees(-90))
+                        .blur(radius: 6)
+                        .animation(.spring(response: 1.2, dampingFraction: 0.75).delay(0.3), value: chartAnimation)
+                }
+
+                // Center content
+                VStack(spacing: 4) {
+                    Text(formatMinutes(thisWeekMinutes))
+                        .font(.system(size: 36, weight: .bold, design: .rounded))
+                        .foregroundStyle(Theme.textPrimary)
+
+                    Text("of \(formatMinutes(weeklyGoalMinutes))")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(Theme.textTertiary)
+
+                    if currentStreak > 0 {
+                        HStack(spacing: 3) {
+                            Image(systemName: "flame.fill")
+                                .font(.system(size: 12))
+                            Text("\(currentStreak)")
+                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                        }
+                        .foregroundStyle(.orange)
+                        .padding(.top, 2)
+                    }
+                }
             }
 
             // Comparison pill
             if weeklyDifference != 0 {
-                HStack(spacing: 6) {
+                HStack(spacing: 5) {
                     Image(systemName: weeklyDifference > 0 ? "arrow.up.right" : "arrow.down.right")
-                        .font(.system(size: 12, weight: .bold))
+                        .font(.system(size: 11, weight: .bold))
                     Text("\(formatMinutes(abs(weeklyDifference))) \(weeklyDifference > 0 ? "more" : "less") than last week")
                         .font(.system(size: 13, weight: .medium))
                 }
@@ -316,209 +364,121 @@ public struct FocusProgressView: View {
                         .fill((weeklyDifference > 0 ? Color.green : Color.orange).opacity(0.1))
                 )
             }
-
-            // Embedded sparkline
-            weekSparkline
-                .padding(.top, 4)
         }
-        .padding(.vertical, 24)
-        .padding(.horizontal, 20)
-        .background(
-            RoundedRectangle(cornerRadius: 24)
-                .fill(glassBackground)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24)
-                        .strokeBorder(.white.opacity(0.15), lineWidth: 1)
-                )
-        )
+        .padding(.top, 8)
     }
 
-    // MARK: - Week Sparkline
+    // MARK: - Achievement Pills
 
-    private var weekSparkline: some View {
-        HStack(spacing: 0) {
-            ForEach(Array(dailyFocusData.enumerated()), id: \.element.id) { index, day in
-                VStack(spacing: 6) {
-                    // Dot sized by minutes
-                    let dotSize: CGFloat = day.isFuture ? 4 : (day.minutes > 0 ? max(8, min(20, CGFloat(day.minutes) / CGFloat(day.maxMinutes) * 20)) : 5)
+    private var achievementPills: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                // Focus quality
+                AchievementPill(
+                    icon: "brain.head.profile.fill",
+                    label: "Focus",
+                    value: String(format: "%.1f", averageFocus),
+                    color: Theme.focusColor
+                )
 
-                    Circle()
-                        .fill(
-                            day.isFuture ? AnyShapeStyle(Theme.textTertiary.opacity(0.2)) :
-                            day.minutes > 0 ?
-                                AnyShapeStyle(LinearGradient(colors: [Theme.focusColor, .cyan], startPoint: .top, endPoint: .bottom)) :
-                                AnyShapeStyle(Theme.textTertiary.opacity(0.3))
-                        )
-                        .frame(width: chartAnimation ? dotSize : 4, height: chartAnimation ? dotSize : 4)
+                // Distractions
+                AchievementPill(
+                    icon: totalDistractionsThisWeek == 0 ? "shield.checkered" : "hand.raised.fill",
+                    label: "Distractions",
+                    value: "\(totalDistractionsThisWeek)",
+                    color: totalDistractionsThisWeek == 0 ? .green : totalDistractionsThisWeek <= 3 ? .yellow : .orange
+                )
+
+                // Recharge
+                AchievementPill(
+                    icon: "bolt.fill",
+                    label: "Recharge",
+                    value: thisWeekRechargeScore > 0 ? "\(Int(thisWeekRechargeScore))%" : "--",
+                    color: Theme.breakColor
+                )
+
+                // Completion rate
+                if hasEnoughData {
+                    AchievementPill(
+                        icon: "checkmark.seal.fill",
+                        label: "Completed",
+                        value: "\(completionRate)%",
+                        color: .green
+                    )
+                }
+            }
+            .padding(.horizontal, 4)
+        }
+    }
+
+    // MARK: - Week Heatmap
+
+    private var weekHeatmap: some View {
+        VStack(spacing: 14) {
+            HStack {
+                Text("This Week")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Theme.textPrimary)
+                Spacer()
+                Text(formatMinutes(thisWeekMinutes))
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundStyle(Theme.focusColor)
+            }
+
+            HStack(spacing: 0) {
+                ForEach(Array(dailyFocusData.enumerated()), id: \.element.id) { index, day in
+                    VStack(spacing: 8) {
+                        // Heatmap circle — sized + colored by intensity
+                        let intensity = day.isFuture ? 0.0 : (day.minutes > 0 ? Double(day.minutes) / Double(day.maxMinutes) : 0)
+                        let circleSize: CGFloat = day.isFuture ? 28 : (day.minutes > 0 ? max(28, min(44, 28 + CGFloat(intensity) * 16)) : 28)
+
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    day.isFuture ? Theme.textTertiary.opacity(0.06) :
+                                    day.minutes > 0 ? Theme.focusColor.opacity(0.15 + intensity * 0.55) :
+                                    Theme.textTertiary.opacity(0.08)
+                                )
+                                .frame(
+                                    width: chartAnimation ? circleSize : 28,
+                                    height: chartAnimation ? circleSize : 28
+                                )
+
+                            if day.minutes > 0 && !day.isFuture {
+                                Text("\(day.minutes)")
+                                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                                    .foregroundStyle(Theme.focusColor)
+                            }
+                        }
                         .overlay(
                             day.isToday ?
                             Circle()
-                                .strokeBorder(Theme.focusColor, lineWidth: 2)
-                                .frame(width: dotSize + 6, height: dotSize + 6)
+                                .strokeBorder(Theme.focusColor, lineWidth: 2.5)
+                                .frame(
+                                    width: (chartAnimation ? circleSize : 28) + 6,
+                                    height: (chartAnimation ? circleSize : 28) + 6
+                                )
                             : nil
                         )
-                        .animation(.spring(response: 0.6, dampingFraction: 0.7).delay(Double(index) * 0.06), value: chartAnimation)
-
-                    Text(day.dayInitial)
-                        .font(.system(size: 10, weight: day.isToday ? .bold : .medium))
-                        .foregroundStyle(day.isToday ? Theme.focusColor : Theme.textTertiary)
-                }
-                .frame(maxWidth: .infinity)
-            }
-        }
-    }
-
-    // MARK: - Asymmetric Stat Panels
-
-    private var statsGrid: some View {
-        VStack(spacing: 10) {
-            // Row 1: Large streak + small distractions
-            HStack(spacing: 10) {
-                // Streak — large panel
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "flame.fill")
-                            .font(.system(size: 22))
-                            .foregroundStyle(
-                                LinearGradient(colors: [.orange, .red], startPoint: .top, endPoint: .bottom)
-                            )
-                        Spacer()
-                        Text("\(currentStreak)")
-                            .font(.system(size: 36, weight: .bold, design: .rounded))
-                            .foregroundStyle(Theme.textPrimary)
-                    }
-
-                    Text("day streak")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(Theme.textSecondary)
-
-                    // Week activity dots
-                    HStack(spacing: 6) {
-                        ForEach(dailyFocusData) { day in
-                            Circle()
-                                .fill(day.isFuture ? Theme.textTertiary.opacity(0.15) :
-                                      day.minutes > 0 ? Color.orange : Theme.textTertiary.opacity(0.25))
-                                .frame(width: 8, height: 8)
-                        }
-                    }
-                }
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(.ultraThinMaterial)
-                        .overlay(glassBorder)
-                )
-
-                // Distractions — small panel
-                VStack(spacing: 8) {
-                    Image(systemName: totalDistractionsThisWeek == 0 ? "shield.checkered" : "exclamationmark.triangle.fill")
-                        .font(.system(size: 20))
-                        .foregroundStyle(
-                            totalDistractionsThisWeek == 0 ? Color.green :
-                            totalDistractionsThisWeek <= 3 ? Color.yellow : Color.orange
+                        .frame(height: 50)
+                        .animation(
+                            .spring(response: 0.6, dampingFraction: 0.7).delay(Double(index) * 0.06),
+                            value: chartAnimation
                         )
 
-                    Text("\(totalDistractionsThisWeek)")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundStyle(Theme.textPrimary)
-
-                    Text("dist.")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(Theme.textTertiary)
-                }
-                .padding(16)
-                .frame(maxWidth: .infinity)
-                .frame(minHeight: 110)
-                .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(.ultraThinMaterial)
-                        .overlay(glassBorder)
-                )
-                .frame(width: 100)
-            }
-
-            // Row 2: Small focus score + large recharge
-            HStack(spacing: 10) {
-                // Focus score — small panel
-                VStack(spacing: 8) {
-                    Image(systemName: "brain.head.profile.fill")
-                        .font(.system(size: 20))
-                        .foregroundStyle(
-                            LinearGradient(colors: [Theme.focusColor, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)
-                        )
-
-                    Text(String(format: "%.1f", averageFocus))
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundStyle(Theme.textPrimary)
-
-                    Text("focus")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(Theme.textTertiary)
-                }
-                .padding(16)
-                .frame(maxWidth: .infinity)
-                .frame(minHeight: 110)
-                .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(.ultraThinMaterial)
-                        .overlay(glassBorder)
-                )
-                .frame(width: 100)
-
-                // Recharge — large panel
-                HStack(spacing: 14) {
-                    ZStack {
-                        Circle()
-                            .stroke(Theme.textTertiary.opacity(0.1), lineWidth: 4)
-                            .frame(width: 52, height: 52)
-
-                        Circle()
-                            .trim(from: 0, to: chartAnimation ? min(thisWeekRechargeScore / 100.0, 1.0) : 0)
-                            .stroke(
-                                LinearGradient(colors: [Theme.breakColor, .cyan], startPoint: .topLeading, endPoint: .bottomTrailing),
-                                style: StrokeStyle(lineWidth: 4, lineCap: .round)
-                            )
-                            .frame(width: 52, height: 52)
-                            .rotationEffect(.degrees(-90))
-                            .animation(.spring(response: 0.8, dampingFraction: 0.7), value: chartAnimation)
-
-                        Image(systemName: "bolt.fill")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(
-                                LinearGradient(colors: [Theme.breakColor, .cyan], startPoint: .top, endPoint: .bottom)
-                            )
+                        Text(day.dayInitial)
+                            .font(.system(size: 11, weight: day.isToday ? .bold : .medium))
+                            .foregroundStyle(day.isToday ? Theme.focusColor : Theme.textTertiary)
                     }
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Recharge")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(Theme.textSecondary)
-
-                        HStack(spacing: 6) {
-                            Text(thisWeekRechargeScore > 0 ? "\(Int(thisWeekRechargeScore))%" : "--")
-                                .font(.system(size: 28, weight: .bold, design: .rounded))
-                                .foregroundStyle(Theme.textPrimary)
-
-                            if abs(rechargeScoreChange) >= 1 {
-                                Text("\(rechargeScoreChange >= 0 ? "+" : "")\(Int(rechargeScoreChange))%")
-                                    .font(.system(size: 12, weight: .medium))
-                                    .foregroundStyle(rechargeScoreChange >= 0 ? .green : .orange)
-                            }
-                        }
-                    }
-
-                    Spacer()
+                    .frame(maxWidth: .infinity)
                 }
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(.ultraThinMaterial)
-                        .overlay(glassBorder)
-                )
             }
         }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Theme.backgroundSecondary)
+        )
     }
 
     // MARK: - Task Breakdown Card
@@ -594,11 +554,7 @@ public struct FocusProgressView: View {
         .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 20)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .strokeBorder(.white.opacity(0.15), lineWidth: 1)
-                )
+                .fill(Theme.backgroundSecondary)
         )
     }
 
@@ -606,7 +562,7 @@ public struct FocusProgressView: View {
 
     private var tabSection: some View {
         VStack(spacing: 16) {
-            // Custom tab picker — glass style
+            // Tab picker
             HStack(spacing: 0) {
                 ForEach(InsightTab.allCases, id: \.self) { tab in
                     Button {
@@ -618,7 +574,7 @@ public struct FocusProgressView: View {
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(selectedTab == tab ? .white : Theme.textSecondary)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
+                            .padding(.vertical, 10)
                             .background(
                                 Capsule()
                                     .fill(selectedTab == tab ? Theme.focusColor : Color.clear)
@@ -626,13 +582,12 @@ public struct FocusProgressView: View {
                     }
                 }
             }
-            .padding(4)
+            .padding(3)
             .background(
                 Capsule()
-                    .fill(.ultraThinMaterial)
-                )
+                    .fill(Theme.backgroundSecondary)
+            )
 
-            // Tab content
             switch selectedTab {
             case .insights:
                 insightsContent
@@ -649,20 +604,14 @@ public struct FocusProgressView: View {
             if hasEnoughData {
                 VStack(spacing: 0) {
                     InsightRow(icon: "sun.horizon.fill", iconColor: .orange, title: "Peak Time", value: bestTimeOfDay)
-                    Divider().padding(.leading, 48)
+                    Divider().padding(.leading, 52)
                     InsightRow(icon: "calendar.badge.checkmark", iconColor: .blue, title: "Best Day", value: bestDayOfWeek)
-                    Divider().padding(.leading, 48)
-                    InsightRow(icon: "checkmark.seal.fill", iconColor: .green, title: "Completion", value: "\(completionRate)%")
-                    Divider().padding(.leading, 48)
-                    InsightRow(icon: "number.circle.fill", iconColor: Theme.focusColor, title: "Sessions", value: "\(focusSessions.count)")
+                    Divider().padding(.leading, 52)
+                    InsightRow(icon: "number.circle.fill", iconColor: Theme.focusColor, title: "Total Sessions", value: "\(focusSessions.count)")
                 }
                 .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(.ultraThinMaterial)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 20)
-                                .strokeBorder(.white.opacity(0.1), lineWidth: 1)
-                        )
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(Theme.backgroundSecondary)
                 )
             } else {
                 VStack(spacing: 12) {
@@ -679,8 +628,8 @@ public struct FocusProgressView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 40)
                 .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(.ultraThinMaterial)
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(Theme.backgroundSecondary)
                 )
             }
         }
@@ -715,6 +664,40 @@ private enum InsightTab: String, CaseIterable {
 
 // MARK: - Supporting Views
 
+private struct AchievementPill: View {
+    let icon: String
+    let label: String
+    let value: String
+    let color: Color
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(color)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(value)
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundStyle(Theme.textPrimary)
+                Text(label)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Theme.textTertiary)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(
+            Capsule()
+                .fill(color.opacity(0.1))
+                .overlay(
+                    Capsule()
+                        .strokeBorder(color.opacity(0.15), lineWidth: 1)
+                )
+        )
+    }
+}
+
 private struct InsightRow: View {
     let icon: String
     let iconColor: Color
@@ -725,7 +708,7 @@ private struct InsightRow: View {
         HStack(spacing: 14) {
             ZStack {
                 Circle()
-                    .fill(iconColor.opacity(0.15))
+                    .fill(iconColor.opacity(0.12))
                     .frame(width: 34, height: 34)
                 Image(systemName: icon)
                     .font(.system(size: 15, weight: .semibold))
@@ -784,7 +767,6 @@ private struct AllTasksSheet: View {
                 VStack(spacing: 10) {
                     ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
                         HStack(spacing: 14) {
-                            // Rank badge
                             ZStack {
                                 Circle()
                                     .fill(index < 3 ? Theme.focusColor.opacity(0.1) : Theme.textTertiary.opacity(0.1))
@@ -871,5 +853,3 @@ private struct DonutSegment: Identifiable {
     let percentage: Double
     let color: Color
 }
-
-
