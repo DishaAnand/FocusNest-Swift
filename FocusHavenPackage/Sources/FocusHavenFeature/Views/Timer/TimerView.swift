@@ -357,7 +357,6 @@ public struct TimerView: View {
                     } else {
                         // Normal flow: Start a new focus session with the extension duration
                         timerService.startExtension(duration: extensionSeconds)
-                        Task { await notificationService.scheduleTimerCompletion(in: extensionSeconds, mode: .focus, taskTitle: timerService.selectedTask?.title) }
                     }
                 },
                 onDismiss: {
@@ -406,7 +405,6 @@ public struct TimerView: View {
                     } else {
                         // Normal flow: extend current session
                         timerService.startExtension(duration: extensionSeconds)
-                        Task { await notificationService.scheduleTimerCompletion(in: extensionSeconds, mode: .focus, taskTitle: timerService.selectedTask?.title) }
                     }
                 },
                 onDismiss: {
@@ -592,8 +590,6 @@ public struct TimerView: View {
             // Start timer directly (prediction is now optional via pill)
             startTimerWithoutPrediction()
         } else if timerService.state == .paused {
-            let customSound = timerService.isBreak ? wakeUpVoiceService.getNotificationSound() : nil
-            Task { notificationService.cancelTimerNotifications(); await notificationService.scheduleTimerCompletion(in: timerService.remainingTime, mode: timerService.mode, taskTitle: timerService.selectedTask?.title, customBreakSound: customSound) }
             timerService.togglePlayPause()
             // Resume ambient sound when resuming focus
             if !timerService.isBreak {
@@ -611,8 +607,6 @@ public struct TimerView: View {
         distractionCount = 0
         sessionWasCompleted = true
         predictedFocus = nil
-        let customSound = timerService.isBreak ? wakeUpVoiceService.getNotificationSound() : nil
-        Task { await notificationService.scheduleTimerCompletion(in: timerService.remainingTime, mode: timerService.mode, taskTitle: timerService.selectedTask?.title, customBreakSound: customSound) }
         timerService.togglePlayPause()
         // Start ambient sound when focus session begins (not during breaks)
         if !timerService.isBreak {
@@ -625,8 +619,6 @@ public struct TimerView: View {
         sessionWasCompleted = true
         predictedFocus = level
         lastPrediction = level
-        let customSound = timerService.isBreak ? wakeUpVoiceService.getNotificationSound() : nil
-        Task { await notificationService.scheduleTimerCompletion(in: timerService.remainingTime, mode: timerService.mode, taskTitle: timerService.selectedTask?.title, customBreakSound: customSound) }
         timerService.togglePlayPause()
         // Start ambient sound when focus session begins (not during breaks)
         if !timerService.isBreak {
