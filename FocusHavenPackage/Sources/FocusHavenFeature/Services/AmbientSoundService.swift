@@ -117,13 +117,19 @@ public final class AmbientSoundService: @unchecked Sendable {
         }
     }
 
-    /// Change sound and start playing if was already playing
-    public func changeSound(to sound: AmbientSound) {
-        let wasPlaying = isPlaying
-        stop()
+    /// Change sound and start playing if was already playing or if forced
+    public func changeSound(to sound: AmbientSound, forcePlay: Bool = false) {
+        let wasPlaying = isPlaying || audioPlayer != nil
+        // Stop the current player without deactivating the audio session
+        audioPlayer?.stop()
+        audioPlayer = nil
+        isPlaying = false
         selectedSound = sound
-        if wasPlaying && sound != .silence {
+        if (wasPlaying || forcePlay) && sound != .silence {
             play()
+        } else if sound == .silence {
+            // Only deactivate session when switching to silence
+            try? audioSession.setActive(false, options: .notifyOthersOnDeactivation)
         }
     }
 }

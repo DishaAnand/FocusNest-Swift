@@ -523,6 +523,14 @@ public struct TimerView: View {
         .sheet(isPresented: $showAmbientSoundPicker) {
             AmbientSoundPicker()
         }
+        .onChange(of: showAmbientSoundPicker) { _, isShowing in
+            // When picker dismisses during an active session, ensure the selected sound plays
+            if !isShowing && timerService.isRunning && !timerService.isBreak {
+                if ambientSoundService.selectedSound != .silence && !ambientSoundService.isPlaying {
+                    ambientSoundService.play()
+                }
+            }
+        }
         .onChange(of: scenePhase) { oldPhase, newPhase in
             // Only track distractions during active focus session (not breaks)
             guard timerService.isRunning && !timerService.isBreak else { return }
