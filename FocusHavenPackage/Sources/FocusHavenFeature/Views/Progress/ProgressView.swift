@@ -120,15 +120,11 @@ public struct FocusProgressView: View {
         }
     }
 
-    // MARK: - Weekly Goal (based on last week or default 2h)
-
-    private var weeklyGoalMinutes: Int {
-        lastWeekMinutes > 0 ? lastWeekMinutes : 120
-    }
+    // MARK: - Ring Progress (1 full ring = 1 hour of focus)
 
     private var ringProgress: Double {
-        guard weeklyGoalMinutes > 0 else { return 0 }
-        return min(Double(thisWeekMinutes) / Double(weeklyGoalMinutes), 1.5)
+        // 1 full ring = 60 minutes; wraps naturally for multi-hour weeks
+        min(Double(thisWeekMinutes) / 60.0, 1.0)
     }
 
     // MARK: - Focus Profile Data
@@ -311,27 +307,13 @@ public struct FocusProgressView: View {
                     .rotationEffect(.degrees(-90))
                     .animation(.spring(response: 1.2, dampingFraction: 0.75), value: chartAnimation)
 
-                // Overflow glow when exceeding goal
-                if ringProgress > 1.0 {
-                    Circle()
-                        .trim(from: 0, to: chartAnimation ? min(ringProgress - 1.0, 0.5) : 0)
-                        .stroke(
-                            Theme.focusColor.opacity(0.3),
-                            style: StrokeStyle(lineWidth: 24, lineCap: .round)
-                        )
-                        .frame(width: 200, height: 200)
-                        .rotationEffect(.degrees(-90))
-                        .blur(radius: 6)
-                        .animation(.spring(response: 1.2, dampingFraction: 0.75).delay(0.3), value: chartAnimation)
-                }
-
                 // Center content
                 VStack(spacing: 4) {
                     Text(formatMinutes(thisWeekMinutes))
                         .font(.system(size: 36, weight: .bold, design: .rounded))
                         .foregroundStyle(Theme.textPrimary)
 
-                    Text("of \(formatMinutes(weeklyGoalMinutes))")
+                    Text("focused this week")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(Theme.textTertiary)
 

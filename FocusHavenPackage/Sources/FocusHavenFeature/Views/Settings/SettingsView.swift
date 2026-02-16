@@ -1,6 +1,5 @@
 import SwiftUI
 import SwiftData
-import StoreKit
 import UIKit
 
 // MARK: - Settings Hero Header
@@ -322,6 +321,7 @@ public struct SettingsView: View {
     @State private var showingResetAlert = false
     @State private var showPaywall = false
     @State private var showWakeUpVoice = false
+    @State private var showRatingSheet = false
     @State private var sectionsAppeared = false
 
 
@@ -604,7 +604,7 @@ public struct SettingsView: View {
                                 Divider().padding(.leading, 60)
 
                                 Button {
-                                    requestAppReview()
+                                    showRatingSheet = true
                                 } label: {
                                     CleanSettingsRow(
                                         icon: "star.fill",
@@ -762,15 +762,82 @@ public struct SettingsView: View {
                     WakeUpVoicesSettingsView()
                 }
             }
+            .sheet(isPresented: $showRatingSheet) {
+                RateAppSheet()
+                    .presentationDetents([.medium])
+                    .presentationDragIndicator(.visible)
+            }
         }
     }
+}
 
-    private func requestAppReview() {
-        // Try native in-app rating first (shows stars popup)
-        // Note: Only works in App Store builds, Apple controls when it appears
-        if let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene {
-            SKStoreReviewController.requestReview(in: scene)
+// MARK: - Rate App Sheet
+
+private struct RateAppSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var rating: Int = 0
+    @State private var submitted = false
+
+    var body: some View {
+        VStack(spacing: 24) {
+            if submitted {
+                // Thank you state
+                VStack(spacing: 16) {
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: 48))
+                        .foregroundStyle(.pink)
+
+                    Text("Thank you!")
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundStyle(Theme.textPrimary)
+
+                    Text("Your feedback means a lot to us.")
+                        .font(.system(size: 16))
+                        .foregroundStyle(Theme.textSecondary)
+                        .multilineTextAlignment(.center)
+                }
+                .transition(.scale.combined(with: .opacity))
+                .onAppear {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        dismiss()
+                    }
+                }
+            } else {
+                // Rating state
+                VStack(spacing: 8) {
+                    Text("Enjoying FocusHaven?")
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundStyle(Theme.textPrimary)
+
+                    Text("Tap the stars to rate your experience")
+                        .font(.system(size: 15))
+                        .foregroundStyle(Theme.textSecondary)
+                }
+
+                StarRatingView(rating: $rating, size: 40)
+                    .padding(.vertical, 8)
+
+                Button {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                        submitted = true
+                    }
+                } label: {
+                    Text("Submit")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(rating > 0 ? Theme.focusColor : Theme.textTertiary.opacity(0.3))
+                        )
+                }
+                .disabled(rating == 0)
+            }
         }
+        .padding(32)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Theme.backgroundPrimary)
     }
 }
 
