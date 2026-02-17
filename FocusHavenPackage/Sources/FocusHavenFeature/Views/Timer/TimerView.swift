@@ -28,21 +28,13 @@ public struct TimerView: View {
     @State private var lastPrediction: Int? = nil
     @State private var completedSessionDuration: Int = 0
     @State private var completedDistractionCount: Int = 0  // Captured at session end for display
+    @State private var completedPredictedLevel: Int? = nil
+    @State private var completedActualLevel: Int? = nil
+    @State private var completedWasCompleted: Bool = true
     @State private var predictedFocus: Int? = nil
     @State private var distractionCount = 0
     @State private var lastBreakRechargePercentage: Double = 0  // Recharge from previous break for halo effect
 
-    // Result data for sheet (set before presenting)
-    @State private var focusResult: FocusResultData? = nil
-
-    private struct FocusResultData: Identifiable {
-        let id = UUID()
-        let predicted: Int
-        let actual: Int
-        let duration: Int
-        let distractions: Int
-        let wasCompleted: Bool
-    }
     @State private var wentAwayAt: Date? = nil
     @State private var sessionWasCompleted = true
     @State private var oceanChoppiness: Double = 0
@@ -145,13 +137,26 @@ public struct TimerView: View {
                                 timerService.stop()
                                 notificationService.cancelTimerNotifications()
 
-                                focusResult = FocusResultData(
-                                    predicted: predicted,
-                                    actual: actualFocus,
-                                    duration: dur,
-                                    distractions: dist,
-                                    wasCompleted: false
+                                completedPredictedLevel = predicted
+                                completedActualLevel = actualFocus
+                                completedWasCompleted = false
+                                completedSessionDuration = dur
+                                completedDistractionCount = dist
+                                showSessionComplete = true
+                            } else if !timerService.isBreak {
+                                // Save incomplete focus record (no prediction)
+                                let record = FocusRecord(
+                                    duration: settings.focusDuration - timerService.remainingTime,
+                                    isBreak: false,
+                                    taskId: timerService.selectedTask?.id,
+                                    taskTitle: timerService.selectedTask?.title,
+                                    wasCompleted: false,
+                                    distractionCount: distractionCount
                                 )
+                                modelContext.insert(record)
+                                timerService.stop()
+                                notificationService.cancelTimerNotifications()
+                                resetPredictionState()
                             } else {
                                 timerService.stop()
                                 notificationService.cancelTimerNotifications()
@@ -288,8 +293,9 @@ public struct TimerView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .showEnergyPrediction)) { _ in
             // Show energy prediction overlay for single task (with small delay for tab switch)
+            // Allow during breaks too — user is setting up their next focus session
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                if timerService.state == .idle && !timerService.isBreak {
+                if timerService.state == .idle || timerService.isBreak {
                     // Check if we should show wake-up voice onboarding first
                     if !settings.hasSeenWakeUpVoiceOnboarding && wakeUpVoiceService.voices.isEmpty {
                         sessionPlanPendingOnboarding = nil
@@ -320,69 +326,6 @@ public struct TimerView: View {
                 }
             }
         }
-        .sheet(item: $focusResult) { result in
-            FocusPredictionResultView(
-                predictedLevel: result.predicted,
-                actualLevel: result.actual,
-                duration: result.duration,
-                distractionCount: result.distractions,
-                wasCompleted: result.wasCompleted,
-                onDone: {
-                    focusResult = nil
-                    if sessionPlan.isActive {
-                        // Session plan: check if last session for final celebration
-                        if sessionPlan.isLastSession {
-                            completedSessionDuration = sessionPlanTotalFocusTime
-                            completedDistractionCount = sessionPlanTotalDistractions
-                            showFinalCelebration = true
-                        }
-                        // Otherwise just dismiss, user can choose break or continue from timer
-                    } else {
-                        // Normal flow: Break already auto-running — show RechargeView
-                        showRechargeAfterSheetDismiss()
-                    }
-                    resetPredictionState()
-                },
-                onTakeBreak: {
-                    focusResult = nil
-                    resetPredictionState()
-                    if sessionPlan.isActive {
-                        // Session plan: start break, then next session
-                        handleSessionPlanTakeBreak()
-                    } else {
-                        // Normal flow: Break already auto-running — show RechargeView
-                        showRechargeAfterSheetDismiss()
-                    }
-                },
-                onExtend: { extensionSeconds in
-                    focusResult = nil
-                    if sessionPlan.isActive {
-                        // Session plan: skip break, go to next session
-                        handleSessionPlanContinue()
-                    } else {
-                        // Normal flow: Start a new focus session with the extension duration
-                        timerService.startExtension(duration: extensionSeconds)
-                    }
-                },
-                onDismiss: {
-                    focusResult = nil
-                    if sessionPlan.isActive {
-                        // Session plan: check if last session for final celebration
-                        if sessionPlan.isLastSession {
-                            completedSessionDuration = sessionPlanTotalFocusTime
-                            completedDistractionCount = sessionPlanTotalDistractions
-                            showFinalCelebration = true
-                        }
-                    } else {
-                        // Normal flow: Break already auto-running — show RechargeView
-                        showRechargeAfterSheetDismiss()
-                    }
-                    resetPredictionState()
-                }
-            )
-            .presentationDetents([.large])
-            .interactiveDismissDisabled()
-        }
         .fullScreenCover(isPresented: $showSessionComplete) {
             SessionCompleteView(
                 duration: completedSessionDuration,
@@ -390,17 +333,13 @@ public struct TimerView: View {
                 onTakeBreak: {
                     showSessionComplete = false
                     if sessionPlan.isActive {
-                        // Session plan: start break, then next session
                         handleSessionPlanTakeBreak()
                     } else {
                         resetPredictionState()
-                        // Break is already auto-started by TimerService — just show RechargeView
-                        // If break isn't running yet for some reason, start it
                         if !timerService.isRunning || !timerService.isBreak {
                             timerService.setMode(.breakTime, duration: settings.breakDuration)
                             timerService.start()
                         }
-                        // Show RechargeView after a brief delay to let sheet dismiss
                         if motionService.isAvailable {
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                                 showRechargeMode = true
@@ -411,24 +350,23 @@ public struct TimerView: View {
                 onExtend: { extensionSeconds in
                     showSessionComplete = false
                     if sessionPlan.isActive {
-                        // Session plan: skip break, go to next session
                         handleSessionPlanContinue()
                     } else {
-                        // Normal flow: extend current session
                         timerService.startExtension(duration: extensionSeconds)
                     }
                 },
                 onDismiss: {
                     showSessionComplete = false
                     resetPredictionState()
-                    // Break is already auto-running — show RechargeView
                     if timerService.isRunning && timerService.isBreak && motionService.isAvailable {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                             showRechargeMode = true
                         }
                     }
                 },
-                // Pass session plan context
+                predictedLevel: completedPredictedLevel,
+                actualLevel: completedActualLevel,
+                wasCompleted: completedWasCompleted,
                 currentSession: sessionPlan.isActive ? sessionPlan.displayCurrentSession : nil,
                 totalSessions: sessionPlan.isActive ? sessionPlan.totalSessions : nil
             )
@@ -581,7 +519,7 @@ public struct TimerView: View {
         .onChange(of: timerService.state) { oldState, newState in
             // Show recharge mode when break starts running — but only if no sheet is blocking
             if newState == .running && oldState != .running && timerService.isBreak {
-                if motionService.isAvailable && !showSessionComplete && focusResult == nil {
+                if motionService.isAvailable && !showSessionComplete {
                     showRechargeMode = true
                 }
             }
@@ -612,8 +550,17 @@ public struct TimerView: View {
                 return
             }
 
-            // Start timer directly (prediction is now optional via pill)
-            startTimerWithoutPrediction()
+            // If user already did a prediction, preserve it and just start
+            if predictedFocus != nil {
+                distractionCount = 0
+                sessionWasCompleted = true
+                timerService.togglePlayPause()
+                if !timerService.isBreak {
+                    ambientSoundService.play()
+                }
+            } else {
+                startTimerWithoutPrediction()
+            }
         } else if timerService.state == .paused {
             timerService.togglePlayPause()
             // Resume ambient sound when resuming focus
@@ -718,19 +665,19 @@ public struct TimerView: View {
                     modelContext.insert(record)
                     lastBreakRechargePercentage = 0  // Reset after use
 
-                    // Check if user made a prediction - show prediction result first
+                    // Show session complete (with prediction data if available)
                     if let predicted = predictedFocus {
                         let actualFocus = calculateActualFocus()
-                        focusResult = FocusResultData(
-                            predicted: predicted,
-                            actual: actualFocus,
-                            duration: settings.focusDuration,
-                            distractions: distractionCount,
-                            wasCompleted: true
-                        )
-                        // Note: After dismissing focusResult, user can take break or continue
-                        // The session plan state is preserved
-                    } else if sessionPlan.isLastSession {
+                        completedPredictedLevel = predicted
+                        completedActualLevel = actualFocus
+                        completedWasCompleted = true
+                    } else {
+                        completedPredictedLevel = nil
+                        completedActualLevel = nil
+                        completedWasCompleted = true
+                    }
+
+                    if sessionPlan.isLastSession {
                         // Last session complete (no prediction) - show final celebration
                         completedSessionDuration = sessionPlanTotalFocusTime
                         completedDistractionCount = sessionPlanTotalDistractions
@@ -777,21 +724,19 @@ public struct TimerView: View {
                 modelContext.insert(record)
                 lastBreakRechargePercentage = 0  // Reset after use
 
-                // Show prediction result if user made a prediction
+                // Show session complete (with prediction data if available)
                 if let predicted = predictedFocus {
-                    focusResult = FocusResultData(
-                        predicted: predicted,
-                        actual: actualFocus,
-                        duration: settings.focusDuration,
-                        distractions: distractionCount,
-                        wasCompleted: true
-                    )
+                    completedPredictedLevel = predicted
+                    completedActualLevel = actualFocus
+                    completedWasCompleted = true
                 } else {
-                    // No prediction - show celebration with choice to extend or break
-                    completedSessionDuration = settings.focusDuration
-                    completedDistractionCount = distractionCount
-                    showSessionComplete = true
+                    completedPredictedLevel = nil
+                    completedActualLevel = nil
+                    completedWasCompleted = true
                 }
+                completedSessionDuration = settings.focusDuration
+                completedDistractionCount = distractionCount
+                showSessionComplete = true
             } else {
                 // Break complete in normal mode — save break record, transition to focus
                 let breakRecord = FocusRecord(

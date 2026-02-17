@@ -8,6 +8,11 @@ struct SessionCompleteView: View {
     let onExtend: (Int) -> Void // extension duration in seconds
     var onDismiss: (() -> Void)? = nil // optional close button handler
 
+    // Prediction context (optional — shown when user used predict)
+    var predictedLevel: Int? = nil
+    var actualLevel: Int? = nil
+    var wasCompleted: Bool = true
+
     // Session plan context (optional)
     var currentSession: Int? = nil
     var totalSessions: Int? = nil
@@ -16,6 +21,37 @@ struct SessionCompleteView: View {
     private var isSessionPlan: Bool {
         currentSession != nil && totalSessions != nil
     }
+
+    private var hasPrediction: Bool {
+        predictedLevel != nil && actualLevel != nil
+    }
+
+    private var predictionComparison: ComparisonType {
+        guard let predicted = predictedLevel, let actual = actualLevel else { return .spotOn }
+        if actual > predicted { return .underestimated }
+        else if actual == predicted { return .spotOn }
+        else { return .overestimated }
+    }
+
+    private var predictionTitle: String {
+        guard let predicted = predictedLevel, let actual = actualLevel else { return "" }
+        let gap = actual - predicted
+        switch predictionComparison {
+        case .underestimated:
+            if gap >= 3 { return "Mind Blown!" }
+            else if gap == 2 { return "Way Better!" }
+            else { return "Nice Surprise!" }
+        case .spotOn:
+            return "Spot On!"
+        case .overestimated:
+            let missedBy = predicted - actual
+            if missedBy >= 3 { return "Tough One" }
+            else if missedBy == 2 { return "Keep Growing" }
+            else { return "Almost There!" }
+        }
+    }
+
+    @State private var showPredictionCards = false
 
     @Environment(SoundService.self) private var soundService
     @Environment(UserSettings.self) private var settings
@@ -278,6 +314,38 @@ struct SessionCompleteView: View {
                 .scaleEffect(streakScale)
                 .opacity(phase == .complete ? 1 : 0)
 
+                // Prediction comparison (when user used predict)
+                if hasPrediction, let predicted = predictedLevel, let actual = actualLevel {
+                    VStack(spacing: 12) {
+                        Text(predictionTitle)
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .foregroundStyle(predictionComparison.color)
+
+                        HStack(spacing: 16) {
+                            PredictionCard(
+                                title: "Predicted",
+                                value: predicted,
+                                color: .orange,
+                                icon: "brain.head.profile"
+                            )
+
+                            Image(systemName: predictionComparison == .spotOn ? "equal" : (predictionComparison == .underestimated ? "arrow.up.right" : "arrow.down.right"))
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundStyle(predictionComparison.color)
+
+                            PredictionCard(
+                                title: "Actual",
+                                value: actual,
+                                color: predictionComparison.color,
+                                icon: "flame.fill"
+                            )
+                        }
+                    }
+                    .padding(.top, 16)
+                    .opacity(showPredictionCards ? 1 : 0)
+                    .offset(y: showPredictionCards ? 0 : 20)
+                }
+
                 Spacer()
 
                 // Action buttons
@@ -484,6 +552,13 @@ struct SessionCompleteView: View {
             // Streak badge bounces in
             withAnimation(.spring(response: 0.4, dampingFraction: 0.5).delay(0.2)) {
                 streakScale = 1.0
+            }
+
+            // Prediction cards slide in
+            if hasPrediction {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.4)) {
+                    showPredictionCards = true
+                }
             }
         }
 
@@ -1060,6 +1135,56 @@ private struct ExtendOptionButton: View {
     }
 }
 
+// MARK: - Prediction Card
+
+private struct PredictionCard: View {
+    let title: String
+    let value: Int
+    let color: Color
+    let icon: String
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundStyle(color)
+
+            Text("\(value)")
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+
+            Text(title)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.white.opacity(0.6))
+                .textCase(.uppercase)
+                .tracking(0.5)
+        }
+        .frame(width: 100, height: 90)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(color.opacity(0.12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(color.opacity(0.2), lineWidth: 1)
+                )
+        )
+    }
+}
+
+// MARK: - Comparison Type
+
+private enum ComparisonType {
+    case underestimated, spotOn, overestimated
+
+    var color: Color {
+        switch self {
+        case .underestimated: return Color(red: 0.2, green: 0.8, blue: 0.4)
+        case .spotOn: return Color(red: 0.3, green: 0.7, blue: 0.9)
+        case .overestimated: return Color(red: 1.0, green: 0.6, blue: 0.2)
+        }
+    }
+}
+
 // MARK: - Preview
 
 #Preview {
@@ -1067,7 +1192,9 @@ private struct ExtendOptionButton: View {
         duration: 25 * 60,
         distractionCount: 1,
         onTakeBreak: { print("Take break") },
-        onExtend: { mins in print("Extend by \(mins)") }
+        onExtend: { mins in print("Extend by \(mins)") },
+        predictedLevel: 3,
+        actualLevel: 4
     )
     .environment(SoundService())
     .environment(UserSettings())
