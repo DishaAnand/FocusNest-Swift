@@ -280,17 +280,9 @@ private struct TaskRow: View {
                 .buttonStyle(.plain)
 
                 // Task info
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(task.title)
-                        .font(.body)
-                        .foregroundStyle(.primary)
-
-                    if task.totalFocusTime > 0 {
-                        Text(task.formattedFocusTime)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
+                Text(task.title)
+                    .font(.body)
+                    .foregroundStyle(.primary)
 
                 Spacer()
 
@@ -325,18 +317,10 @@ private struct CompletedTaskRow: View {
                 .font(.system(size: 22))
                 .foregroundStyle(.green)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(task.title)
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                    .strikethrough()
-
-                if task.totalFocusTime > 0 {
-                    Text(task.formattedFocusTime)
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                }
-            }
+            Text(task.title)
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .strikethrough()
 
             Spacer()
         }
