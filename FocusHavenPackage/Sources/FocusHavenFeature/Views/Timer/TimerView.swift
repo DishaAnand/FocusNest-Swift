@@ -640,15 +640,10 @@ public struct TimerView: View {
     }
 
     private func startTimerAfterPrediction(level: Int) {
+        // Set prediction but don't auto-start — user starts manually from the play button
         distractionCount = 0
-        sessionWasCompleted = true
         predictedFocus = level
         lastPrediction = level
-        timerService.togglePlayPause()
-        // Start ambient sound when focus session begins (not during breaks)
-        if !timerService.isBreak {
-            ambientSoundService.play()
-        }
     }
 
     private func calculateActualFocus() -> Int {
@@ -881,10 +876,10 @@ public struct TimerView: View {
         continuousFocusTime = 0
         distractionCount = 0
 
-        // Set prediction and start with current duration
+        // Set prediction but don't auto-start — user starts manually from the timer
         predictedFocus = level
         lastPrediction = level
-        startTimerWithoutPrediction()
+        timerService.setMode(.focus, duration: settings.focusDuration)
     }
 
     // Handle session plan choices from SessionCompleteView

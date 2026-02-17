@@ -334,18 +334,21 @@ struct FocusPredictionResultView: View {
 
                 Spacer(minLength: 10)
 
-                // Action buttons (same as SessionCompleteView)
+                // Action buttons
                 VStack(spacing: 16) {
-                    // Primary: Take a Break
+                    // Primary: Done (dismiss summary)
                     Button {
                         soundService.mediumImpact(settings: settings)
-                        onTakeBreak()
+                        if let onDismiss = onDismiss {
+                            onDismiss()
+                        } else {
+                            onDone()
+                        }
                     } label: {
                         HStack(spacing: 12) {
-                            Image(systemName: "leaf.fill")
+                            Image(systemName: "checkmark.circle.fill")
                                 .font(.system(size: 18))
-                                .symbolEffect(.pulse)
-                            Text("Take a Break")
+                            Text("Done")
                                 .font(.system(size: 17, weight: .semibold))
                         }
                         .foregroundStyle(.white)
@@ -356,7 +359,7 @@ struct FocusPredictionResultView: View {
                                 RoundedRectangle(cornerRadius: 16)
                                     .fill(
                                         LinearGradient(
-                                            colors: [Color.green, Color.green.opacity(0.7)],
+                                            colors: [Theme.focusColor, Theme.focusColor.opacity(0.7)],
                                             startPoint: .topLeading,
                                             endPoint: .bottomTrailing
                                         )
@@ -366,14 +369,13 @@ struct FocusPredictionResultView: View {
                                     .blur(radius: 0.5)
                             }
                         )
-                        .shadow(color: .green.opacity(0.4), radius: 15, x: 0, y: 8)
+                        .shadow(color: Theme.focusColor.opacity(0.4), radius: 15, x: 0, y: 8)
                     }
 
                     // Secondary: Keep Focusing (only show if NOT mandatory break)
                     if !needsMandatoryBreak {
                         VStack(spacing: 14) {
                             Button {
-                                // If needs playful nudge, show it instead of options
                                 if needsPlayfulNudge {
                                     withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
                                         showPlayfulNudge = true
@@ -419,7 +421,6 @@ struct FocusPredictionResultView: View {
                             }
                         }
                     }
-
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 50)

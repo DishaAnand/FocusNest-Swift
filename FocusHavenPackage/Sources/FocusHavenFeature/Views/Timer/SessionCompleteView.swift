@@ -282,16 +282,19 @@ struct SessionCompleteView: View {
 
                 // Action buttons
                 VStack(spacing: 16) {
-                    // Primary: Take a Break / Start Break
+                    // Primary: Done (dismiss summary)
                     Button {
                         soundService.mediumImpact(settings: settings)
-                        onTakeBreak()
+                        if let onDismiss = onDismiss {
+                            onDismiss()
+                        } else {
+                            onTakeBreak()
+                        }
                     } label: {
                         HStack(spacing: 12) {
-                            Image(systemName: isSessionPlan ? "cup.and.saucer.fill" : "leaf.fill")
+                            Image(systemName: "checkmark.circle.fill")
                                 .font(.system(size: 18))
-                                .symbolEffect(.pulse)
-                            Text(isSessionPlan ? "Start Break" : "Take a Break")
+                            Text("Done")
                                 .font(.system(size: 17, weight: .semibold))
                         }
                         .foregroundStyle(.white)
@@ -302,7 +305,7 @@ struct SessionCompleteView: View {
                                 RoundedRectangle(cornerRadius: 16)
                                     .fill(
                                         LinearGradient(
-                                            colors: [Color.green, Color.green.opacity(0.7)],
+                                            colors: [Theme.focusColor, Theme.focusColor.opacity(0.7)],
                                             startPoint: .topLeading,
                                             endPoint: .bottomTrailing
                                         )
@@ -312,23 +315,19 @@ struct SessionCompleteView: View {
                                     .blur(radius: 0.5)
                             }
                         )
-                        .shadow(color: .green.opacity(0.4), radius: 15, x: 0, y: 8)
+                        .shadow(color: Theme.focusColor.opacity(0.4), radius: 15, x: 0, y: 8)
                     }
 
                     // Secondary: Keep Focusing (only for single sessions, not session plans)
                     if !isSessionPlan && !needsMandatoryBreak {
                         VStack(spacing: 14) {
                             Button {
-                                print("🔔 Keep momentum tapped - effectiveDuration: \(effectiveDuration)s, threshold: \(playfulNudgeThreshold)s, needsPlayfulNudge: \(needsPlayfulNudge)")
-                                // If needs playful nudge, show it instead of options
                                 if needsPlayfulNudge {
-                                    print("🔔 Showing playful nudge!")
                                     withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
                                         showPlayfulNudge = true
                                     }
                                     soundService.lightImpact(settings: settings)
                                 } else {
-                                    print("🔔 Showing extend options (no nudge needed)")
                                     withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
                                         showExtendOptions.toggle()
                                     }
@@ -368,7 +367,6 @@ struct SessionCompleteView: View {
                             }
                         }
                     }
-
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 50)
