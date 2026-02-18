@@ -375,6 +375,7 @@ public struct BuddySessionView: View {
                         Button {
                             stayedInSupportMode = true
                             currentStep = .supportMode
+                            Task { try? await sessionService.updateStatus(.supporting) }
                         } label: {
                             Text("Focus Together").primaryButtonStyle()
                         }
@@ -528,24 +529,31 @@ enum BuddySessionStep { case setup, waiting, active, celebrating, postCompletion
 @MainActor
 private struct ActiveSessionTimerView: View {
     @Environment(SessionService.self) private var sessionService
+    @Environment(NotificationService.self) private var notificationService
+    @Environment(SoundService.self) private var soundService
+    @Environment(UserSettings.self) private var settings
     let session: BuddySession
     let onComplete: () -> Void
     @State private var remainingTime: Int = 0
     @State private var progress: Double = 0.0
     @State private var timer: Timer?
     @State private var displayTimer: Timer?
+    @State private var buddySupportNotified = false
 
     private var myDuration: Int {
         session.participant(withId: sessionService.deviceId)?.duration ?? session.duration
     }
 
+    /// Use live session data so buddy status updates are reflected
     private var buddy: SessionParticipant? {
-        session.otherParticipants(exceptId: sessionService.deviceId).first
+        let liveSession = sessionService.currentSession ?? session
+        return liveSession.otherParticipants(exceptId: sessionService.deviceId).first
     }
 
     private var buddyRemainingTime: Int {
         guard let buddy = buddy else { return 0 }
-        return session.remainingTimeForParticipant(buddy.odid, currentTime: sessionService.serverTime)
+        let liveSession = sessionService.currentSession ?? session
+        return liveSession.remainingTimeForParticipant(buddy.odid, currentTime: sessionService.serverTime)
     }
 
     var body: some View {
@@ -607,6 +615,20 @@ private struct ActiveSessionTimerView: View {
                 .padding(Theme.spacingM)
                 .background(Theme.backgroundSecondary)
                 .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusM))
+
+                if buddy.status == .supporting {
+                    HStack(spacing: Theme.spacingS) {
+                        Image(systemName: "hands.clap.fill")
+                            .foregroundStyle(Theme.focusColor)
+                        Text("\(buddy.name) is cheering you on!")
+                            .font(Theme.captionFont)
+                            .foregroundStyle(Theme.focusColor)
+                    }
+                    .padding(.horizontal, Theme.spacingM)
+                    .padding(.vertical, Theme.spacingS)
+                    .background(Theme.focusColor.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusS))
+                }
             }
         }
         .onAppear {
@@ -615,11 +637,25 @@ private struct ActiveSessionTimerView: View {
             remainingTime = session.remainingTimeForParticipant(sessionService.deviceId, currentTime: sessionService.serverTime)
             progress = 1.0 - Double(remainingTime) / Double(duration)
             // 1-second timer for countdown and completion
+            let capturedSoundService = soundService
+            let capturedNotificationService = notificationService
+            let capturedSettings = settings
             timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [sessionService] _ in
                 Task { @MainActor in
                     let remaining = session.remainingTimeForParticipant(sessionService.deviceId, currentTime: sessionService.serverTime)
                     if remaining > 0 { remainingTime = remaining }
                     else { timer?.invalidate(); displayTimer?.invalidate(); onComplete() }
+
+                    // Check if buddy entered support mode
+                    if let liveSession = sessionService.currentSession,
+                       let liveBuddy = liveSession.otherParticipants(exceptId: sessionService.deviceId).first {
+                        if liveBuddy.status == .supporting && !buddySupportNotified {
+                            NSLog("[ActiveTimer] BUDDY IS SUPPORTING! name=%@ notifying now", liveBuddy.name)
+                            buddySupportNotified = true
+                            capturedSoundService.successHaptic(settings: capturedSettings)
+                            await capturedNotificationService.notifyBuddySupporting(buddyName: liveBuddy.name)
+                        }
+                    }
                 }
             }
             // 60fps timer for smooth progress — same as normal TimerService

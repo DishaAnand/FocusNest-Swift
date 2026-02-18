@@ -13,8 +13,8 @@ struct FocusPredictionResultView: View {
 
 
     // MARK: - Break Guardian Thresholds (in seconds)
-    private let playfulNudgeThreshold = 25 * 60   // 25 min - gentle nudge to take a break
-    private let mandatoryBreakThreshold = 45 * 60 // 45 min - mandatory break lockout
+    private let playfulNudgeThreshold = 1 * 60   // TEMP: 1 min for testing (was 25 min)
+    private let mandatoryBreakThreshold = 2 * 60 // TEMP: 2 min for testing (was 45 min)
 
     @State private var ringProgress: CGFloat = 0
     @State private var showScore = false
@@ -31,7 +31,10 @@ struct FocusPredictionResultView: View {
     @State private var showMandatoryBreak = false
     @State private var mandatoryBreakRemaining: Int = 5 * 60 // 5 minutes
     @State private var mandatoryBreakTimer: Timer? = nil
+    @State private var mandatoryBreakStartDate: Date? = nil
+    private let mandatoryBreakDuration: Int = 5 * 60
 
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(SoundService.self) private var soundService
     @Environment(UserSettings.self) private var settings
 
@@ -462,30 +465,52 @@ struct FocusPredictionResultView: View {
             if showMandatoryBreak {
                 PredictionMandatoryBreakView(
                     remainingSeconds: mandatoryBreakRemaining,
-                    onTakeBreak: {
+                    onBreakComplete: {
                         stopMandatoryBreakTimer()
-                        showMandatoryBreak = false
-                        onTakeBreak()
+                        withAnimation(.easeOut(duration: 0.3)) {
+                            showMandatoryBreak = false
+                        }
+                        if let onDismiss {
+                            onDismiss()
+                        } else {
+                            onTakeBreak()
+                        }
                     }
                 )
                 .transition(.opacity.combined(with: .scale(scale: 1.1)))
             }
         }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active && showMandatoryBreak {
+                recalcMandatoryBreakRemaining()
+            }
+        }
     }
 
     private func startMandatoryBreakTimer() {
+        mandatoryBreakStartDate = Date()
+        mandatoryBreakRemaining = mandatoryBreakDuration
         mandatoryBreakTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-            if mandatoryBreakRemaining > 0 {
-                mandatoryBreakRemaining -= 1
-            } else {
-                stopMandatoryBreakTimer()
+            Task { @MainActor in
+                recalcMandatoryBreakRemaining()
             }
+        }
+    }
+
+    private func recalcMandatoryBreakRemaining() {
+        guard let startDate = mandatoryBreakStartDate else { return }
+        let elapsed = Int(Date().timeIntervalSince(startDate))
+        let remaining = max(0, mandatoryBreakDuration - elapsed)
+        mandatoryBreakRemaining = remaining
+        if remaining <= 0 {
+            stopMandatoryBreakTimer()
         }
     }
 
     private func stopMandatoryBreakTimer() {
         mandatoryBreakTimer?.invalidate()
         mandatoryBreakTimer = nil
+        mandatoryBreakStartDate = nil
     }
 
     private var backgroundGradient: some View {
@@ -899,7 +924,7 @@ private struct PredictionWavyLine: Shape {
 
 private struct PredictionMandatoryBreakView: View {
     let remainingSeconds: Int
-    let onTakeBreak: () -> Void
+    let onBreakComplete: () -> Void
 
     @State private var spotlightScale: CGFloat = 0.8
     @State private var lockRotation: Double = 0
@@ -992,38 +1017,15 @@ private struct PredictionMandatoryBreakView: View {
                 }
                 .opacity(showContent ? 1 : 0)
 
-                // Take break button
-                Button {
-                    onTakeBreak()
-                } label: {
-                    HStack(spacing: 10) {
-                        Image(systemName: "leaf.fill")
-                            .symbolEffect(.pulse)
-                        Text("Start My Break")
-                    }
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 18)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(
-                                LinearGradient(
-                                    colors: [.green, .green.opacity(0.8)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                    )
-                    .shadow(color: .green.opacity(0.4), radius: 12, x: 0, y: 6)
-                }
-                .padding(.horizontal, 40)
-                .opacity(showContent ? 1 : 0)
-                .scaleEffect(showContent ? 1 : 0.8)
             }
         }
         .onAppear {
             startAnimations()
+        }
+        .onChange(of: remainingSeconds) { _, newValue in
+            if newValue <= 0 {
+                onBreakComplete()
+            }
         }
     }
 

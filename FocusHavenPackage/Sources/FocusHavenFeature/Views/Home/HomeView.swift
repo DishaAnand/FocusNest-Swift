@@ -218,6 +218,14 @@ public struct HomeView: View {
         if timerService.selectedTask?.id == task.id {
             timerService.selectedTask = nil
         }
+        // Delete associated focus records so they don't appear in progress screen
+        let taskId = task.id
+        let descriptor = FetchDescriptor<FocusRecord>(predicate: #Predicate { $0.taskId == taskId })
+        if let records = try? modelContext.fetch(descriptor) {
+            for record in records {
+                modelContext.delete(record)
+            }
+        }
         modelContext.delete(task)
     }
 

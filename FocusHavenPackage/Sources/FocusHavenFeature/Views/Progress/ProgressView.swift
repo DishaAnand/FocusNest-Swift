@@ -352,36 +352,58 @@ public struct FocusProgressView: View {
 
     // MARK: - Achievement Pills
 
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
     private var achievementPills: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
-                // Focus quality
-                AchievementPill(
-                    icon: "brain.head.profile.fill",
-                    label: "Focus",
-                    value: String(format: "%.1f", averageFocus),
-                    color: Theme.focusColor
-                )
-
-                // Distractions
-                AchievementPill(
-                    icon: totalDistractionsThisWeek == 0 ? "shield.checkered" : "hand.raised.fill",
-                    label: "Distractions",
-                    value: "\(totalDistractionsThisWeek)",
-                    color: totalDistractionsThisWeek == 0 ? .green : totalDistractionsThisWeek <= 3 ? .yellow : .orange
-                )
-
-                // Completion rate
-                if hasEnoughData {
-                    AchievementPill(
-                        icon: "checkmark.seal.fill",
-                        label: "Completed",
-                        value: "\(completionRate)%",
-                        color: .green
-                    )
+        let pills = achievementPillsContent
+        return Group {
+            if horizontalSizeClass == .regular {
+                // iPad: evenly distributed, full width
+                HStack(spacing: 12) {
+                    pills
+                }
+                .padding(.horizontal, 4)
+            } else {
+                // iPhone: horizontal scroll
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        pills
+                    }
+                    .padding(.horizontal, 4)
                 }
             }
-            .padding(.horizontal, 4)
+        }
+    }
+
+    @ViewBuilder
+    private var achievementPillsContent: some View {
+        // Focus quality
+        AchievementPill(
+            icon: "brain.head.profile.fill",
+            label: "Focus",
+            value: String(format: "%.1f", averageFocus),
+            color: Theme.focusColor,
+            expand: horizontalSizeClass == .regular
+        )
+
+        // Distractions
+        AchievementPill(
+            icon: totalDistractionsThisWeek == 0 ? "shield.checkered" : "hand.raised.fill",
+            label: "Distractions",
+            value: "\(totalDistractionsThisWeek)",
+            color: totalDistractionsThisWeek == 0 ? .green : totalDistractionsThisWeek <= 3 ? .yellow : .orange,
+            expand: horizontalSizeClass == .regular
+        )
+
+        // Completion rate
+        if hasEnoughData {
+            AchievementPill(
+                icon: "checkmark.seal.fill",
+                label: "Completed",
+                value: "\(completionRate)%",
+                color: .green,
+                expand: horizontalSizeClass == .regular
+            )
         }
     }
 
@@ -642,6 +664,7 @@ private struct AchievementPill: View {
     let label: String
     let value: String
     let color: Color
+    var expand: Bool = false
 
     var body: some View {
         HStack(spacing: 8) {
@@ -657,9 +680,14 @@ private struct AchievementPill: View {
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(Theme.textTertiary)
             }
+
+            if expand {
+                Spacer()
+            }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
+        .frame(maxWidth: expand ? .infinity : nil)
         .background(
             Capsule()
                 .fill(color.opacity(0.1))

@@ -45,6 +45,12 @@ public struct TimerView: View {
     @State private var pendingSessionPlan: SessionPlan? = nil  // Temp storage for energy overlay flow
     @State private var showSessionPlannerSheet = false  // Shows session planner sheet
     @State private var continuousFocusTime: Int = 0  // For 45min auto-lock threshold
+    @State private var showDirectMandatoryBreak = false  // Direct autolock (skips summary)
+    @State private var directMandatoryBreakRemaining: Int = 5 * 60
+    @State private var directMandatoryBreakTimer: Timer? = nil
+    @State private var directMandatoryBreakStartDate: Date? = nil  // Track actual start time
+    private let mandatoryBreakDuration: Int = 5 * 60  // 5 minutes
+    private let mandatoryBreakThreshold = 2 * 60 // TEMP: 2 min for testing (was 45 min)
     @State private var sessionPlanTotalDistractions = 0
     @State private var sessionPlanTotalFocusTime = 0
     @State private var showFinalCelebration = false  // For last session enhanced celebration
@@ -67,6 +73,47 @@ public struct TimerView: View {
     public init() {}
 
     public var body: some View {
+        timerContentWithSheets
+            .overlay {
+                directMandatoryBreakOverlay
+            }
+            .onChange(of: settings.focusDuration) { _, newDuration in
+                if timerService.state == .idle && timerService.mode == .focus {
+                    timerService.setMode(.focus, duration: newDuration)
+                }
+            }
+            .onChange(of: settings.breakDuration) { _, newDuration in
+                if timerService.state == .idle && timerService.mode == .breakTime {
+                    timerService.setMode(.breakTime, duration: newDuration)
+                }
+            }
+            .onChange(of: timerService.state) { oldState, newState in
+                if newState == .running && oldState != .running && timerService.isBreak {
+                    if motionService.isAvailable && !showSessionComplete {
+                        showRechargeMode = true
+                    }
+                }
+            }
+            .onChange(of: timerService.mode) { oldMode, newMode in
+                if sessionPlan.isActive && oldMode == .breakTime && newMode == .focus {
+                    currentSessionDisplay += 1
+                }
+            }
+            .onChange(of: showRechargeMode) { wasShowing, isShowing in
+                if wasShowing && !isShowing {
+                    lastBreakRechargePercentage = motionService.rechargePercentage
+                }
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                // Recalculate mandatory break remaining when returning to foreground
+                if newPhase == .active && showDirectMandatoryBreak {
+                    recalcDirectMandatoryBreakRemaining()
+                }
+            }
+            .task { setupTimerCallbacks() }
+    }
+
+    private var timerContentWithSheets: some View {
         GeometryReader { geometry in
             let isCompact = geometry.size.width < 500
             let timerSize: CGFloat = isCompact ? 260 : 320
@@ -349,57 +396,10 @@ public struct TimerView: View {
             }
         }
         .fullScreenCover(isPresented: $showSessionComplete) {
-            SessionCompleteView(
-                duration: completedSessionDuration,
-                distractionCount: completedDistractionCount,
-                onTakeBreak: {
-                    showSessionComplete = false
-                    resetPredictionState()
-                    if !timerService.isRunning || !timerService.isBreak {
-                        timerService.setMode(.breakTime, duration: settings.breakDuration)
-                        timerService.start()
-                    }
-                    if motionService.isAvailable {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                            showRechargeMode = true
-                        }
-                    }
-                },
-                onExtend: { extensionSeconds in
-                    showSessionComplete = false
-                    timerService.startExtension(duration: extensionSeconds)
-                },
-                onDismiss: {
-                    showSessionComplete = false
-                    resetPredictionState()
-                    if timerService.isRunning && timerService.isBreak && motionService.isAvailable {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                            showRechargeMode = true
-                        }
-                    }
-                },
-                predictedLevel: completedPredictedLevel,
-                actualLevel: completedActualLevel,
-                wasCompleted: completedWasCompleted
-            )
+            sessionCompleteContent
         }
         .fullScreenCover(isPresented: $showFinalCelebration) {
-            FinalSessionCelebrationView(
-                totalSessions: sessionPlan.totalSessions,
-                totalMinutes: sessionPlanTotalFocusTime / 60,
-                totalDistractions: sessionPlanTotalDistractions,
-                taskBreakdown: taskBreakdownItems,
-                onDone: {
-                    showFinalCelebration = false
-                    finishSessionPlan()
-                },
-                onDismiss: {
-                    showFinalCelebration = false
-                    finishSessionPlan()
-                },
-                predictedLevel: completedPredictedLevel,
-                actualLevel: completedActualLevel
-            )
+            finalCelebrationContent
         }
         .fullScreenCover(isPresented: $showRechargeMode) {
             RechargeView()
@@ -417,60 +417,10 @@ public struct TimerView: View {
             .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showWakeUpVoiceOnboarding) {
-            WakeUpVoiceOnboardingView(
-                onSetUp: {
-                    settings.hasSeenWakeUpVoiceOnboarding = true
-                    showWakeUpVoiceOnboarding = false
-                    // Go directly to record screen
-                    showRecordVoice = true
-                    // Note: Session plan will start after recording (handled in showRecordVoice dismiss)
-                },
-                onSkip: {
-                    settings.hasSeenWakeUpVoiceOnboarding = true
-                    showWakeUpVoiceOnboarding = false
-                    // Continue with session plan, energy prediction, or regular timer
-                    if let plan = sessionPlanPendingOnboarding {
-                        sessionPlanPendingOnboarding = nil
-                        if startWithPredictionAfterOnboarding {
-                            pendingSessionPlan = plan
-                            showEnergyOverlay = true
-                        } else {
-                            sessionPlan = plan
-                            startSessionPlan()
-                        }
-                    } else if startWithPredictionAfterOnboarding {
-                        // Single task with prediction
-                        pendingSessionPlan = nil
-                        showEnergyOverlay = true
-                    } else {
-                        startTimerWithoutPrediction()
-                    }
-                }
-            )
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
+            wakeUpVoiceOnboardingContent
         }
         .sheet(isPresented: $showRecordVoice) {
-            RecordVoiceView()
-                .onDisappear {
-                    // After recording, continue with session plan, energy prediction, or regular timer
-                    if let plan = sessionPlanPendingOnboarding {
-                        sessionPlanPendingOnboarding = nil
-                        if startWithPredictionAfterOnboarding {
-                            pendingSessionPlan = plan
-                            showEnergyOverlay = true
-                        } else {
-                            sessionPlan = plan
-                            startSessionPlan()
-                        }
-                    } else if startWithPredictionAfterOnboarding {
-                        // Single task with prediction
-                        pendingSessionPlan = nil
-                        showEnergyOverlay = true
-                    } else {
-                        startTimerWithoutPrediction()
-                    }
-                }
+            recordVoiceContent
         }
         .sheet(isPresented: $showAmbientSoundPicker) {
             AmbientSoundPicker()
@@ -518,44 +468,6 @@ public struct TimerView: View {
                 wentAwayAt = nil
             }
         }
-        .onChange(of: settings.focusDuration) { _, newDuration in
-            // Sync timer when settings change while idle in focus mode
-            if timerService.state == .idle && timerService.mode == .focus {
-                timerService.setMode(.focus, duration: newDuration)
-            }
-        }
-        .onChange(of: settings.breakDuration) { _, newDuration in
-            // Sync timer when settings change while idle in short break mode
-            if timerService.state == .idle && timerService.mode == .breakTime {
-                timerService.setMode(.breakTime, duration: newDuration)
-            }
-        }
-        .onChange(of: timerService.state) { oldState, newState in
-            // Show recharge mode when break starts running — but only if no sheet is blocking
-            if newState == .running && oldState != .running && timerService.isBreak {
-                if motionService.isAvailable && !showSessionComplete {
-                    showRechargeMode = true
-                }
-            }
-            // Note: We do NOT auto-dismiss RechargeView here when break ends.
-            // RechargeView handles its own flow: shows RechargeCompleteView, then dismisses itself.
-            // The recharge percentage is captured in onChange(of: showRechargeMode) when it actually dismisses.
-        }
-        .onChange(of: timerService.mode) { oldMode, newMode in
-            // When break ends and transitions to focus in a session plan, advance the session display
-            // We increment directly instead of reading sessionPlan.displayCurrentSession
-            // because sessionPlan mutations inside stored closures don't reliably propagate to @State
-            if sessionPlan.isActive && oldMode == .breakTime && newMode == .focus {
-                currentSessionDisplay += 1
-            }
-        }
-        .onChange(of: showRechargeMode) { wasShowing, isShowing in
-            // Capture recharge percentage when RechargeView dismisses (via skip, early exit, etc.)
-            if wasShowing && !isShowing {
-                lastBreakRechargePercentage = motionService.rechargePercentage
-            }
-        }
-        .task { setupTimerCallbacks() }
     }
 
     private func handlePlayPause() {
@@ -646,6 +558,155 @@ public struct TimerView: View {
         wentAwayAt = nil
     }
 
+    private var recordVoiceContent: some View {
+        RecordVoiceView()
+            .onDisappear {
+                if let plan = sessionPlanPendingOnboarding {
+                    sessionPlanPendingOnboarding = nil
+                    if startWithPredictionAfterOnboarding {
+                        pendingSessionPlan = plan
+                        showEnergyOverlay = true
+                    } else {
+                        sessionPlan = plan
+                        startSessionPlan()
+                    }
+                } else if startWithPredictionAfterOnboarding {
+                    pendingSessionPlan = nil
+                    showEnergyOverlay = true
+                } else {
+                    startTimerWithoutPrediction()
+                }
+            }
+    }
+
+    private var wakeUpVoiceOnboardingContent: some View {
+        WakeUpVoiceOnboardingView(
+            onSetUp: {
+                settings.hasSeenWakeUpVoiceOnboarding = true
+                showWakeUpVoiceOnboarding = false
+                showRecordVoice = true
+            },
+            onSkip: {
+                settings.hasSeenWakeUpVoiceOnboarding = true
+                showWakeUpVoiceOnboarding = false
+                if let plan = sessionPlanPendingOnboarding {
+                    sessionPlanPendingOnboarding = nil
+                    if startWithPredictionAfterOnboarding {
+                        pendingSessionPlan = plan
+                        showEnergyOverlay = true
+                    } else {
+                        sessionPlan = plan
+                        startSessionPlan()
+                    }
+                } else if startWithPredictionAfterOnboarding {
+                    pendingSessionPlan = nil
+                    showEnergyOverlay = true
+                } else {
+                    startTimerWithoutPrediction()
+                }
+            }
+        )
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private var finalCelebrationContent: some View {
+        FinalSessionCelebrationView(
+            totalSessions: sessionPlan.totalSessions,
+            totalMinutes: sessionPlanTotalFocusTime / 60,
+            totalDistractions: sessionPlanTotalDistractions,
+            taskBreakdown: taskBreakdownItems,
+            onDone: {
+                showFinalCelebration = false
+                finishSessionPlan()
+            },
+            onDismiss: {
+                showFinalCelebration = false
+                finishSessionPlan()
+            },
+            predictedLevel: completedPredictedLevel,
+            actualLevel: completedActualLevel
+        )
+    }
+
+    private var sessionCompleteContent: some View {
+        SessionCompleteView(
+            duration: completedSessionDuration,
+            distractionCount: completedDistractionCount,
+            onTakeBreak: {
+                showSessionComplete = false
+                resetPredictionState()
+                if !timerService.isRunning || !timerService.isBreak {
+                    timerService.setMode(.breakTime, duration: settings.breakDuration)
+                    timerService.start()
+                }
+                if motionService.isAvailable {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        showRechargeMode = true
+                    }
+                }
+            },
+            onExtend: { extensionSeconds in
+                showSessionComplete = false
+                timerService.startExtension(duration: extensionSeconds)
+            },
+            onDismiss: {
+                showSessionComplete = false
+                resetPredictionState()
+                if timerService.isRunning && timerService.isBreak && motionService.isAvailable {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        showRechargeMode = true
+                    }
+                }
+            },
+            predictedLevel: completedPredictedLevel,
+            actualLevel: completedActualLevel,
+            wasCompleted: completedWasCompleted
+        )
+    }
+
+    @ViewBuilder
+    private var directMandatoryBreakOverlay: some View {
+        if showDirectMandatoryBreak {
+            MandatoryBreakView(
+                remainingSeconds: directMandatoryBreakRemaining,
+                onBreakComplete: {
+                    stopDirectMandatoryBreakTimer()
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        showDirectMandatoryBreak = false
+                    }
+                    resetPredictionState()
+                }
+            )
+            .transition(.opacity.combined(with: .scale(scale: 1.1)))
+        }
+    }
+
+    private func startDirectMandatoryBreakTimer() {
+        directMandatoryBreakStartDate = Date()
+        directMandatoryBreakRemaining = mandatoryBreakDuration
+        directMandatoryBreakTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+            Task { @MainActor in
+                recalcDirectMandatoryBreakRemaining()
+            }
+        }
+    }
+
+    private func recalcDirectMandatoryBreakRemaining() {
+        guard let startDate = directMandatoryBreakStartDate else { return }
+        let elapsed = Int(Date().timeIntervalSince(startDate))
+        let remaining = max(0, mandatoryBreakDuration - elapsed)
+        directMandatoryBreakRemaining = remaining
+        if remaining <= 0 {
+            stopDirectMandatoryBreakTimer()
+        }
+    }
+
+    private func stopDirectMandatoryBreakTimer() {
+        directMandatoryBreakTimer?.invalidate()
+        directMandatoryBreakTimer = nil
+        directMandatoryBreakStartDate = nil
+    }
 
     private func setupTimerCallbacks() {
         timerService.onComplete = { mode in
@@ -765,7 +826,16 @@ public struct TimerView: View {
                 }
                 completedSessionDuration = settings.focusDuration
                 completedDistractionCount = distractionCount
-                showSessionComplete = true
+
+                // If session >= mandatory break threshold, show autolock directly (skip summary)
+                if settings.focusDuration >= mandatoryBreakThreshold {
+                    timerService.skipDefaultTransition = true  // Prevent break timer from auto-starting behind autolock
+                    directMandatoryBreakRemaining = 5 * 60
+                    showDirectMandatoryBreak = true
+                    startDirectMandatoryBreakTimer()
+                } else {
+                    showSessionComplete = true
+                }
             } else {
                 // Break complete in normal mode — save break record, transition to focus
                 let breakRecord = FocusRecord(

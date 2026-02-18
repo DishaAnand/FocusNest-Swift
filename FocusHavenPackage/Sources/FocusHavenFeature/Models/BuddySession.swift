@@ -4,6 +4,7 @@ public enum ParticipantStatus: String, Codable, Sendable {
     case focused = "focused"
     case away = "away"
     case waiting = "waiting"
+    case supporting = "supporting"
 }
 
 public struct SessionParticipant: Codable, Sendable, Identifiable, Equatable {

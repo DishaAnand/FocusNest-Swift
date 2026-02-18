@@ -210,8 +210,13 @@ public final class SessionService: @unchecked Sendable {
     }
 
     public func updateStatus(_ status: ParticipantStatus) async throws {
-        guard let session = currentSession, isFirebaseConfigured, let db = database else { throw SessionError.noActiveSession }
+        guard let session = currentSession, isFirebaseConfigured, let db = database else {
+            NSLog("[SessionService] updateStatus FAILED - no active session. currentSession=%@, firebase=%@", String(describing: currentSession != nil), String(describing: isFirebaseConfigured))
+            throw SessionError.noActiveSession
+        }
+        NSLog("[SessionService] updateStatus writing '%@' for device '%@' to session '%@'", status.rawValue, deviceId, session.sessionId)
         try await db.child("sessions").child(session.sessionId).child("participants").child(deviceId).child("status").setValue(status.rawValue)
+        NSLog("[SessionService] updateStatus SUCCESS - wrote '%@'", status.rawValue)
     }
 
     public func incrementViolation() async throws {
@@ -262,7 +267,9 @@ public final class SessionService: @unchecked Sendable {
                     print("🔴 [SessionService] Failed to create BuddySession from data: \(data)")
                     return
                 }
-                print("🟢 [SessionService] Session updated - participants: \(session.participantCount), state: \(session.state), isReady: \(session.isReadyToStart)")
+                // Log participant statuses to trace support mode
+                let statusList = session.participants.map { "\($0.key.prefix(4))=\($0.value.status.rawValue)" }.joined(separator: ", ")
+                NSLog("[SessionService] Session updated - participants: %d, state: %@, statuses: [%@]", session.participantCount, session.state.rawValue, statusList)
                 self.currentSession = session
             }
         }

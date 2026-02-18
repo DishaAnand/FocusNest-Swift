@@ -83,6 +83,16 @@ public final class NotificationService: @unchecked Sendable {
         try? await UNUserNotificationCenter.current().add(request)
     }
 
+    public func notifyBuddySupporting(buddyName: String) async {
+        guard isAuthorized else { return }
+        let content = UNMutableNotificationContent()
+        content.title = "Buddy Cheering You On!"
+        content.body = "\(buddyName) finished and is staying to support you. Keep going!"
+        content.sound = .default
+        let request = UNNotificationRequest(identifier: "buddy-supporting-\(UUID().uuidString)", content: content, trigger: nil)
+        try? await UNUserNotificationCenter.current().add(request)
+    }
+
     public func notifyBuddySessionComplete() async {
         guard isAuthorized else { return }
         let content = UNMutableNotificationContent()
