@@ -121,7 +121,7 @@ public struct TimerView: View {
             VStack(spacing: 0) {
                 // Session progress indicator (when plan is active)
                 if sessionPlan.isActive {
-                    sessionProgressIndicator
+                    sessionProgressIndicator(isCompact: isCompact)
                         .padding(.top, Theme.spacingS)
                 }
 
@@ -863,9 +863,9 @@ public struct TimerView: View {
 
     // MARK: - Session Plan Helpers
 
-    private var sessionProgressIndicator: some View {
+    private func sessionProgressIndicator(isCompact: Bool) -> some View {
         let currentIndex = currentSessionDisplay - 1  // Convert to 0-indexed
-        return HStack(spacing: 8) {
+        return HStack(spacing: isCompact ? 8 : 12) {
             ForEach(0..<sessionPlan.totalSessions, id: \.self) { index in
                 Circle()
                     .fill(index < currentIndex
@@ -875,23 +875,29 @@ public struct TimerView: View {
                              ? LinearGradient(colors: [Theme.breakColor, Theme.breakColor.opacity(0.7)], startPoint: .top, endPoint: .bottom)
                              : LinearGradient(colors: [.purple, .pink], startPoint: .top, endPoint: .bottom))
                           : LinearGradient(colors: [Theme.textTertiary.opacity(0.3), Theme.textTertiary.opacity(0.3)], startPoint: .top, endPoint: .bottom))
-                    .frame(width: index == currentIndex ? 12 : 8, height: index == currentIndex ? 12 : 8)
+                    .frame(width: index == currentIndex ? (isCompact ? 12 : 14) : (isCompact ? 8 : 10),
+                           height: index == currentIndex ? (isCompact ? 12 : 14) : (isCompact ? 8 : 10))
                     .animation(.spring(response: 0.3), value: currentSessionDisplay)
                     .animation(.spring(response: 0.3), value: timerService.isBreak)
             }
 
             if timerService.isBreak {
                 Text("Break before Session \(currentSessionDisplay + 1)")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: isCompact ? 13 : 15, weight: .medium))
                     .foregroundStyle(Theme.breakColor)
             } else {
                 Text("Session \(currentSessionDisplay) of \(sessionPlan.totalSessions)")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: isCompact ? 13 : 15, weight: .medium))
                     .foregroundStyle(Theme.textSecondary)
             }
+
+            if !isCompact {
+                Spacer()
+            }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.horizontal, isCompact ? 16 : 24)
+        .padding(.vertical, isCompact ? 10 : 14)
+        .frame(maxWidth: isCompact ? nil : .infinity)
         .background(
             Capsule()
                 .fill(Theme.backgroundSecondary)

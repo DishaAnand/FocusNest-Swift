@@ -184,7 +184,6 @@ public struct HomeView: View {
             .buttonStyle(.plain)
         }
         .padding(16)
-        .frame(maxWidth: 600)  // iPad: constrain content width
     }
 
     // MARK: - Actions
