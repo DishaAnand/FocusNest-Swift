@@ -227,7 +227,7 @@ struct SessionCompleteView: View {
                                 )
                                 .contentTransition(.numericText(countsDown: false))
 
-                            Text("minutes")
+                            Text(countedMinutes == 1 ? "minute" : "minutes")
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundStyle(.white.opacity(0.6))
                                 .textCase(.uppercase)

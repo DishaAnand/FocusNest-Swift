@@ -48,6 +48,9 @@ public struct TimerView: View {
     @State private var sessionPlanTotalDistractions = 0
     @State private var sessionPlanTotalFocusTime = 0
     @State private var showFinalCelebration = false  // For last session enhanced celebration
+    @State private var showSessionBanner = false  // Brief "Session X completed" banner
+    @State private var sessionBannerNumber: Int = 0  // Which session just completed
+    @State private var currentSessionDisplay: Int = 1  // 1-indexed session number for UI
     @Query(filter: #Predicate<FocusTask> { !$0.isCompleted }) private var availableTasks: [FocusTask]
     @Query private var allTasks: [FocusTask]  // All tasks for looking up names in breakdown
     @Query private var focusRecords: [FocusRecord]  // For total hours calculation
@@ -239,6 +242,25 @@ public struct TimerView: View {
             }
 
         }
+        .overlay {
+            if showSessionBanner {
+                SessionCompleteBanner(sessionNumber: sessionBannerNumber)
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.8).combined(with: .opacity),
+                        removal: .scale(scale: 1.1).combined(with: .opacity)
+                    ))
+                    .onAppear {
+                        // Auto-dismiss after 2 seconds
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                            withAnimation(.easeOut(duration: 0.3)) {
+                                showSessionBanner = false
+                            }
+                        }
+                    }
+                    .zIndex(99)
+            }
+        }
+        .animation(.spring(response: 0.4), value: showSessionBanner)
         .animation(.spring(response: 0.3), value: showEnergyOverlay)
         .sheet(isPresented: $showSessionPlannerSheet) {
             SessionPlannerSheet(
@@ -332,28 +354,20 @@ public struct TimerView: View {
                 distractionCount: completedDistractionCount,
                 onTakeBreak: {
                     showSessionComplete = false
-                    if sessionPlan.isActive {
-                        handleSessionPlanTakeBreak()
-                    } else {
-                        resetPredictionState()
-                        if !timerService.isRunning || !timerService.isBreak {
-                            timerService.setMode(.breakTime, duration: settings.breakDuration)
-                            timerService.start()
-                        }
-                        if motionService.isAvailable {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                showRechargeMode = true
-                            }
+                    resetPredictionState()
+                    if !timerService.isRunning || !timerService.isBreak {
+                        timerService.setMode(.breakTime, duration: settings.breakDuration)
+                        timerService.start()
+                    }
+                    if motionService.isAvailable {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            showRechargeMode = true
                         }
                     }
                 },
                 onExtend: { extensionSeconds in
                     showSessionComplete = false
-                    if sessionPlan.isActive {
-                        handleSessionPlanContinue()
-                    } else {
-                        timerService.startExtension(duration: extensionSeconds)
-                    }
+                    timerService.startExtension(duration: extensionSeconds)
                 },
                 onDismiss: {
                     showSessionComplete = false
@@ -366,9 +380,7 @@ public struct TimerView: View {
                 },
                 predictedLevel: completedPredictedLevel,
                 actualLevel: completedActualLevel,
-                wasCompleted: completedWasCompleted,
-                currentSession: sessionPlan.isActive ? sessionPlan.displayCurrentSession : nil,
-                totalSessions: sessionPlan.isActive ? sessionPlan.totalSessions : nil
+                wasCompleted: completedWasCompleted
             )
         }
         .fullScreenCover(isPresented: $showFinalCelebration) {
@@ -384,7 +396,9 @@ public struct TimerView: View {
                 onDismiss: {
                     showFinalCelebration = false
                     finishSessionPlan()
-                }
+                },
+                predictedLevel: completedPredictedLevel,
+                actualLevel: completedActualLevel
             )
         }
         .fullScreenCover(isPresented: $showRechargeMode) {
@@ -527,6 +541,14 @@ public struct TimerView: View {
             // RechargeView handles its own flow: shows RechargeCompleteView, then dismisses itself.
             // The recharge percentage is captured in onChange(of: showRechargeMode) when it actually dismisses.
         }
+        .onChange(of: timerService.mode) { oldMode, newMode in
+            // When break ends and transitions to focus in a session plan, advance the session display
+            // We increment directly instead of reading sessionPlan.displayCurrentSession
+            // because sessionPlan mutations inside stored closures don't reliably propagate to @State
+            if sessionPlan.isActive && oldMode == .breakTime && newMode == .focus {
+                currentSessionDisplay += 1
+            }
+        }
         .onChange(of: showRechargeMode) { wasShowing, isShowing in
             // Capture recharge percentage when RechargeView dismisses (via skip, early exit, etc.)
             if wasShowing && !isShowing {
@@ -665,31 +687,30 @@ public struct TimerView: View {
                     modelContext.insert(record)
                     lastBreakRechargePercentage = 0  // Reset after use
 
-                    // Show session complete (with prediction data if available)
-                    if let predicted = predictedFocus {
-                        let actualFocus = calculateActualFocus()
-                        completedPredictedLevel = predicted
-                        completedActualLevel = actualFocus
-                        completedWasCompleted = true
-                    } else {
-                        completedPredictedLevel = nil
-                        completedActualLevel = nil
-                        completedWasCompleted = true
-                    }
-
                     if sessionPlan.isLastSession {
-                        // Last session complete (no prediction) - show final celebration
+                        // Last session — show final celebration with cumulative stats, NO break
                         completedSessionDuration = sessionPlanTotalFocusTime
                         completedDistractionCount = sessionPlanTotalDistractions
+                        // Include prediction data if available
+                        if let predicted = predictedFocus {
+                            completedPredictedLevel = predicted
+                            completedActualLevel = calculateActualFocus()
+                        }
                         showFinalCelebration = true
                     } else {
-                        // Not last session (no prediction) - show completion with choice
-                        completedSessionDuration = settings.focusDuration
-                        completedDistractionCount = distractionCount
-                        showSessionComplete = true
+                        // Not last session — show brief banner, auto-start break
+                        sessionBannerNumber = sessionPlan.displayCurrentSession
+                        showSessionBanner = true
+                        distractionCount = 0
+                        resetPredictionState()
+                        // Auto-start break after banner dismisses (2 seconds)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                            timerService.setMode(.breakTime, duration: settings.breakDuration)
+                            timerService.start()
+                        }
                     }
                 } else {
-                    // Break complete — save break record, set up next session
+                    // Break complete — save break record, advance to next session
                     let breakRecord = FocusRecord(
                         duration: settings.breakDuration,
                         isBreak: true,
@@ -697,9 +718,13 @@ public struct TimerView: View {
                     )
                     modelContext.insert(breakRecord)
                     lastBreakRechargePercentage = 0
-                    sessionPlan.nextSession()
                     continuousFocusTime = 0
                     distractionCount = 0
+                    // Advance session plan and set up next focus
+                    var plan = sessionPlan
+                    plan.nextSession()
+                    sessionPlan = plan
+                    // Note: currentSessionDisplay is updated via onChange(of: timerService.mode)
                     timerService.setMode(.focus, duration: settings.focusDuration)
                 }
                 return
@@ -765,27 +790,28 @@ public struct TimerView: View {
     // MARK: - Session Plan Helpers
 
     private var sessionProgressIndicator: some View {
-        HStack(spacing: 8) {
+        let currentIndex = currentSessionDisplay - 1  // Convert to 0-indexed
+        return HStack(spacing: 8) {
             ForEach(0..<sessionPlan.totalSessions, id: \.self) { index in
                 Circle()
-                    .fill(index < sessionPlan.currentSession
+                    .fill(index < currentIndex
                           ? LinearGradient(colors: [.green, .mint], startPoint: .top, endPoint: .bottom)
-                          : index == sessionPlan.currentSession
+                          : index == currentIndex
                           ? (timerService.isBreak
                              ? LinearGradient(colors: [Theme.breakColor, Theme.breakColor.opacity(0.7)], startPoint: .top, endPoint: .bottom)
                              : LinearGradient(colors: [.purple, .pink], startPoint: .top, endPoint: .bottom))
                           : LinearGradient(colors: [Theme.textTertiary.opacity(0.3), Theme.textTertiary.opacity(0.3)], startPoint: .top, endPoint: .bottom))
-                    .frame(width: index == sessionPlan.currentSession ? 12 : 8, height: index == sessionPlan.currentSession ? 12 : 8)
-                    .animation(.spring(response: 0.3), value: sessionPlan.currentSession)
+                    .frame(width: index == currentIndex ? 12 : 8, height: index == currentIndex ? 12 : 8)
+                    .animation(.spring(response: 0.3), value: currentSessionDisplay)
                     .animation(.spring(response: 0.3), value: timerService.isBreak)
             }
 
             if timerService.isBreak {
-                Text("Break before Session \(sessionPlan.currentSession + 2)")
+                Text("Break before Session \(currentSessionDisplay + 1)")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(Theme.breakColor)
             } else {
-                Text("Session \(sessionPlan.displayCurrentSession) of \(sessionPlan.totalSessions)")
+                Text("Session \(currentSessionDisplay) of \(sessionPlan.totalSessions)")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(Theme.textSecondary)
             }
@@ -807,6 +833,7 @@ public struct TimerView: View {
         sessionPlanTotalFocusTime = 0
         continuousFocusTime = 0
         distractionCount = 0
+        currentSessionDisplay = 1
 
         // Timer is ready - user will tap to set duration and start
         timerService.setMode(.focus, duration: settings.focusDuration)
@@ -820,6 +847,7 @@ public struct TimerView: View {
         sessionPlanTotalFocusTime = 0
         continuousFocusTime = 0
         distractionCount = 0
+        currentSessionDisplay = 1
 
         // Set prediction but don't auto-start — user starts manually from the timer
         predictedFocus = level
@@ -842,7 +870,10 @@ public struct TimerView: View {
 
     private func handleSessionPlanContinue() {
         // Skip break, move to next session setup
-        sessionPlan.nextSession()
+        var updatedPlan = sessionPlan
+        updatedPlan.nextSession()
+        sessionPlan = updatedPlan
+        currentSessionDisplay += 1
         continuousFocusTime += 0  // Continuous time keeps accumulating (no break taken)
         distractionCount = 0
         timerService.setMode(.focus, duration: settings.focusDuration)
@@ -857,6 +888,10 @@ public struct TimerView: View {
         continuousFocusTime = 0
         distractionCount = 0
         predictedFocus = nil
+        currentSessionDisplay = 1
+        // Reset timer back to idle focus mode with default duration
+        timerService.stop()
+        timerService.setMode(.focus, duration: settings.focusDuration)
     }
 }
 
@@ -980,6 +1015,74 @@ private struct DurationPickerSheet: View {
                     Button("Done") { onSelect(selectedMinutes) }
                         .fontWeight(.semibold)
                 }
+            }
+        }
+    }
+}
+
+// MARK: - Session Complete Banner (shown between sessions in a plan)
+
+@MainActor
+private struct SessionCompleteBanner: View {
+    let sessionNumber: Int
+    @State private var checkScale: CGFloat = 0
+    @State private var textOpacity: Double = 0
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Spacer()
+
+            VStack(spacing: 12) {
+                // Animated checkmark
+                ZStack {
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [.green.opacity(0.3), .green.opacity(0.05)],
+                                center: .center,
+                                startRadius: 10,
+                                endRadius: 50
+                            )
+                        )
+                        .frame(width: 80, height: 80)
+
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 52))
+                        .foregroundStyle(.green)
+                        .scaleEffect(checkScale)
+                }
+
+                Text("Session \(sessionNumber) Complete")
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .opacity(textOpacity)
+
+                Text("Break starting...")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.6))
+                    .opacity(textOpacity)
+            }
+            .padding(.horizontal, 32)
+            .padding(.vertical, 28)
+            .background(
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 24)
+                            .stroke(.white.opacity(0.15), lineWidth: 1)
+                    )
+            )
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.black.opacity(0.5))
+        .onAppear {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
+                checkScale = 1.0
+            }
+            withAnimation(.easeOut(duration: 0.3).delay(0.2)) {
+                textOpacity = 1.0
             }
         }
     }

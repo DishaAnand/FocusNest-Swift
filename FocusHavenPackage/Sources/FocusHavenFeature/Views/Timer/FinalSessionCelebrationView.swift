@@ -16,9 +16,32 @@ struct FinalSessionCelebrationView: View {
     let onDone: () -> Void
     var onDismiss: (() -> Void)? = nil // optional close button handler
 
+    // Prediction context (optional — shown when user used predict)
+    var predictedLevel: Int? = nil
+    var actualLevel: Int? = nil
+
+    private var hasPrediction: Bool {
+        predictedLevel != nil && actualLevel != nil
+    }
+
+    private var predictionComparison: String {
+        guard let predicted = predictedLevel, let actual = actualLevel else { return "" }
+        if actual > predicted { return "You did better than expected!" }
+        else if actual == predicted { return "Spot on prediction!" }
+        else { return "Keep calibrating!" }
+    }
+
+    private var predictionComparisonColor: Color {
+        guard let predicted = predictedLevel, let actual = actualLevel else { return .cyan }
+        if actual > predicted { return Color(red: 0.2, green: 0.8, blue: 0.4) }
+        else if actual == predicted { return Color(red: 0.3, green: 0.7, blue: 0.9) }
+        else { return Color(red: 1.0, green: 0.6, blue: 0.2) }
+    }
+
     @Environment(SoundService.self) private var soundService
     @Environment(UserSettings.self) private var settings
 
+    @State private var showPredictionCards = false
 
     // Animation states
     @State private var phase: AnimationPhase = .initial
@@ -176,7 +199,7 @@ struct FinalSessionCelebrationView: View {
                                 )
                                 .contentTransition(.numericText(countsDown: false))
 
-                            Text("minutes")
+                            Text(countedMinutes == 1 ? "minute" : "minutes")
                                 .font(.system(size: 11, weight: .medium))
                                 .foregroundStyle(.white.opacity(0.6))
                                 .textCase(.uppercase)
@@ -266,23 +289,62 @@ struct FinalSessionCelebrationView: View {
                         )
                     }
 
-                    // Task breakdown section (only shown if tasks were assigned)
-                    if !taskBreakdown.isEmpty {
+                    // Prediction comparison (when user used predict)
+                    if hasPrediction, let predicted = predictedLevel, let actual = actualLevel {
                         VStack(spacing: 10) {
-                            Text("Tasks Completed")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(.white.opacity(0.5))
-                                .textCase(.uppercase)
-                                .tracking(1)
+                            Text(predictionComparison)
+                                .font(.system(size: 16, weight: .bold, design: .rounded))
+                                .foregroundStyle(predictionComparisonColor)
 
-                            VStack(spacing: 8) {
-                                ForEach(taskBreakdown) { item in
-                                    TaskBreakdownRow(item: item)
+                            HStack(spacing: 14) {
+                                VStack(spacing: 4) {
+                                    Image(systemName: "brain.head.profile")
+                                        .font(.system(size: 14))
+                                        .foregroundStyle(.orange)
+                                    Text("\(predicted)")
+                                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                                        .foregroundStyle(.white)
+                                    Text("Predicted")
+                                        .font(.system(size: 10, weight: .medium))
+                                        .foregroundStyle(.white.opacity(0.6))
+                                        .textCase(.uppercase)
                                 }
+                                .frame(width: 85, height: 75)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(.orange.opacity(0.12))
+                                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(.orange.opacity(0.2), lineWidth: 1))
+                                )
+
+                                Image(systemName: actual >= predicted ? "arrow.up.right" : "arrow.down.right")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundStyle(predictionComparisonColor)
+
+                                VStack(spacing: 4) {
+                                    Image(systemName: "flame.fill")
+                                        .font(.system(size: 14))
+                                        .foregroundStyle(predictionComparisonColor)
+                                    Text("\(actual)")
+                                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                                        .foregroundStyle(.white)
+                                    Text("Actual")
+                                        .font(.system(size: 10, weight: .medium))
+                                        .foregroundStyle(.white.opacity(0.6))
+                                        .textCase(.uppercase)
+                                }
+                                .frame(width: 85, height: 75)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(predictionComparisonColor.opacity(0.12))
+                                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(predictionComparisonColor.opacity(0.2), lineWidth: 1))
+                                )
                             }
                         }
-                        .padding(.top, 8)
+                        .padding(.top, 12)
+                        .opacity(showPredictionCards ? 1 : 0)
+                        .offset(y: showPredictionCards ? 0 : 20)
                     }
+
                 }
                 .offset(y: statsOffset)
                 .opacity(phase == .complete ? 1 : 0)
@@ -392,6 +454,13 @@ struct FinalSessionCelebrationView: View {
                 phase = .complete
                 statsOffset = 0
                 buttonOffset = 0
+            }
+
+            // Prediction cards slide in
+            if hasPrediction {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.4)) {
+                    showPredictionCards = true
+                }
             }
         }
 
