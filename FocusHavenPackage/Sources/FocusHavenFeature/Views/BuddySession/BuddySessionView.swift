@@ -531,7 +531,9 @@ private struct ActiveSessionTimerView: View {
     let session: BuddySession
     let onComplete: () -> Void
     @State private var remainingTime: Int = 0
+    @State private var progress: Double = 0.0
     @State private var timer: Timer?
+    @State private var displayTimer: Timer?
 
     private var myDuration: Int {
         session.participant(withId: sessionService.deviceId)?.duration ?? session.duration
@@ -549,7 +551,7 @@ private struct ActiveSessionTimerView: View {
     var body: some View {
         VStack(spacing: Theme.spacingM) {
             // Your timer
-            CircularProgressView(progress: 1.0 - Double(remainingTime) / Double(myDuration), size: 200, color: Theme.focusColor)
+            CircularProgressView(progress: progress, size: 200, color: Theme.focusColor)
             Text(String(format: "%02d:%02d", remainingTime / 60, remainingTime % 60)).font(Theme.timerFontSmall).monospacedDigit()
 
             // Buddy status card
@@ -608,17 +610,28 @@ private struct ActiveSessionTimerView: View {
             }
         }
         .onAppear {
+            let duration = myDuration
             // Use participant's own duration
             remainingTime = session.remainingTimeForParticipant(sessionService.deviceId, currentTime: sessionService.serverTime)
+            progress = 1.0 - Double(remainingTime) / Double(duration)
+            // 1-second timer for countdown and completion
             timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [sessionService] _ in
                 Task { @MainActor in
                     let remaining = session.remainingTimeForParticipant(sessionService.deviceId, currentTime: sessionService.serverTime)
                     if remaining > 0 { remainingTime = remaining }
-                    else { timer?.invalidate(); onComplete() }
+                    else { timer?.invalidate(); displayTimer?.invalidate(); onComplete() }
+                }
+            }
+            // 60fps timer for smooth progress — same as normal TimerService
+            displayTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [sessionService] _ in
+                Task { @MainActor in
+                    let preciseRemaining = session.preciseRemainingTime(forParticipant: sessionService.deviceId, currentTime: sessionService.serverTime)
+                    let preciseElapsed = Double(duration) - preciseRemaining
+                    progress = min(max(preciseElapsed / Double(duration), 0.0), 1.0)
                 }
             }
         }
-        .onDisappear { timer?.invalidate() }
+        .onDisappear { timer?.invalidate(); displayTimer?.invalidate() }
     }
 }
 
@@ -628,7 +641,9 @@ private struct SupportModeTimerView: View {
     let session: BuddySession
     let onBuddyComplete: () -> Void
     @State private var buddyRemainingTime: Int = 0
+    @State private var buddyProgress: Double = 0.0
     @State private var timer: Timer?
+    @State private var displayTimer: Timer?
 
     private var buddy: SessionParticipant? {
         session.otherParticipants(exceptId: sessionService.deviceId).first
@@ -643,7 +658,7 @@ private struct SupportModeTimerView: View {
             if let buddy = buddy {
                 // Buddy's timer (you're watching them)
                 CircularProgressView(
-                    progress: 1.0 - Double(buddyRemainingTime) / Double(buddy.duration),
+                    progress: buddyProgress,
                     size: 200,
                     color: Theme.focusColor
                 )
@@ -683,7 +698,10 @@ private struct SupportModeTimerView: View {
         }
         .onAppear {
             guard let buddy = buddy else { return }
+            let duration = buddy.duration
             buddyRemainingTime = session.remainingTimeForParticipant(buddy.odid, currentTime: sessionService.serverTime)
+            buddyProgress = 1.0 - Double(buddyRemainingTime) / Double(duration)
+            // 1-second timer for countdown and completion
             timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [sessionService] _ in
                 Task { @MainActor in
                     guard let buddy = session.otherParticipants(exceptId: sessionService.deviceId).first else { return }
@@ -692,12 +710,22 @@ private struct SupportModeTimerView: View {
                         buddyRemainingTime = remaining
                     } else {
                         timer?.invalidate()
+                        displayTimer?.invalidate()
                         onBuddyComplete()
                     }
                 }
             }
+            // 60fps timer for smooth progress
+            displayTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [sessionService] _ in
+                Task { @MainActor in
+                    guard let buddy = session.otherParticipants(exceptId: sessionService.deviceId).first else { return }
+                    let preciseRemaining = session.preciseRemainingTime(forParticipant: buddy.odid, currentTime: sessionService.serverTime)
+                    let preciseElapsed = Double(buddy.duration) - preciseRemaining
+                    buddyProgress = min(max(preciseElapsed / Double(buddy.duration), 0.0), 1.0)
+                }
+            }
         }
-        .onDisappear { timer?.invalidate() }
+        .onDisappear { timer?.invalidate(); displayTimer?.invalidate() }
     }
 }
 

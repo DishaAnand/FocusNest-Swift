@@ -126,6 +126,14 @@ public struct BuddySession: Codable, Sendable, Identifiable, Equatable {
         return max(0, participant.duration - elapsed)
     }
 
+    /// Precise remaining time as Double for smooth progress animation
+    public func preciseRemainingTime(forParticipant participantId: String, currentTime: TimeInterval) -> Double {
+        guard let start = startTime,
+              let participant = participants[participantId] else { return 0 }
+        let elapsed = currentTime - start
+        return max(0, Double(participant.duration) - elapsed)
+    }
+
     /// Check if a specific participant has completed their timer
     public func isParticipantComplete(_ participantId: String, currentTime: TimeInterval) -> Bool {
         remainingTimeForParticipant(participantId, currentTime: currentTime) <= 0

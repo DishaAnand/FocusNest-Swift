@@ -724,6 +724,10 @@ public struct TimerView: View {
                     var plan = sessionPlan
                     plan.nextSession()
                     sessionPlan = plan
+                    // Update selected task to the one assigned to the next session
+                    if let taskId = plan.currentTaskId {
+                        timerService.selectedTask = allTasks.first { $0.id == taskId }
+                    }
                     // Note: currentSessionDisplay is updated via onChange(of: timerService.mode)
                     timerService.setMode(.focus, duration: settings.focusDuration)
                 }
@@ -825,6 +829,12 @@ public struct TimerView: View {
         .animation(.spring(response: 0.3), value: timerService.isBreak)
     }
 
+    /// Look up the FocusTask for the current session plan assignment
+    private func taskForCurrentSession() -> FocusTask? {
+        guard let taskId = sessionPlan.currentTaskId else { return nil }
+        return allTasks.first { $0.id == taskId }
+    }
+
     private func startSessionPlan() {
         guard sessionPlan.totalSessions > 0 else { return }
 
@@ -834,6 +844,9 @@ public struct TimerView: View {
         continuousFocusTime = 0
         distractionCount = 0
         currentSessionDisplay = 1
+
+        // Set the selected task to the one assigned to session 1
+        timerService.selectedTask = taskForCurrentSession()
 
         // Timer is ready - user will tap to set duration and start
         timerService.setMode(.focus, duration: settings.focusDuration)
@@ -848,6 +861,9 @@ public struct TimerView: View {
         continuousFocusTime = 0
         distractionCount = 0
         currentSessionDisplay = 1
+
+        // Set the selected task to the one assigned to session 1
+        timerService.selectedTask = taskForCurrentSession()
 
         // Set prediction but don't auto-start — user starts manually from the timer
         predictedFocus = level
@@ -874,6 +890,10 @@ public struct TimerView: View {
         updatedPlan.nextSession()
         sessionPlan = updatedPlan
         currentSessionDisplay += 1
+        // Update selected task to the one assigned to the next session
+        if let taskId = updatedPlan.currentTaskId {
+            timerService.selectedTask = allTasks.first { $0.id == taskId }
+        }
         continuousFocusTime += 0  // Continuous time keeps accumulating (no break taken)
         distractionCount = 0
         timerService.setMode(.focus, duration: settings.focusDuration)
