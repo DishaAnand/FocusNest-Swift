@@ -228,17 +228,12 @@ public struct BuddySessionView: View {
             .frame(maxWidth: .infinity)  // Center on larger screens
         }
         .sheet(isPresented: $showCreateSession) {
-            CreateSessionSheet(
-                userName: $userName,
-                taskTitle: $customTaskTitle,
-                duration: $sessionDuration,
-                isPresented: $showCreateSession
-            ) {
-                Task { await createSession() }
+            CreateSessionSheet(isPresented: $showCreateSession) {
+                currentStep = .waiting
             }
         }
         .sheet(isPresented: $showJoinWithCode) {
-            JoinWithCodeSheet(userName: $userName, taskTitle: $customTaskTitle, isPresented: $showJoinWithCode, tasks: tasks) {
+            BuddyJoinWithCodeSheet(isPresented: $showJoinWithCode) {
                 currentStep = .waiting
             }
         }
@@ -469,6 +464,7 @@ public struct BuddySessionView: View {
     private func startSession() async {
         do {
             try await sessionService.startSession()
+            subscriptionService.recordBuddySessionUsed()
             currentStep = .active
         } catch {
             errorMessage = error.localizedDescription
@@ -504,6 +500,7 @@ public struct BuddySessionView: View {
         switch state {
         case .active:
             if currentStep == .waiting {
+                subscriptionService.recordBuddySessionUsed()
                 currentStep = .active
                 // Ensure our status is focused when session starts
                 Task { try? await sessionService.updateStatus(.focused) }
@@ -766,14 +763,15 @@ private struct SupportModeTimerView: View {
 }
 
 @MainActor
-private struct JoinWithCodeSheet: View {
+struct BuddyJoinWithCodeSheet: View {
     @Environment(SessionService.self) private var sessionService
-    @Binding var userName: String
-    @Binding var taskTitle: String
+    @Query(filter: #Predicate<FocusTask> { !$0.isCompleted }, sort: \FocusTask.createdAt, order: .reverse) private var tasks: [FocusTask]
+
     @Binding var isPresented: Bool
-    let tasks: [FocusTask]
     let onJoined: () -> Void
 
+    @State private var userName = UserDefaults.standard.string(forKey: "userName") ?? ""
+    @State private var taskTitle = ""
     @State private var code = ""
     @State private var sessionDuration = 25
     @State private var selectedTask: FocusTask?
@@ -928,19 +926,19 @@ private struct JoinWithCodeSheet: View {
 }
 
 @MainActor
-private struct CreateSessionSheet: View {
+struct CreateSessionSheet: View {
     @Environment(SessionService.self) private var sessionService
     @Environment(SoundService.self) private var soundService
     @Environment(UserSettings.self) private var settings
     @Environment(\.modelContext) private var modelContext
     @Query(filter: #Predicate<FocusTask> { !$0.isCompleted }, sort: \FocusTask.createdAt, order: .reverse) private var tasks: [FocusTask]
 
-    @Binding var userName: String
-    @Binding var taskTitle: String
-    @Binding var duration: Int
     @Binding var isPresented: Bool
-    let onCreate: () -> Void
+    let onCreated: () -> Void
 
+    @State private var userName = UserDefaults.standard.string(forKey: "userName") ?? ""
+    @State private var taskTitle = ""
+    @State private var duration = 25
     @State private var selectedTask: FocusTask?
     @State private var isLoading = false
     @State private var errorMessage: String?
@@ -1106,8 +1104,15 @@ private struct CreateSessionSheet: View {
                     // Create button
                     Button {
                         UserDefaults.standard.set(userName, forKey: "userName")
-                        isPresented = false
-                        onCreate()
+                        Task {
+                            do {
+                                _ = try await sessionService.createSession(taskTitle: taskTitle, duration: duration * 60, userName: userName)
+                                isPresented = false
+                                onCreated()
+                            } catch {
+                                errorMessage = error.localizedDescription
+                            }
+                        }
                     } label: {
                         Text("Create & Get Code")
                             .font(.system(size: 17, weight: .semibold))

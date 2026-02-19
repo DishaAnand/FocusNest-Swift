@@ -54,6 +54,7 @@ public struct BuddySession: Codable, Sendable, Identifiable, Equatable {
     public var id: String { sessionId }
     public let sessionId: String
     public let creatorId: String
+    public let shortCode: String
     public var state: SessionState
     public var duration: Int
     public var startTime: TimeInterval?
@@ -64,6 +65,7 @@ public struct BuddySession: Codable, Sendable, Identifiable, Equatable {
     public init(
         sessionId: String = UUID().uuidString,
         creatorId: String,
+        shortCode: String,
         state: SessionState = .waiting,
         duration: Int = 25 * 60,
         startTime: TimeInterval? = nil,
@@ -73,17 +75,13 @@ public struct BuddySession: Codable, Sendable, Identifiable, Equatable {
     ) {
         self.sessionId = sessionId
         self.creatorId = creatorId
+        self.shortCode = shortCode
         self.state = state
         self.duration = duration
         self.startTime = startTime
         self.endTime = endTime
         self.participants = participants
         self.createdAt = createdAt
-    }
-
-    /// Short 4-character code for easy sharing
-    public var shortCode: String {
-        String(sessionId.prefix(4)).uppercased()
     }
 
     /// Deep link for direct app opening

@@ -21,8 +21,7 @@ struct FocusHavenApp: App {
     @State private var subscriptionService = SubscriptionService()
     @State private var motionService = MotionService()
 
-    // TODO: Replace with your RevenueCat API key from https://app.revenuecat.com
-    private let revenueCatAPIKey = "YOUR_REVENUECAT_API_KEY"
+    private let revenueCatAPIKey = "appl_cWNkUpdMNSPZstrIvAYsYlOmbxI"
 
     init() {
         let settings = UserSettings()
@@ -54,8 +53,9 @@ struct FocusHavenApp: App {
                 .task {
                     sessionService.configure()
                     subscriptionService.configure(apiKey: revenueCatAPIKey)
-                    // Request notification permission on launch
                     _ = await notificationService.requestAuthorization()
+                    // Purge stale sessions/codes older than 24h
+                    await sessionService.cleanupStaleSessions()
                 }
         }
         .modelContainer(focusModelContainer)

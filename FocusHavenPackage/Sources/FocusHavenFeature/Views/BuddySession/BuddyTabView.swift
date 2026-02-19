@@ -5,9 +5,11 @@ import SwiftData
 @MainActor
 public struct BuddyTabView: View {
     @Environment(SessionService.self) private var sessionService
+    @Environment(SubscriptionService.self) private var subscriptionService
     @State private var showCreateSession = false
     @State private var showJoinSession = false
     @State private var showActiveSession = false
+    @State private var showUpgradePrompt = false
     @State private var animateIcons = false
     @State private var pulseGlow = false
     @State private var rotateOrbs = false
@@ -29,10 +31,22 @@ public struct BuddyTabView: View {
             .navigationBarTitleDisplayMode(.large)
         }
         .sheet(isPresented: $showCreateSession) {
-            BuddySessionView()
+            CreateSessionSheet(isPresented: $showCreateSession) {
+                // Session created — inline BuddySessionView takes over
+            }
         }
         .sheet(isPresented: $showJoinSession) {
-            JoinWithCodeSheet(isPresented: $showJoinSession)
+            BuddyJoinWithCodeSheet(isPresented: $showJoinSession) {
+                // Joined — inline BuddySessionView takes over
+            }
+        }
+        .sheet(isPresented: $showUpgradePrompt) {
+            ZStack {
+                Color.black.opacity(0.3).ignoresSafeArea()
+                    .onTapGesture { showUpgradePrompt = false }
+                UpgradePromptView.buddySessionLimit()
+            }
+            .presentationBackground(.clear)
         }
     }
 
@@ -234,7 +248,11 @@ public struct BuddyTabView: View {
         VStack(spacing: 16) {
             // Start Session Card (Primary) - with shimmer effect
             Button {
-                showCreateSession = true
+                if subscriptionService.canStartBuddySession {
+                    showCreateSession = true
+                } else {
+                    showUpgradePrompt = true
+                }
             } label: {
                 HStack(spacing: 16) {
                     ZStack {
@@ -306,7 +324,11 @@ public struct BuddyTabView: View {
 
             // Join Session Card (Secondary)
             Button {
-                showJoinSession = true
+                if subscriptionService.canStartBuddySession {
+                    showJoinSession = true
+                } else {
+                    showUpgradePrompt = true
+                }
             } label: {
                 HStack(spacing: 16) {
                     ZStack {
@@ -556,173 +578,8 @@ private struct FloatingCardButtonStyle: ButtonStyle {
     }
 }
 
-// MARK: - Join With Code Sheet
-
-private struct JoinWithCodeSheet: View {
-    @Binding var isPresented: Bool
-    @Environment(SessionService.self) private var sessionService
-    @State private var joinCode = ""
-    @State private var userName = UserDefaults.standard.string(forKey: "userName") ?? ""
-    @State private var taskTitle = ""
-    @State private var sessionDuration = 25
-    @State private var isJoining = false
-    @State private var errorMessage: String?
-    @FocusState private var isCodeFocused: Bool
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Header
-                    VStack(spacing: 12) {
-                        Image(systemName: "link.circle.fill")
-                            .font(.system(size: 56))
-                            .foregroundStyle(Theme.focusColor)
-
-                        Text("Join a Session")
-                            .font(.title2.weight(.bold))
-
-                        Text("Enter the 4-letter code from your friend")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.top, 20)
-
-                    // Code Input
-                    VStack(spacing: 8) {
-                        TextField("ABCD", text: $joinCode)
-                            .font(.system(size: 32, weight: .bold, design: .monospaced))
-                            .multilineTextAlignment(.center)
-                            .textInputAutocapitalization(.characters)
-                            .autocorrectionDisabled()
-                            .focused($isCodeFocused)
-                            .onChange(of: joinCode) { _, newValue in
-                                joinCode = String(newValue.uppercased().prefix(4))
-                            }
-                            .padding(.vertical, 16)
-                            .background(Color(.secondarySystemBackground))
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                    }
-                    .padding(.horizontal, 40)
-
-                    // Name field
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Your Name").font(.headline)
-                        HStack(spacing: 12) {
-                            Image(systemName: "person.fill")
-                                .foregroundStyle(.tertiary)
-                            TextField("Enter your name", text: $userName)
-                                .autocorrectionDisabled()
-                        }
-                        .padding()
-                        .background(Color(.secondarySystemBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                    }
-                    .padding(.horizontal, 20)
-
-                    // Task field
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("What are you working on?").font(.headline)
-                        HStack(spacing: 12) {
-                            Image(systemName: "target")
-                                .foregroundStyle(.tertiary)
-                            TextField("Enter your focus task", text: $taskTitle)
-                        }
-                        .padding()
-                        .background(Color(.secondarySystemBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                    }
-                    .padding(.horizontal, 20)
-
-                    // Duration picker
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Image(systemName: "clock.fill")
-                                .foregroundStyle(Theme.focusColor)
-                            Text("Your Focus Duration").font(.headline)
-                        }
-                        Text("Can differ from your buddy's time")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Picker("Duration", selection: $sessionDuration) {
-                            Text("1 min").tag(1)
-                            Text("15 min").tag(15)
-                            Text("25 min").tag(25)
-                            Text("45 min").tag(45)
-                        }
-                        .pickerStyle(.segmented)
-                    }
-                    .padding(.horizontal, 20)
-
-                    // Join Button
-                    Button {
-                        Task { await joinSession() }
-                    } label: {
-                        HStack {
-                            if isJoining {
-                                ProgressView()
-                                    .tint(.white)
-                            } else {
-                                Text("Join Session")
-                                    .fontWeight(.semibold)
-                            }
-                        }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 56)
-                        .background(isFormValid ? Theme.focusColor : Color.gray.opacity(0.3))
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                    }
-                    .disabled(!isFormValid || isJoining)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 20)
-                }
-                .frame(maxWidth: 500)  // iPad: constrain form width
-                .frame(maxWidth: .infinity)  // Center on larger screens
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { isPresented = false }
-                }
-            }
-            .alert("Couldn't Join", isPresented: Binding(
-                get: { errorMessage != nil },
-                set: { if !$0 { errorMessage = nil } }
-            )) {
-                Button("OK") { errorMessage = nil }
-            } message: {
-                Text(errorMessage ?? "")
-            }
-            .onAppear {
-                isCodeFocused = true
-            }
-        }
-        .presentationDetents([.large])
-    }
-
-    private var isFormValid: Bool {
-        joinCode.count == 4 && !userName.isEmpty && !taskTitle.isEmpty
-    }
-
-    private func joinSession() async {
-        isJoining = true
-        defer { isJoining = false }
-
-        do {
-            UserDefaults.standard.set(userName, forKey: "userName")
-            // First look up the session ID from the short code
-            let sessionId = try await sessionService.findSessionByCode(joinCode)
-            // Then join with the full session ID
-            _ = try await sessionService.joinSession(sessionId: sessionId, taskTitle: taskTitle, userName: userName, duration: sessionDuration * 60)
-            isPresented = false
-        } catch {
-            errorMessage = "Couldn't find a session with that code. Check with your friend and try again."
-        }
-    }
-}
-
 #Preview {
     BuddyTabView()
         .environment(SessionService())
+        .environment(SubscriptionService())
 }

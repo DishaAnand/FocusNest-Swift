@@ -76,6 +76,53 @@ public final class SessionService: @unchecked Sendable {
         serverTimeOffsetObserver = nil
     }
 
+    // MARK: - Code Generation
+
+    private static let codeLetters = Array("ABCDEFGHJKLMNPQRSTUVWXYZ") // no I or O to avoid confusion with 1/0
+
+    private func generateUniqueCode() -> String {
+        String((0..<4).map { _ in Self.codeLetters.randomElement()! })
+    }
+
+    /// Reserve a unique short code in Firebase using a transaction to prevent collisions
+    private func reserveUniqueCode(db: DatabaseReference, sessionId: String) async throws -> String {
+        for _ in 0..<10 { // max 10 attempts
+            let code = generateUniqueCode()
+            let codeRef = db.child("codes").child(code)
+
+            // Atomic check-and-set: only write if the code doesn't exist yet
+            let (committed, _) = try await codeRef.runTransactionBlock { currentData in
+                if currentData.value is NSNull || currentData.value == nil {
+                    // Code is free — claim it
+                    currentData.value = [
+                        "sessionId": sessionId,
+                        "createdAt": ServerValue.timestamp()
+                    ] as [String: Any]
+                    return .success(withValue: currentData)
+                } else {
+                    // Code already taken — abort
+                    return .abort()
+                }
+            }
+
+            if committed {
+                return code
+            }
+            // Code was taken, try again with a new one
+        }
+
+        // Extremely unlikely: 10 collisions in a row (24^4 = 331,776 combos)
+        throw SessionError.codeGenerationFailed
+    }
+
+    /// Release a short code from the codes index
+    private func releaseCode(_ code: String) async {
+        guard let db = database else { return }
+        try? await db.child("codes").child(code).removeValue()
+    }
+
+    // MARK: - Create Session
+
     public func createSession(taskTitle: String, duration: Int, userName: String) async throws -> BuddySession {
         guard isFirebaseConfigured, let db = database else { throw SessionError.notConfigured }
         isLoading = true
@@ -83,8 +130,10 @@ public final class SessionService: @unchecked Sendable {
         defer { isLoading = false }
 
         let sessionId = UUID().uuidString
+        let shortCode = try await reserveUniqueCode(db: db, sessionId: sessionId)
+
         let participant = SessionParticipant(odid: deviceId, name: userName, taskTitle: taskTitle, duration: duration)
-        let session = BuddySession(sessionId: sessionId, creatorId: deviceId, duration: duration, participants: [deviceId: participant])
+        let session = BuddySession(sessionId: sessionId, creatorId: deviceId, shortCode: shortCode, duration: duration, participants: [deviceId: participant])
 
         let sessionRef = db.child("sessions").child(sessionId)
         try await sessionRef.setValue(session.toDictionary())
@@ -93,45 +142,35 @@ public final class SessionService: @unchecked Sendable {
         return session
     }
 
-    /// Find session by short code (first 4 chars of sessionId)
-    /// Only returns sessions that are in "waiting" state
+    // MARK: - Find Session by Code (O(1) lookup)
+
     public func findSessionByCode(_ code: String) async throws -> String {
         guard isFirebaseConfigured, let db = database else { throw SessionError.notConfigured }
 
         let normalizedCode = code.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        guard normalizedCode.count >= 4 else { throw SessionError.invalidCode }
+        guard normalizedCode.count == 4 else { throw SessionError.invalidCode }
 
-        print("🔵 [SessionService] Finding session with code: \(normalizedCode)")
+        // Direct O(1) lookup in the codes index
+        let snapshot = try await db.child("codes").child(normalizedCode).getData()
 
-        // Query sessions that start with this code
-        let snapshot = try await db.child("sessions")
-            .queryOrderedByKey()
-            .queryStarting(atValue: normalizedCode)
-            .queryEnding(atValue: normalizedCode + "\u{f8ff}")
-            .queryLimited(toFirst: 10)  // Get more results to find a valid one
-            .getData()
-
-        guard let dict = snapshot.value as? [String: Any] else {
-            print("🔴 [SessionService] No sessions found with code: \(normalizedCode)")
+        guard let data = snapshot.value as? [String: Any],
+              let sessionId = data["sessionId"] as? String else {
             throw SessionError.sessionNotFound
         }
 
-        print("🔵 [SessionService] Found \(dict.count) sessions matching code")
-
-        // Find the first session that is in "waiting" state
-        for (sessionId, value) in dict {
-            if let sessionData = value as? [String: Any],
-               let stateRaw = sessionData["state"] as? String {
-                print("🔵 [SessionService] Session \(sessionId.prefix(8))... state: \(stateRaw)")
-                if stateRaw == SessionState.waiting.rawValue {
-                    print("🟢 [SessionService] Found waiting session: \(sessionId)")
-                    return sessionId
-                }
-            }
+        // Verify session is still in waiting state
+        let sessionSnapshot = try await db.child("sessions").child(sessionId).child("state").getData()
+        guard let stateRaw = sessionSnapshot.value as? String else {
+            // Session was deleted — clean up stale code
+            await releaseCode(normalizedCode)
+            throw SessionError.sessionNotFound
         }
 
-        print("🔴 [SessionService] No waiting sessions found with code: \(normalizedCode)")
-        throw SessionError.sessionAlreadyStarted
+        guard stateRaw == SessionState.waiting.rawValue else {
+            throw SessionError.sessionAlreadyStarted
+        }
+
+        return sessionId
     }
 
     public func joinSession(sessionId: String, taskTitle: String, userName: String, duration: Int = 25 * 60) async throws -> BuddySession {
@@ -227,6 +266,8 @@ public final class SessionService: @unchecked Sendable {
     public func completeSession() async throws {
         guard var session = currentSession, isFirebaseConfigured, let db = database else { throw SessionError.noActiveSession }
         try await db.child("sessions").child(session.sessionId).updateChildValues(["state": SessionState.completed.rawValue, "endTime": Date().timeIntervalSince1970])
+        // Release the short code so it can be reused
+        await releaseCode(session.shortCode)
         session.state = .completed
         session.endTime = Date().timeIntervalSince1970
         currentSession = session
@@ -242,6 +283,8 @@ public final class SessionService: @unchecked Sendable {
         stopObservingSession()
         if session.participantCount <= 1 || (session.creatorId == deviceId && session.state == .waiting) {
             try await db.child("sessions").child(session.sessionId).child("state").setValue(SessionState.cancelled.rawValue)
+            // Release the short code so it can be reused
+            await releaseCode(session.shortCode)
         } else {
             try await db.child("sessions").child(session.sessionId).child("participants").child(deviceId).removeValue()
         }
@@ -287,10 +330,47 @@ public final class SessionService: @unchecked Sendable {
         stopListeningToServerTimeOffset()
         currentSession = nil
     }
+
+    // MARK: - Stale Session Cleanup
+
+    /// Purge sessions and codes older than 24 hours. Run on app launch.
+    public func cleanupStaleSessions() async {
+        guard isFirebaseConfigured, let db = database else { return }
+
+        let cutoff = Date().timeIntervalSince1970 - (24 * 60 * 60) // 24 hours ago
+
+        do {
+            // Find old sessions
+            let snapshot = try await db.child("sessions")
+                .queryOrdered(byChild: "createdAt")
+                .queryEnding(atValue: cutoff)
+                .queryLimited(toLast: 50)
+                .getData()
+
+            guard let sessions = snapshot.value as? [String: [String: Any]] else { return }
+
+            for (sessionId, data) in sessions {
+                let shortCode = data["shortCode"] as? String
+                // Delete the session
+                try? await db.child("sessions").child(sessionId).removeValue()
+                // Delete its code mapping
+                if let code = shortCode {
+                    try? await db.child("codes").child(code).removeValue()
+                }
+            }
+
+            if !sessions.isEmpty {
+                print("🔵 [SessionService] Cleaned up \(sessions.count) stale sessions")
+            }
+        } catch {
+            // Cleanup is best-effort, don't crash
+            print("⚠️ [SessionService] Stale session cleanup failed: \(error.localizedDescription)")
+        }
+    }
 }
 
 public enum SessionError: LocalizedError, Sendable {
-    case notConfigured, sessionNotFound, invalidSessionData, sessionAlreadyStarted, noActiveSession, notSessionCreator, notEnoughParticipants, invalidCode
+    case notConfigured, sessionNotFound, invalidSessionData, sessionAlreadyStarted, noActiveSession, notSessionCreator, notEnoughParticipants, invalidCode, codeGenerationFailed
 
     public var errorDescription: String? {
         switch self {
@@ -302,13 +382,14 @@ public enum SessionError: LocalizedError, Sendable {
         case .notSessionCreator: return "Only the session creator can perform this action."
         case .notEnoughParticipants: return "Need at least 2 participants to start."
         case .invalidCode: return "Please enter a valid 4-character session code."
+        case .codeGenerationFailed: return "Unable to generate a unique session code. Please try again."
         }
     }
 }
 
 extension BuddySession {
     func toDictionary() -> [String: Any] {
-        var dict: [String: Any] = ["sessionId": sessionId, "creatorId": creatorId, "state": state.rawValue, "duration": duration, "createdAt": createdAt]
+        var dict: [String: Any] = ["sessionId": sessionId, "creatorId": creatorId, "shortCode": shortCode, "state": state.rawValue, "duration": duration, "createdAt": createdAt]
         if let start = startTime { dict["startTime"] = start }
         if let end = endTime { dict["endTime"] = end }
         dict["participants"] = participants.mapValues { $0.toDictionary() }
@@ -324,6 +405,8 @@ extension BuddySession {
 
         self.sessionId = sessionId
         self.creatorId = creatorId
+        // Use stored shortCode, fallback to first 4 chars of sessionId for backwards compat
+        self.shortCode = (dictionary["shortCode"] as? String) ?? String(sessionId.prefix(4)).uppercased()
         self.state = state
         self.duration = duration
         self.createdAt = createdAt

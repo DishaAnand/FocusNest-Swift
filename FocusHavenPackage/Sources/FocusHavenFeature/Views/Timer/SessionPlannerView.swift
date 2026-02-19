@@ -158,6 +158,7 @@ struct SessionPlannerSheet: View {
     @State private var taskAssignments: [UUID?] = [nil, nil, nil, nil, nil]  // For existing tasks
     @Environment(SoundService.self) private var soundService
     @Environment(UserSettings.self) private var settings
+    @Environment(SubscriptionService.self) private var subscriptionService
     @Environment(\.modelContext) private var modelContext
     @Query(filter: #Predicate<FocusTask> { !$0.isCompleted }, sort: \FocusTask.createdAt, order: .reverse) private var availableTasks: [FocusTask]
 
@@ -276,6 +277,7 @@ struct SessionPlannerSheet: View {
 
     private func startWithPrediction() {
         soundService.mediumImpact(settings: settings)
+        subscriptionService.recordSessionPlanUsed()
         plan.setTaskCount(selectedCount)
         if assignTasks {
             createTasksAndAssign()
@@ -290,6 +292,7 @@ struct SessionPlannerSheet: View {
 
     private func startDirectly() {
         soundService.mediumImpact(settings: settings)
+        subscriptionService.recordSessionPlanUsed()
         plan.setTaskCount(selectedCount)
         if assignTasks {
             createTasksAndAssign()
