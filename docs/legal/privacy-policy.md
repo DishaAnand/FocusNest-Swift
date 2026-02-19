@@ -10,9 +10,9 @@ Disha Anand ("we," "us," or "our") built FocusHaven as a productivity applicatio
 
 The following data is stored locally on your device and synced across your own devices via your personal iCloud account. We do not have access to this data.
 
-- **Focus session history** including duration, completion status, distraction count, and focus ratings
-- **Tasks** you create, including titles and completion status
-- **App preferences** such as timer durations, theme, sound settings, and notification preferences
+- **Focus session history** including duration, completion status, distraction count, focus predictions and ratings, recharge status, and whether a session was a buddy session
+- **Tasks** you create, including titles, completion status, and accumulated focus time
+- **App preferences** such as timer durations, theme, sound settings, notification preferences, and your display name for buddy sessions
 - **Wake-up voice recordings** you create for break-end alerts (stored only on your device, never uploaded)
 - **Break recharge data** derived from motion sensors during break periods (only the aggregate percentage is stored)
 

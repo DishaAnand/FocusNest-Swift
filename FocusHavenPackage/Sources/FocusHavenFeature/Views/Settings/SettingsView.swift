@@ -589,7 +589,7 @@ public struct SettingsView: View {
                                 Divider().padding(.leading, 60)
 
                                 Button {
-                                    if let url = URL(string: "mailto:support@focushaven.app?subject=FocusHaven%20Feedback") {
+                                    if let url = URL(string: "mailto:infiniarc123@gmail.com?subject=FocusHaven%20Feedback") {
                                         UIApplication.shared.open(url)
                                     }
                                 } label: {
@@ -655,7 +655,7 @@ public struct SettingsView: View {
                                 Divider().padding(.leading, 60)
 
                                 Button {
-                                    if let url = URL(string: "https://focushaven.app/privacy") {
+                                    if let url = URL(string: "https://dishaanand.github.io/FocusNest-Swift/privacy/") {
                                         UIApplication.shared.open(url)
                                     }
                                 } label: {
@@ -670,7 +670,7 @@ public struct SettingsView: View {
                                 Divider().padding(.leading, 60)
 
                                 Button {
-                                    if let url = URL(string: "https://focushaven.app/terms") {
+                                    if let url = URL(string: "https://dishaanand.github.io/FocusNest-Swift/terms/") {
                                         UIApplication.shared.open(url)
                                     }
                                 } label: {

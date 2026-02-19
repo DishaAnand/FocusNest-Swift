@@ -173,8 +173,8 @@ public struct PaywallView: View {
                 .multilineTextAlignment(.center)
 
             HStack(spacing: Theme.spacingM) {
-                Link("Terms of Service", destination: URL(string: "https://example.com/terms")!)
-                Link("Privacy Policy", destination: URL(string: "https://example.com/privacy")!)
+                Link("Terms of Service", destination: URL(string: "https://dishaanand.github.io/FocusNest-Swift/terms/")!)
+                Link("Privacy Policy", destination: URL(string: "https://dishaanand.github.io/FocusNest-Swift/privacy/")!)
             }
             .font(.system(size: 11))
             .foregroundStyle(Theme.focusColor)
