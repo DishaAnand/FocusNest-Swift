@@ -56,6 +56,7 @@ public struct TimerView: View {
     @State private var sessionPlanTotalDistractions = 0
     @State private var sessionPlanTotalFocusTime = 0
     @State private var showFinalCelebration = false  // For last session enhanced celebration
+    @State private var showCancelPlanConfirmation = false
     @State private var showSessionBanner = false  // Brief "Session X completed" banner
     @State private var sessionBannerNumber: Int = 0  // Which session just completed
     @State private var currentSessionDisplay: Int = 1  // 1-indexed session number for UI
@@ -330,6 +331,17 @@ public struct TimerView: View {
             )
             .presentationDetents([.medium])
             .presentationDragIndicator(.visible)
+        }
+        .alert("Cancel Session Plan?", isPresented: $showCancelPlanConfirmation) {
+            Button("Keep Going", role: .cancel) {}
+            Button("Cancel Plan", role: .destructive) {
+                timerService.stop()
+                ambientSoundService.stop()
+                notificationService.cancelTimerNotifications()
+                finishSessionPlan()
+            }
+        } message: {
+            Text("This will end your current session plan. Any completed sessions are already saved.")
         }
         .sheet(isPresented: $showSessionPlanUpgradePrompt) {
             ZStack {
@@ -914,8 +926,21 @@ public struct TimerView: View {
                     .foregroundStyle(Theme.textSecondary)
             }
 
-            if !isCompact {
-                Spacer()
+            Spacer()
+
+            Button {
+                if timerService.state == .idle {
+                    finishSessionPlan()
+                } else {
+                    showCancelPlanConfirmation = true
+                }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(Theme.textTertiary)
+                    .frame(width: 24, height: 24)
+                    .background(Theme.textTertiary.opacity(0.15))
+                    .clipShape(Circle())
             }
         }
         .padding(.horizontal, isCompact ? 16 : 24)
