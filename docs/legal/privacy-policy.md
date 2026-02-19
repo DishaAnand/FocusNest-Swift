@@ -36,7 +36,7 @@ When you subscribe to FocusHaven Pro, your purchase is processed by Apple throug
 
 ## Information We Do Not Collect
 
-- We do not collect your name, email address, phone number, or any account credentials (there are no user accounts)
+- We do not require or collect your real name, email address, phone number, or any account credentials (there are no user accounts). Display names entered for Buddy Sessions are voluntarily chosen and may be nicknames or pseudonyms.
 - We do not collect your location
 - We do not access your camera, contacts, calendar, or health data
 - We do not use advertising identifiers (IDFA)
@@ -91,7 +91,7 @@ Since there are no user accounts, there is no account deletion process needed. A
 
 ## Children's Privacy
 
-FocusHaven does not knowingly collect personal information from children under the age of 13. The App does not require any personal information to function, and buddy session participation requires only a voluntarily chosen display name.
+FocusHaven is suitable for users of all ages (rated 4+ on the App Store). The App does not require any personal information to function. No account creation, email, or real name is required. Buddy session participation requires only a voluntarily chosen display name. We do not knowingly collect personally identifiable information from any user, including children.
 
 ## Changes to This Privacy Policy
 
@@ -101,4 +101,4 @@ We may update this Privacy Policy from time to time. We will notify you of any c
 
 If you have any questions about this Privacy Policy, please contact us at:
 
-**Email**: support@focushaven.app
+**Email**: infiniarc123@gmail.com

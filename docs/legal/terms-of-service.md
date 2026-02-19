@@ -12,7 +12,7 @@ FocusHaven is a productivity application that provides focus timers, task manage
 
 ## 2. Eligibility
 
-You must be at least 13 years of age to use the App. By using the App, you represent that you meet this age requirement.
+The App is suitable for users of all ages (rated 4+ on the App Store). No account creation or personal information is required to use the App.
 
 ## 3. User Accounts
 
@@ -133,4 +133,4 @@ If any provision of these Terms is found to be unenforceable or invalid, that pr
 
 If you have any questions about these Terms, please contact us at:
 
-**Email**: support@focushaven.app
+**Email**: infiniarc123@gmail.com
