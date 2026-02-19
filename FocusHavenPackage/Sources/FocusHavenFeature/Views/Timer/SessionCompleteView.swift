@@ -58,8 +58,8 @@ struct SessionCompleteView: View {
     @Environment(UserSettings.self) private var settings
 
     // MARK: - Break Guardian Thresholds (in seconds)
-    private let playfulNudgeThreshold = 1 * 60   // TEMP: 1 min for testing (was 25 min)
-    private let mandatoryBreakThreshold = 2 * 60 // TEMP: 2 min for testing (was 45 min)
+    private let playfulNudgeThreshold = 25 * 60
+    private let mandatoryBreakThreshold = 45 * 60
 
     // Use settings.focusDuration as fallback if duration is 0 (SwiftUI capture issue)
     private var effectiveDuration: Int {
@@ -448,7 +448,6 @@ struct SessionCompleteView: View {
             }
         }
         .onAppear {
-            print("🎉 SessionCompleteView appeared - duration: \(duration)s, effectiveDuration: \(effectiveDuration)s (\(effectiveDuration/60) min), needsPlayfulNudge: \(needsPlayfulNudge), needsMandatoryBreak: \(needsMandatoryBreak)")
             startCelebration()
             // Auto-show mandatory break for 60+ min sessions
             if needsMandatoryBreak {

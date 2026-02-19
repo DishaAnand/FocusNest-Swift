@@ -40,7 +40,7 @@ public final class UserSettings: @unchecked Sendable {
         self.soundKey = defaults.string(forKey: Self.soundKeyKey) ?? "chimes"  // RN default
         self.hasSeenNotificationOnboarding = defaults.bool(forKey: Self.hasSeenNotificationOnboardingKey)
         self.hasSeenWakeUpVoiceOnboarding = defaults.bool(forKey: Self.hasSeenWakeUpVoiceOnboardingKey)
-        self.isPremium = true  // TESTING: Always premium, change back before release
+        self.isPremium = defaults.bool(forKey: Self.isPremiumKey)
 
         if let modeRaw = defaults.string(forKey: Self.rechargeDetectionModeKey),
            let savedMode = RechargeDetectionMode(rawValue: modeRaw) {

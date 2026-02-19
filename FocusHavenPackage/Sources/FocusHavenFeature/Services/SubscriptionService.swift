@@ -21,7 +21,6 @@ public final class SubscriptionService: @unchecked Sendable {
     private let buddySessionsKey = "subscription_buddySessionsUsed"
     private let sessionPlansKey = "subscription_sessionPlansUsed"
     private let usagePeriodStartKey = "subscription_usagePeriodStart"
-    private let debugProOverrideKey = "subscription_debugProOverride"
 
     // MARK: - Computed Properties
 
@@ -92,19 +91,10 @@ public final class SubscriptionService: @unchecked Sendable {
     // MARK: - Pro Status Check
 
     public func checkProStatus() async {
-        #if DEBUG
-        // If debug override is active, respect it instead of RevenueCat
-        if UserDefaults.standard.object(forKey: debugProOverrideKey) != nil {
-            isPro = UserDefaults.standard.bool(forKey: debugProOverrideKey)
-            return
-        }
-        #endif
-
         do {
             let customerInfo = try await Purchases.shared.customerInfo()
             isPro = customerInfo.entitlements["pro"]?.isActive == true
         } catch {
-            print("Error checking subscription status: \(error)")
             isPro = false
         }
     }
@@ -117,11 +107,6 @@ public final class SubscriptionService: @unchecked Sendable {
 
         let result = try await Purchases.shared.purchase(package: package)
         isPro = result.customerInfo.entitlements["pro"]?.isActive == true
-
-        #if DEBUG
-        // Clear debug override after real purchase
-        UserDefaults.standard.removeObject(forKey: debugProOverrideKey)
-        #endif
     }
 
     // MARK: - Restore Purchases
@@ -132,11 +117,6 @@ public final class SubscriptionService: @unchecked Sendable {
 
         let customerInfo = try await Purchases.shared.restorePurchases()
         isPro = customerInfo.entitlements["pro"]?.isActive == true
-
-        #if DEBUG
-        // Clear debug override after restore
-        UserDefaults.standard.removeObject(forKey: debugProOverrideKey)
-        #endif
     }
 
     // MARK: - Get Offerings
@@ -191,22 +171,4 @@ public final class SubscriptionService: @unchecked Sendable {
         }
     }
 
-    // MARK: - Debug (Remove in production)
-
-    #if DEBUG
-    public func debugSetPro(_ value: Bool) {
-        isPro = value
-        UserDefaults.standard.set(value, forKey: debugProOverrideKey)
-    }
-
-    public func debugResetUsage() {
-        UserDefaults.standard.set(0, forKey: buddySessionsKey)
-        UserDefaults.standard.set(0, forKey: sessionPlansKey)
-        UserDefaults.standard.set(Date(), forKey: usagePeriodStartKey)
-    }
-
-    public func debugClearProOverride() {
-        UserDefaults.standard.removeObject(forKey: debugProOverrideKey)
-    }
-    #endif
 }

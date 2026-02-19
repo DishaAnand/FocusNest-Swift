@@ -38,7 +38,6 @@ public final class SessionService: @unchecked Sendable {
                 FirebaseApp.configure()
             } else {
                 // Firebase not available - buddy sessions won't work
-                print("⚠️ FocusHaven: GoogleService-Info.plist not found. Buddy sessions disabled.")
                 return
             }
         }
@@ -64,7 +63,6 @@ public final class SessionService: @unchecked Sendable {
                 // Firebase returns milliseconds, convert to seconds
                 let offsetMs = (snapshot.value as? Double) ?? 0
                 self.serverTimeOffset = offsetMs / 1000.0
-                print("🔵 [SessionService] Server time offset: \(offsetMs)ms = \(self.serverTimeOffset)s")
             }
         }
     }
@@ -179,36 +177,28 @@ public final class SessionService: @unchecked Sendable {
         error = nil
         defer { isLoading = false }
 
-        print("🔵 [SessionService] Joining session: \(sessionId)")
         let sessionRef = db.child("sessions").child(sessionId)
         let snapshot = try await sessionRef.getData()
         guard snapshot.exists(), let data = snapshot.value as? [String: Any] else {
-            print("🔴 [SessionService] Session not found or empty data")
             throw SessionError.sessionNotFound
         }
-        print("🔵 [SessionService] Session data retrieved: \(data)")
         guard var session = BuddySession(from: data) else {
-            print("🔴 [SessionService] Failed to parse session data")
             throw SessionError.invalidSessionData
         }
-        print("🔵 [SessionService] Session state: \(session.state.rawValue), participants: \(session.participantCount)")
         // Allow joining if session is waiting OR if this device is already a participant (rejoin case)
         guard session.state == .waiting || session.participants[deviceId] != nil else {
-            print("🔴 [SessionService] Session state is \(session.state.rawValue), not waiting. Cannot join.")
             throw SessionError.sessionAlreadyStarted
         }
 
         let participant = SessionParticipant(odid: deviceId, name: userName, taskTitle: taskTitle, duration: duration)
         session.participants[deviceId] = participant
-        print("🔵 [SessionService] Adding participant to Firebase...")
         try await sessionRef.child("participants").child(deviceId).setValue(participant.toDictionary())
-        print("🟢 [SessionService] Participant added successfully. Total participants: \(session.participantCount)")
         currentSession = session
         startObservingSession(sessionId: sessionId)
         return session
     }
 
-    /// Record a distraction (called when user returns after being away 15+ seconds)
+    /// Record a distraction (called when user returns after being away 8+ seconds)
     public func recordDistraction(awayDuration: Int) async throws {
         guard let session = currentSession,
               var participant = session.participant(withId: deviceId),
@@ -250,12 +240,9 @@ public final class SessionService: @unchecked Sendable {
 
     public func updateStatus(_ status: ParticipantStatus) async throws {
         guard let session = currentSession, isFirebaseConfigured, let db = database else {
-            NSLog("[SessionService] updateStatus FAILED - no active session. currentSession=%@, firebase=%@", String(describing: currentSession != nil), String(describing: isFirebaseConfigured))
             throw SessionError.noActiveSession
         }
-        NSLog("[SessionService] updateStatus writing '%@' for device '%@' to session '%@'", status.rawValue, deviceId, session.sessionId)
         try await db.child("sessions").child(session.sessionId).child("participants").child(deviceId).child("status").setValue(status.rawValue)
-        NSLog("[SessionService] updateStatus SUCCESS - wrote '%@'", status.rawValue)
     }
 
     public func incrementViolation() async throws {
@@ -294,25 +281,11 @@ public final class SessionService: @unchecked Sendable {
     private func startObservingSession(sessionId: String) {
         guard isFirebaseConfigured, let db = database else { return }
         stopObservingSession()
-        print("🔵 [SessionService] Starting to observe session: \(sessionId)")
         sessionObserver = db.child("sessions").child(sessionId).observe(.value) { [weak self] snapshot in
             Task { @MainActor in
-                print("🔵 [SessionService] Received Firebase update for session")
-                guard let self else {
-                    print("🔴 [SessionService] Self is nil")
-                    return
-                }
-                guard let data = snapshot.value as? [String: Any] else {
-                    print("🔴 [SessionService] Failed to parse snapshot as dictionary")
-                    return
-                }
-                guard let session = BuddySession(from: data) else {
-                    print("🔴 [SessionService] Failed to create BuddySession from data: \(data)")
-                    return
-                }
-                // Log participant statuses to trace support mode
-                let statusList = session.participants.map { "\($0.key.prefix(4))=\($0.value.status.rawValue)" }.joined(separator: ", ")
-                NSLog("[SessionService] Session updated - participants: %d, state: %@, statuses: [%@]", session.participantCount, session.state.rawValue, statusList)
+                guard let self else { return }
+                guard let data = snapshot.value as? [String: Any] else { return }
+                guard let session = BuddySession(from: data) else { return }
                 self.currentSession = session
             }
         }
@@ -359,12 +332,8 @@ public final class SessionService: @unchecked Sendable {
                 }
             }
 
-            if !sessions.isEmpty {
-                print("🔵 [SessionService] Cleaned up \(sessions.count) stale sessions")
-            }
         } catch {
             // Cleanup is best-effort, don't crash
-            print("⚠️ [SessionService] Stale session cleanup failed: \(error.localizedDescription)")
         }
     }
 }

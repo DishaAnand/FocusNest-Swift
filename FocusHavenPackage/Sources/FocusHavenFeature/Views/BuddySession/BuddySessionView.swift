@@ -28,10 +28,10 @@ public struct BuddySessionView: View {
     // Track if user stayed in support mode (for accurate summary duration)
     @State private var stayedInSupportMode = false
 
-    // Distraction detection - only counted when user RETURNS after 15+ seconds
+    // Distraction detection - only counted when user RETURNS after 8+ seconds
     @State private var wentAwayAt: Date?
     @State private var wasScreenLocked = false
-    private let distractionThreshold: TimeInterval = 15  // seconds
+    private let distractionThreshold: TimeInterval = 8
 
     public init() {}
 
@@ -96,7 +96,7 @@ public struct BuddySessionView: View {
                     // User returned to the app
                     Task {
                         // Only count as distraction if:
-                        // 1. They were away 15+ seconds
+                        // 1. They were away 8+ seconds
                         // 2. Screen was NOT locked (they switched apps)
                         if let awayTime = wentAwayAt {
                             let awayDuration = Int(Date().timeIntervalSince(awayTime))
@@ -647,7 +647,6 @@ private struct ActiveSessionTimerView: View {
                     if let liveSession = sessionService.currentSession,
                        let liveBuddy = liveSession.otherParticipants(exceptId: sessionService.deviceId).first {
                         if liveBuddy.status == .supporting && !buddySupportNotified {
-                            NSLog("[ActiveTimer] BUDDY IS SUPPORTING! name=%@ notifying now", liveBuddy.name)
                             buddySupportNotified = true
                             capturedSoundService.successHaptic(settings: capturedSettings)
                             await capturedNotificationService.notifyBuddySupporting(buddyName: liveBuddy.name)

@@ -52,7 +52,6 @@ public final class AmbientSoundService: @unchecked Sendable {
             try audioSession.setCategory(.playback, mode: .default, options: [.mixWithOthers])
             try audioSession.setActive(true)
         } catch {
-            print("Failed to configure audio session: \(error)")
             return
         }
 
@@ -62,12 +61,8 @@ public final class AmbientSoundService: @unchecked Sendable {
                         Bundle.module.url(forResource: soundsPath, withExtension: "wav") ??
                         Bundle.module.url(forResource: fileName, withExtension: "mp3") ??
                         Bundle.module.url(forResource: fileName, withExtension: "wav") else {
-            print("🔊 Could not find audio file: \(fileName)")
-            print("🔊 Searched for: \(soundsPath).mp3, \(soundsPath).wav, \(fileName).mp3, \(fileName).wav")
-            print("🔊 Bundle path: \(Bundle.module.bundlePath)")
             return
         }
-        print("🔊 Found audio file at: \(url)")
 
         do {
             audioPlayer = try AVAudioPlayer(contentsOf: url)
@@ -76,9 +71,8 @@ public final class AmbientSoundService: @unchecked Sendable {
             audioPlayer?.prepareToPlay()
             let success = audioPlayer?.play() ?? false
             isPlaying = success
-            print("🔊 Audio play started: \(success), volume: \(volume)")
         } catch {
-            print("🔊 Failed to play audio: \(error)")
+            // Audio playback failed
         }
     }
 

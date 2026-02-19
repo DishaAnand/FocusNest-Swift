@@ -13,8 +13,8 @@ struct FocusPredictionResultView: View {
 
 
     // MARK: - Break Guardian Thresholds (in seconds)
-    private let playfulNudgeThreshold = 1 * 60   // TEMP: 1 min for testing (was 25 min)
-    private let mandatoryBreakThreshold = 2 * 60 // TEMP: 2 min for testing (was 45 min)
+    private let playfulNudgeThreshold = 25 * 60
+    private let mandatoryBreakThreshold = 45 * 60
 
     @State private var ringProgress: CGFloat = 0
     @State private var showScore = false

@@ -29,13 +29,7 @@ public final class NotificationService: @unchecked Sendable {
     }
 
     public func scheduleTimerCompletion(in seconds: Int, mode: TimerMode, taskTitle: String?, customBreakSound: UNNotificationSound? = nil) async {
-        guard isAuthorized else {
-            print("🔔 [Notification] Not authorized, skipping notification")
-            return
-        }
-
-        print("🔔 [Notification] Scheduling notification for mode: \(mode), in \(seconds) seconds")
-        print("🔔 [Notification] customBreakSound provided: \(customBreakSound != nil)")
+        guard isAuthorized else { return }
 
         let content = UNMutableNotificationContent()
         switch mode {
@@ -48,10 +42,8 @@ public final class NotificationService: @unchecked Sendable {
             content.body = "Ready to focus again? Let's go!"
             // Use custom wake-up voice sound if provided, otherwise default
             if let customSound = customBreakSound {
-                print("🔔 [Notification] Using CUSTOM wake-up voice sound")
                 content.sound = customSound
             } else {
-                print("🔔 [Notification] Using default break-complete sound")
                 content.sound = UNNotificationSound(named: UNNotificationSoundName("break-complete.aiff"))
             }
         }

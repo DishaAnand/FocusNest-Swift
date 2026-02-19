@@ -11,9 +11,7 @@ public final class LiveActivityService {
 
     /// Check if Live Activities are supported and enabled
     public var isSupported: Bool {
-        let supported = ActivityAuthorizationInfo().areActivitiesEnabled
-        print("📱 Live Activities supported: \(supported)")
-        return supported
+        ActivityAuthorizationInfo().areActivitiesEnabled
     }
 
     /// Start a new Live Activity for the timer
@@ -23,12 +21,7 @@ public final class LiveActivityService {
         mode: String,
         taskName: String?
     ) {
-        print("📱 startActivity called - remaining: \(remainingSeconds)s, mode: \(mode), task: \(taskName ?? "none")")
-
-        guard isSupported else {
-            print("📱 Live Activities not supported or disabled - check Settings > FocusHaven > Live Activities")
-            return
-        }
+        guard isSupported else { return }
 
         // End any existing activity first
         Task {
@@ -52,10 +45,8 @@ public final class LiveActivityService {
                         pushType: nil
                     )
                     self.currentActivity = activity
-                    print("📱 Live Activity started successfully! ID: \(activity.id)")
                 } catch {
-                    print("📱 Failed to start Live Activity: \(error.localizedDescription)")
-                    print("📱 Error details: \(error)")
+                    // Live Activity failed to start
                 }
             }
         }
@@ -79,7 +70,6 @@ public final class LiveActivityService {
         )
 
         await activity.update(.init(state: state, staleDate: nil))
-        print("📱 Live Activity updated - paused: \(isPaused), remaining: \(remainingSeconds)s")
     }
 
     /// End the Live Activity
@@ -88,7 +78,6 @@ public final class LiveActivityService {
 
         await activity.end(nil, dismissalPolicy: .immediate)
         currentActivity = nil
-        print("📱 Live Activity ended")
     }
 
     /// End all Live Activities (cleanup)
@@ -97,6 +86,5 @@ public final class LiveActivityService {
             await activity.end(nil, dismissalPolicy: .immediate)
         }
         currentActivity = nil
-        print("📱 All Live Activities ended")
     }
 }

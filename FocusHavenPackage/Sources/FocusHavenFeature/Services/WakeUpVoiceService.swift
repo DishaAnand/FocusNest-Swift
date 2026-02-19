@@ -126,7 +126,6 @@ public final class WakeUpVoiceService: @unchecked Sendable {
             try session.setCategory(.playAndRecord, mode: .default)
             try session.setActive(true)
         } catch {
-            print("Failed to set up audio session: \(error)")
             return false
         }
 
@@ -151,7 +150,6 @@ public final class WakeUpVoiceService: @unchecked Sendable {
             isRecording = true
             return true
         } catch {
-            print("Failed to start recording: \(error)")
             return false
         }
     }
@@ -172,7 +170,6 @@ public final class WakeUpVoiceService: @unchecked Sendable {
             let seconds = CMTimeGetSeconds(duration)
             return (url, seconds.isNaN ? 0 : min(seconds, maxRecordingDuration))
         } catch {
-            print("Failed to get duration: \(error)")
             return (url, 0)
         }
     }
@@ -188,37 +185,22 @@ public final class WakeUpVoiceService: @unchecked Sendable {
     /// Converts M4A to WAV and saves to Library/Sounds for notification use
     public func saveRecording(sourceURL: URL, name: String, duration: TimeInterval) async -> WakeUpVoice? {
         conversionProgress = "Converting audio..."
-        print("🎤 [WakeUp] Starting save recording from: \(sourceURL.path)")
-        print("🎤 [WakeUp] Sounds directory: \(notificationSoundsDirectory.path)")
 
         do {
             let wavFileName = "\(UUID().uuidString).wav"
             let wavURL = notificationSoundsDirectory.appendingPathComponent(wavFileName)
-            print("🎤 [WakeUp] Will save WAV to: \(wavURL.path)")
 
             try await convertToWAV(sourceURL: sourceURL, destinationURL: wavURL)
-
-            // Verify file exists
-            let exists = FileManager.default.fileExists(atPath: wavURL.path)
-            print("🎤 [WakeUp] WAV file exists after conversion: \(exists)")
-
-            if exists {
-                let attrs = try? FileManager.default.attributesOfItem(atPath: wavURL.path)
-                let size = attrs?[.size] as? Int ?? 0
-                print("🎤 [WakeUp] WAV file size: \(size) bytes")
-            }
 
             // Clean up original M4A
             try? FileManager.default.removeItem(at: sourceURL)
 
             let voice = WakeUpVoice(name: name, fileName: wavFileName, duration: duration)
             addVoice(voice)
-            print("🎤 [WakeUp] Voice saved successfully: \(wavFileName)")
 
             conversionProgress = nil
             return voice
         } catch {
-            print("🎤 [WakeUp] Failed to convert recording: \(error)")
             conversionProgress = nil
             return nil
         }
@@ -239,7 +221,6 @@ public final class WakeUpVoiceService: @unchecked Sendable {
         let maxDuration: TimeInterval = 30
 
         conversionProgress = "Checking audio..."
-        print("🎤 [WakeUp] Importing audio from: \(sourceURL.path)")
 
         do {
             // Need to access security-scoped resource for files from document picker
@@ -254,8 +235,6 @@ public final class WakeUpVoiceService: @unchecked Sendable {
             let asset = AVAsset(url: sourceURL)
             let duration = try await asset.load(.duration)
             let durationSeconds = CMTimeGetSeconds(duration)
-
-            print("🎤 [WakeUp] Audio duration: \(durationSeconds) seconds")
 
             // Check if duration exceeds limit
             if durationSeconds > maxDuration {
@@ -278,10 +257,6 @@ public final class WakeUpVoiceService: @unchecked Sendable {
             // Clean up temp file
             try? FileManager.default.removeItem(at: tempURL)
 
-            // Verify file exists
-            let exists = FileManager.default.fileExists(atPath: wavURL.path)
-            print("🎤 [WakeUp] Imported WAV file exists: \(exists)")
-
             let voice = WakeUpVoice(name: name, fileName: wavFileName, duration: durationSeconds)
             addVoice(voice)
 
@@ -289,7 +264,6 @@ public final class WakeUpVoiceService: @unchecked Sendable {
             return .success(voice)
 
         } catch {
-            print("🎤 [WakeUp] Import failed: \(error)")
             conversionProgress = nil
             return .failed(error)
         }
@@ -362,7 +336,6 @@ public final class WakeUpVoiceService: @unchecked Sendable {
             throw writer.error ?? ConversionError.writeFailed
         }
 
-        print("WAV conversion successful: \(destinationURL.path)")
     }
 
     enum ConversionError: Error {
@@ -403,7 +376,6 @@ public final class WakeUpVoiceService: @unchecked Sendable {
                 self?.isPlaying = false
             }
         } catch {
-            print("Failed to play audio: \(error)")
             isPlaying = false
         }
     }
@@ -417,16 +389,9 @@ public final class WakeUpVoiceService: @unchecked Sendable {
     // MARK: - Notification Sound
     /// Returns the UNNotificationSound for the default voice, or system default if none
     public func getNotificationSound() -> UNNotificationSound {
-        print("🔔 [WakeUp] getNotificationSound called - isEnabled: \(isEnabled), voices count: \(voices.count)")
         guard isEnabled, let voice = getDefaultVoice() else {
-            print("🔔 [WakeUp] Returning default sound (not enabled or no voices)")
             return .default
         }
-
-        // Verify the file exists
-        let soundURL = notificationSoundsDirectory.appendingPathComponent(voice.fileName)
-        let exists = FileManager.default.fileExists(atPath: soundURL.path)
-        print("🔔 [WakeUp] Using custom sound: \(voice.fileName), exists: \(exists), path: \(soundURL.path)")
 
         // UNNotificationSound looks in Library/Sounds/ for the filename
         return UNNotificationSound(named: UNNotificationSoundName(rawValue: voice.fileName))

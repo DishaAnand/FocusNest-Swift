@@ -5,8 +5,10 @@ import Charts
 @MainActor
 public struct FocusProgressView: View {
     @Query(sort: \FocusRecord.date, order: .reverse) private var records: [FocusRecord]
+    @Environment(SubscriptionService.self) private var subscriptionService
     @State private var selectedTab: InsightTab = .insights
     @State private var showAllTasks = false
+    @State private var showInsightsUpgradePrompt = false
     @State private var appearAnimation = false
     @State private var chartAnimation = false
 
@@ -251,10 +253,17 @@ public struct FocusProgressView: View {
                     }
 
                     // Insights / Charts
-                    tabSection
-                        .opacity(appearAnimation ? 1 : 0)
-                        .offset(y: appearAnimation ? 0 : 15)
-                        .animation(.spring(response: 0.5).delay(0.25), value: appearAnimation)
+                    if subscriptionService.canAccessInsights {
+                        tabSection
+                            .opacity(appearAnimation ? 1 : 0)
+                            .offset(y: appearAnimation ? 0 : 15)
+                            .animation(.spring(response: 0.5).delay(0.25), value: appearAnimation)
+                    } else {
+                        lockedInsightsCard
+                            .opacity(appearAnimation ? 1 : 0)
+                            .offset(y: appearAnimation ? 0 : 15)
+                            .animation(.spring(response: 0.5).delay(0.25), value: appearAnimation)
+                    }
                 }
                 .padding(.horizontal, Theme.spacingM)
                 .padding(.bottom, Theme.spacingXL)
@@ -278,7 +287,55 @@ public struct FocusProgressView: View {
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
             }
+            .sheet(isPresented: $showInsightsUpgradePrompt) {
+                ZStack {
+                    Color.black.opacity(0.3).ignoresSafeArea()
+                        .onTapGesture { showInsightsUpgradePrompt = false }
+                    UpgradePromptView.insightsLocked()
+                }
+                .presentationBackground(.clear)
+            }
         }
+    }
+
+    // MARK: - Locked Insights Card
+
+    private var lockedInsightsCard: some View {
+        Button {
+            showInsightsUpgradePrompt = true
+        } label: {
+            VStack(spacing: 14) {
+                Image(systemName: "chart.bar.fill")
+                    .font(.system(size: 32))
+                    .foregroundStyle(Theme.focusColor.opacity(0.6))
+
+                Text("Insights & Charts")
+                    .font(.system(size: 17, weight: .bold, design: .rounded))
+                    .foregroundStyle(Theme.textPrimary)
+
+                Text("Unlock detailed analytics on your focus patterns with Pro")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Theme.textSecondary)
+                    .multilineTextAlignment(.center)
+
+                HStack(spacing: 6) {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 12))
+                    Text("Upgrade to Pro")
+                        .font(.system(size: 14, weight: .semibold))
+                }
+                .foregroundStyle(Theme.focusColor)
+                .padding(.top, 4)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 32)
+            .padding(.horizontal, 20)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Theme.backgroundSecondary)
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Focus Ring Hero

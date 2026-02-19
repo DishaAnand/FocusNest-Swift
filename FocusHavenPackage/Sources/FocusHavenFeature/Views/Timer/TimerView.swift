@@ -39,7 +39,7 @@ public struct TimerView: View {
     @State private var wentAwayAt: Date? = nil
     @State private var sessionWasCompleted = true
     @State private var oceanChoppiness: Double = 0
-    private let distractionThreshold: TimeInterval = 15
+    private let distractionThreshold: TimeInterval = 8
 
     // Flexible session planning (user picks count, duration decided per-session)
     @State private var sessionPlan = SessionPlan()
@@ -51,7 +51,7 @@ public struct TimerView: View {
     @State private var directMandatoryBreakTimer: Timer? = nil
     @State private var directMandatoryBreakStartDate: Date? = nil  // Track actual start time
     private let mandatoryBreakDuration: Int = 5 * 60  // 5 minutes
-    private let mandatoryBreakThreshold = 2 * 60 // TEMP: 2 min for testing (was 45 min)
+    private let mandatoryBreakThreshold = 45 * 60
     @State private var showSessionPlanUpgradePrompt = false
     @State private var sessionPlanTotalDistractions = 0
     @State private var sessionPlanTotalFocusTime = 0
