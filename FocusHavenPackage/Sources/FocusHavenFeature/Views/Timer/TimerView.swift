@@ -13,6 +13,7 @@ public struct TimerView: View {
     @Environment(WakeUpVoiceService.self) private var wakeUpVoiceService
     @Environment(AmbientSoundService.self) private var ambientSoundService
     @Environment(MotionService.self) private var motionService
+    @Environment(SubscriptionService.self) private var subscriptionService
 
     @State private var showTaskSelector = false
     @State private var showRechargeMode = false
@@ -51,6 +52,7 @@ public struct TimerView: View {
     @State private var directMandatoryBreakStartDate: Date? = nil  // Track actual start time
     private let mandatoryBreakDuration: Int = 5 * 60  // 5 minutes
     private let mandatoryBreakThreshold = 2 * 60 // TEMP: 2 min for testing (was 45 min)
+    @State private var showSessionPlanUpgradePrompt = false
     @State private var sessionPlanTotalDistractions = 0
     @State private var sessionPlanTotalFocusTime = 0
     @State private var showFinalCelebration = false  // For last session enhanced celebration
@@ -222,7 +224,16 @@ public struct TimerView: View {
                             .background(timerService.isBreak ? Theme.breakGradient : Theme.focusGradient).clipShape(Circle())
                             .shadow(color: (timerService.isBreak ? Theme.breakColor : Theme.focusColor).opacity(0.3), radius: 8, x: 0, y: 3)
                     }
-                    Button { soundService.lightImpact(settings: settings); timerService.skip(); notificationService.cancelTimerNotifications(); ambientSoundService.stop() } label: {
+                    Button {
+                        soundService.lightImpact(settings: settings)
+                        notificationService.cancelTimerNotifications()
+                        ambientSoundService.stop()
+                        if sessionPlan.isActive {
+                            handleSessionPlanSkip()
+                        } else {
+                            timerService.skip()
+                        }
+                    } label: {
                         Image(systemName: "forward.end.fill").font(.title3).foregroundStyle(.white).frame(width: 50, height: 50).background(Theme.textSecondary).clipShape(Circle())
                     }
                 }
@@ -320,11 +331,23 @@ public struct TimerView: View {
             .presentationDetents([.medium])
             .presentationDragIndicator(.visible)
         }
+        .sheet(isPresented: $showSessionPlanUpgradePrompt) {
+            ZStack {
+                Color.black.opacity(0.3).ignoresSafeArea()
+                    .onTapGesture { showSessionPlanUpgradePrompt = false }
+                UpgradePromptView.sessionPlanLimit()
+            }
+            .presentationBackground(.clear)
+        }
         .onReceive(NotificationCenter.default.publisher(for: .showSessionPlanner)) { _ in
             // Show session planner sheet (triggered from Home tab)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 if timerService.state == .idle && !sessionPlan.isActive {
-                    showSessionPlannerSheet = true
+                    if subscriptionService.canUseSessionPlanning {
+                        showSessionPlannerSheet = true
+                    } else {
+                        showSessionPlanUpgradePrompt = true
+                    }
                 }
             }
         }
@@ -956,6 +979,65 @@ public struct TimerView: View {
         if motionService.isAvailable {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 showRechargeMode = true
+            }
+        }
+    }
+
+    private func handleSessionPlanSkip() {
+        // Skip during session plan — only record actual elapsed time, not full duration
+        let wasRunning = timerService.state != .idle
+        let actualElapsed = wasRunning ? (timerService.totalDuration - timerService.remainingTime) : 0
+        timerService.stop()
+
+        if timerService.isBreak {
+            // Skipping a break — just advance to next focus session
+            distractionCount = 0
+            var plan = sessionPlan
+            plan.nextSession()
+            sessionPlan = plan
+            currentSessionDisplay = plan.displayCurrentSession
+            if let taskId = plan.currentTaskId {
+                timerService.selectedTask = allTasks.first { $0.id == taskId }
+            }
+            timerService.setMode(.focus, duration: settings.focusDuration)
+        } else {
+            // Skipping a focus session — record partial time only if timer actually ran
+            if actualElapsed > 0 {
+                sessionPlanTotalDistractions += distractionCount
+                sessionPlanTotalFocusTime += actualElapsed
+                let record = FocusRecord(
+                    duration: actualElapsed,
+                    isBreak: false,
+                    taskId: timerService.selectedTask?.id,
+                    taskTitle: timerService.selectedTask?.title,
+                    wasCompleted: false,
+                    distractionCount: distractionCount
+                )
+                modelContext.insert(record)
+            }
+
+            if sessionPlan.isLastSession {
+                if sessionPlanTotalFocusTime > 0 {
+                    // Some actual focus was done — show celebration with real stats
+                    completedSessionDuration = sessionPlanTotalFocusTime
+                    completedDistractionCount = sessionPlanTotalDistractions
+                    showFinalCelebration = true
+                } else {
+                    // No focus time at all — just cancel the plan silently
+                    finishSessionPlan()
+                }
+            } else {
+                // Not last — advance to next session directly (no break since they skipped)
+                distractionCount = 0
+                resetPredictionState()
+                var plan = sessionPlan
+                plan.nextSession()
+                sessionPlan = plan
+                currentSessionDisplay = plan.displayCurrentSession
+                if let taskId = plan.currentTaskId {
+                    timerService.selectedTask = allTasks.first { $0.id == taskId }
+                }
+                timerService.setMode(.focus, duration: settings.focusDuration)
             }
         }
     }
