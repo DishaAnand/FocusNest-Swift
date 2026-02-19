@@ -806,13 +806,13 @@ private struct FinalConfetti: View {
         let startY = size.height * 0.32
 
         for i in 0..<50 {
-            let shape: ConfettiShape = [.circle, .rectangle, .star, .diamond].randomElement()!
+            let shape: ConfettiShape = [.circle, .rectangle, .star, .diamond].randomElement() ?? .circle
             var particle = ConfettiParticle(
                 x: centerX,
                 y: startY,
                 rotation: Double.random(in: 0...360),
                 scale: CGFloat.random(in: 0.5...1.3),
-                color: colors.randomElement()!,
+                color: colors.randomElement() ?? .white,
                 shape: shape
             )
             particles.append(particle)

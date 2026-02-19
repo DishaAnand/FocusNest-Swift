@@ -749,13 +749,13 @@ private struct SessionConfetti: View {
         let startY = size.height * 0.35
 
         for i in 0..<40 {
-            let shape: SessionConfettiShape = [.circle, .rectangle, .star].randomElement()!
+            let shape: SessionConfettiShape = [.circle, .rectangle, .star].randomElement() ?? .circle
             var particle = SessionConfettiParticle(
                 x: centerX,
                 y: startY,
                 rotation: Double.random(in: 0...360),
                 scale: CGFloat.random(in: 0.5...1.2),
-                color: colors.randomElement()!,
+                color: colors.randomElement() ?? .white,
                 shape: shape
             )
             particles.append(particle)

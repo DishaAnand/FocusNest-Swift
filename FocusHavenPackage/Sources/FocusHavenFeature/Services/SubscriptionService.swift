@@ -80,7 +80,7 @@ public final class SubscriptionService: @unchecked Sendable {
     // MARK: - RevenueCat Configuration
 
     public func configure(apiKey: String) {
-        Purchases.logLevel = .debug
+        Purchases.logLevel = .error
         Purchases.configure(withAPIKey: apiKey)
 
         Task {

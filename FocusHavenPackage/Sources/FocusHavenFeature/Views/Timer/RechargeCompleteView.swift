@@ -366,7 +366,7 @@ private struct RechargeConfetti: View {
                 y: startY,
                 rotation: Double.random(in: 0...360),
                 scale: CGFloat.random(in: 0.6...1.2),
-                color: colors.randomElement()!
+                color: colors.randomElement() ?? .white
             )
             particles.append(particle)
 

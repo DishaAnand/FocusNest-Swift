@@ -151,6 +151,7 @@ struct SessionPlannerSheet: View {
     @Binding var plan: SessionPlan
     @Binding var isPresented: Bool
     let onStart: () -> Void
+    var onStartWithPrediction: (() -> Void)? = nil
 
     @State private var selectedCount: Int = 2
     @State private var assignTasks: Bool = false
@@ -283,11 +284,10 @@ struct SessionPlannerSheet: View {
             createTasksAndAssign()
         }
         isPresented = false
-        NotificationCenter.default.post(
-            name: .startSessionPlanWithPrediction,
-            object: nil,
-            userInfo: ["sessionPlan": plan]
-        )
+        // Use callback to avoid NotificationCenter timing issues
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            onStartWithPrediction?()
+        }
     }
 
     private func startDirectly() {
@@ -298,11 +298,10 @@ struct SessionPlannerSheet: View {
             createTasksAndAssign()
         }
         isPresented = false
-        NotificationCenter.default.post(
-            name: .startSessionPlan,
-            object: nil,
-            userInfo: ["sessionPlan": plan]
-        )
+        // Use callback to avoid NotificationCenter timing issues
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            onStart()
+        }
     }
 }
 

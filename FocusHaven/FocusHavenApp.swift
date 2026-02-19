@@ -3,8 +3,18 @@ import SwiftData
 import FocusHavenFeature
 
 let focusModelContainer: ModelContainer = {
-    let config = ModelConfiguration(cloudKitDatabase: .automatic)
-    return try! ModelContainer(for: FocusTask.self, FocusRecord.self, configurations: config)
+    do {
+        let config = ModelConfiguration(cloudKitDatabase: .automatic)
+        return try ModelContainer(for: FocusTask.self, FocusRecord.self, configurations: config)
+    } catch {
+        // Fallback: try without CloudKit if iCloud is unavailable
+        do {
+            let fallbackConfig = ModelConfiguration(cloudKitDatabase: .none)
+            return try ModelContainer(for: FocusTask.self, FocusRecord.self, configurations: fallbackConfig)
+        } catch {
+            fatalError("Failed to create ModelContainer: \(error.localizedDescription)")
+        }
+    }
 }()
 
 @main

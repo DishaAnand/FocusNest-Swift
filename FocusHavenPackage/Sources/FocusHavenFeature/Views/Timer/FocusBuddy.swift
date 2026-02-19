@@ -547,7 +547,7 @@ private struct CelebrationSparkles: View {
                 Image(systemName: "sparkle")
                     .font(.system(size: CGFloat.random(in: 8...14)))
                     .foregroundStyle(
-                        [Color.yellow, .white, .cyan, .mint].randomElement()!
+                        [Color.yellow, .white, .cyan, .mint].randomElement() ?? .white
                     )
                     .offset(
                         x: sparklePositions.indices.contains(i) ? sparklePositions[i].x : 0,

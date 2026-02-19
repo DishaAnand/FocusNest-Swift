@@ -166,7 +166,7 @@ private struct CelebrationSparkles: View {
             ForEach(sparkles, id: \.id) { sparkle in
                 Image(systemName: "sparkle")
                     .font(.system(size: 16))
-                    .foregroundStyle([Color.yellow, .white, .cyan, .mint].randomElement()!)
+                    .foregroundStyle([Color.yellow, .white, .cyan, .mint].randomElement() ?? .white)
                     .scaleEffect(sparkle.scale)
                     .opacity(sparkle.opacity)
                     .position(x: sparkle.x, y: sparkle.y)

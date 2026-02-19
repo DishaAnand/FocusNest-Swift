@@ -11,6 +11,7 @@
 		AAA00003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AAA00004 /* Assets.xcassets */; };
 		AAA00005 /* FocusHavenFeature in Frameworks */ = {isa = PBXBuildFile; productRef = AAA00006 /* FocusHavenFeature */; };
 		AAA00007 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = AAA00008 /* GoogleService-Info.plist */; };
+		DDD00001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = DDD00002 /* PrivacyInfo.xcprivacy */; };
 		CCC00001 /* focus-complete.aiff in Resources */ = {isa = PBXBuildFile; fileRef = CCC00002 /* focus-complete.aiff */; };
 		CCC00003 /* break-complete.aiff in Resources */ = {isa = PBXBuildFile; fileRef = CCC00004 /* break-complete.aiff */; };
 		BBB00001 /* FocusHavenWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBB00002 /* FocusHavenWidgetsBundle.swift */; };
@@ -49,6 +50,7 @@
 		AAA00004 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AAA00008 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		AAA00009 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		DDD00002 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		AAA00010 /* FocusHaven.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FocusHaven.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CCC00002 /* focus-complete.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = "focus-complete.aiff"; sourceTree = "<group>"; };
 		CCC00004 /* break-complete.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = "break-complete.aiff"; sourceTree = "<group>"; };
@@ -99,6 +101,7 @@
 				CCC00010 /* Sounds */,
 				AAA00008 /* GoogleService-Info.plist */,
 				AAA00009 /* Info.plist */,
+				DDD00002 /* PrivacyInfo.xcprivacy */,
 			);
 			path = FocusHaven;
 			sourceTree = "<group>";
@@ -231,6 +234,7 @@
 				AAA00007 /* GoogleService-Info.plist in Resources */,
 				CCC00001 /* focus-complete.aiff in Resources */,
 				CCC00003 /* break-complete.aiff in Resources */,
+				DDD00001 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -275,7 +275,7 @@ struct FocusPredictionResultView: View {
                         .font(.system(size: 22, weight: .bold))
                         .foregroundStyle(.white)
 
-                    Text(messages.randomElement()!)
+                    Text(messages.randomElement() ?? "")
                         .font(.system(size: 15))
                         .foregroundStyle(.white.opacity(0.7))
                         .multilineTextAlignment(.center)

@@ -326,7 +326,25 @@ public struct TimerView: View {
                 plan: $sessionPlan,
                 isPresented: $showSessionPlannerSheet,
                 onStart: {
-                    startSessionPlan()
+                    // "Start Without Prediction" flow
+                    if !settings.hasSeenWakeUpVoiceOnboarding && wakeUpVoiceService.voices.isEmpty {
+                        sessionPlanPendingOnboarding = sessionPlan
+                        startWithPredictionAfterOnboarding = false
+                        showWakeUpVoiceOnboarding = true
+                    } else {
+                        startSessionPlan()
+                    }
+                },
+                onStartWithPrediction: {
+                    // "Predict & Start" flow
+                    if !settings.hasSeenWakeUpVoiceOnboarding && wakeUpVoiceService.voices.isEmpty {
+                        sessionPlanPendingOnboarding = sessionPlan
+                        startWithPredictionAfterOnboarding = true
+                        showWakeUpVoiceOnboarding = true
+                    } else {
+                        pendingSessionPlan = sessionPlan
+                        showEnergyOverlay = true
+                    }
                 }
             )
             .presentationDetents([.medium])

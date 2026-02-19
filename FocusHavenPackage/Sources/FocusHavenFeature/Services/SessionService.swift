@@ -79,7 +79,7 @@ public final class SessionService: @unchecked Sendable {
     private static let codeLetters = Array("ABCDEFGHJKLMNPQRSTUVWXYZ") // no I or O to avoid confusion with 1/0
 
     private func generateUniqueCode() -> String {
-        String((0..<4).map { _ in Self.codeLetters.randomElement()! })
+        String((0..<4).map { _ in Self.codeLetters.randomElement() ?? Character("A") })
     }
 
     /// Reserve a unique short code in Firebase using a transaction to prevent collisions
