@@ -33,7 +33,7 @@ public struct CircularProgressView: View {
                 .trim(from: 0, to: CGFloat(min(progress, 1.0)))
                 .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-            if showDot && progress > 0 {
+            if showDot {
                 Circle()
                     .fill(color)
                     .frame(width: lineWidth + 4, height: lineWidth + 4)
