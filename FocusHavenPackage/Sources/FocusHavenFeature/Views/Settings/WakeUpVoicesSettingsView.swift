@@ -314,13 +314,15 @@ private struct VoiceRow: View {
 
             Spacer()
 
-            Button {
-                voiceService.setDefault(voice)
-            } label: {
-                Image(systemName: voice.isDefault ? "star.fill" : "star")
-                    .foregroundStyle(voice.isDefault ? .yellow : Theme.textTertiary)
+            if !voiceService.shuffleEnabled {
+                Button {
+                    voiceService.setDefault(voice)
+                } label: {
+                    Image(systemName: voice.isDefault ? "star.fill" : "star")
+                        .foregroundStyle(voice.isDefault ? .yellow : Theme.textTertiary)
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
         .padding(.vertical, 4)
     }

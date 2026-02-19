@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import StoreKit
 import UIKit
 
 // MARK: - Settings Hero Header
@@ -850,13 +851,13 @@ public struct SettingsView: View {
 
 private struct RateAppSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.requestReview) private var requestReview
     @State private var rating: Int = 0
     @State private var submitted = false
 
     var body: some View {
         VStack(spacing: 24) {
             if submitted {
-                // Thank you state
                 VStack(spacing: 16) {
                     Image(systemName: "heart.fill")
                         .font(.system(size: 48))
@@ -866,19 +867,23 @@ private struct RateAppSheet: View {
                         .font(.system(size: 24, weight: .bold, design: .rounded))
                         .foregroundStyle(Theme.textPrimary)
 
-                    Text("Your feedback means a lot to us.")
+                    Text(rating >= 4
+                        ? "We're glad you enjoy FocusHaven!"
+                        : "We'll work on improving your experience.")
                         .font(.system(size: 16))
                         .foregroundStyle(Theme.textSecondary)
                         .multilineTextAlignment(.center)
                 }
                 .transition(.scale.combined(with: .opacity))
                 .onAppear {
+                    if rating >= 4 {
+                        requestReview()
+                    }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                         dismiss()
                     }
                 }
             } else {
-                // Rating state
                 VStack(spacing: 8) {
                     Text("Enjoying FocusHaven?")
                         .font(.system(size: 22, weight: .bold, design: .rounded))

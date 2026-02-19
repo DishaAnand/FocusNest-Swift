@@ -71,7 +71,8 @@ public final class WakeUpVoiceService: @unchecked Sendable {
     // MARK: - Voice Management
     public func addVoice(_ voice: WakeUpVoice) {
         var newVoice = voice
-        if voices.isEmpty {
+        let wasEmpty = voices.isEmpty
+        if wasEmpty {
             newVoice.isDefault = true
         }
         if newVoice.isDefault {
@@ -79,6 +80,10 @@ public final class WakeUpVoiceService: @unchecked Sendable {
         }
         voices.append(newVoice)
         saveVoices()
+        // Auto-enable the feature when first voice is added
+        if wasEmpty {
+            isEnabled = true
+        }
     }
 
     public func deleteVoice(_ voice: WakeUpVoice) {
