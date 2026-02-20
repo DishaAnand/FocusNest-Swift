@@ -805,7 +805,7 @@ private struct SessionConfettiPiece: View {
 
 // MARK: - Playful Nudge View (45-59 min sessions)
 
-private struct PlayfulNudgeView: View {
+struct PlayfulNudgeView: View {
     let onTakeBreak: () -> Void
     let onContinueAnyway: () -> Void
 

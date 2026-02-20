@@ -59,6 +59,12 @@ public struct TimerView: View {
     @State private var sessionPlanTotalActual = 0     // Sum of all actual focus levels
     @State private var sessionPlanPredictionCount = 0 // How many sessions had predictions
     @State private var showFinalCelebration = false  // For last session enhanced celebration
+    @State private var showBreakSkipNudge = false  // Brain nudge when skipping break after 25+ min focus
+    @State private var showBreakSkipAutolock = false  // Mandatory break when skipping break after 45+ min focus
+    @State private var breakSkipAutolockRemaining: Int = 5 * 60
+    @State private var breakSkipAutolockTimer: Timer? = nil
+    @State private var breakSkipAutolockStartDate: Date? = nil
+    private let playfulNudgeThreshold = 25 * 60
     @State private var showCancelPlanConfirmation = false
     @State private var showSessionBanner = false  // Brief "Session X completed" banner
     @State private var sessionBannerNumber: Int = 0  // Which session just completed
@@ -82,6 +88,12 @@ public struct TimerView: View {
         timerContentWithSheets
             .overlay {
                 directMandatoryBreakOverlay
+            }
+            .overlay {
+                breakSkipNudgeOverlay
+            }
+            .overlay {
+                breakSkipAutolockOverlay
             }
             .onChange(of: settings.focusDuration) { _, newDuration in
                 if timerService.state == .idle && timerService.mode == .focus {
@@ -735,6 +747,48 @@ public struct TimerView: View {
         }
     }
 
+    @ViewBuilder
+    private var breakSkipNudgeOverlay: some View {
+        if showBreakSkipNudge {
+            PlayfulNudgeView(
+                onTakeBreak: {
+                    // User chose to take the break — dismiss nudge, break continues
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        showBreakSkipNudge = false
+                    }
+                },
+                onContinueAnyway: {
+                    // User insists on skipping — dismiss and advance
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        showBreakSkipNudge = false
+                    }
+                    advanceSessionPlanAfterBreak()
+                }
+            )
+            .transition(.opacity.combined(with: .scale(scale: 1.1)))
+        }
+    }
+
+    @ViewBuilder
+    private var breakSkipAutolockOverlay: some View {
+        if showBreakSkipAutolock {
+            MandatoryBreakView(
+                remainingSeconds: breakSkipAutolockRemaining,
+                onBreakComplete: {
+                    breakSkipAutolockTimer?.invalidate()
+                    breakSkipAutolockTimer = nil
+                    breakSkipAutolockStartDate = nil
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        showBreakSkipAutolock = false
+                    }
+                    continuousFocusTime = 0
+                    advanceSessionPlanAfterBreak()
+                }
+            )
+            .transition(.opacity.combined(with: .scale(scale: 1.1)))
+        }
+    }
+
     private func startDirectMandatoryBreakTimer() {
         directMandatoryBreakStartDate = Date()
         directMandatoryBreakRemaining = mandatoryBreakDuration
@@ -1047,16 +1101,34 @@ public struct TimerView: View {
         timerService.stop()
 
         if timerService.isBreak {
-            // Skipping a break — just advance to next focus session
-            distractionCount = 0
-            var plan = sessionPlan
-            plan.nextSession()
-            sessionPlan = plan
-            currentSessionDisplay = plan.displayCurrentSession
-            if let taskId = plan.currentTaskId {
-                timerService.selectedTask = allTasks.first { $0.id == taskId }
+            // Check if user needs a break guardian before allowing skip
+            if continuousFocusTime >= mandatoryBreakThreshold {
+                // 45+ min continuous focus — mandatory break, can't skip
+                showBreakSkipAutolock = true
+                breakSkipAutolockRemaining = mandatoryBreakDuration
+                breakSkipAutolockStartDate = Date()
+                breakSkipAutolockTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+                    Task { @MainActor in
+                        guard let start = breakSkipAutolockStartDate else { return }
+                        let elapsed = Int(Date().timeIntervalSince(start))
+                        let remaining = max(0, mandatoryBreakDuration - elapsed)
+                        breakSkipAutolockRemaining = remaining
+                        if remaining <= 0 {
+                            breakSkipAutolockTimer?.invalidate()
+                            breakSkipAutolockTimer = nil
+                            breakSkipAutolockStartDate = nil
+                        }
+                    }
+                }
+                return
+            } else if continuousFocusTime >= playfulNudgeThreshold {
+                // 25-44 min continuous focus — gentle nudge, can dismiss
+                showBreakSkipNudge = true
+                return
             }
-            timerService.setMode(.focus, duration: settings.focusDuration)
+
+            // Under 25 min — skip break normally
+            advanceSessionPlanAfterBreak()
         } else {
             // Skipping a focus session — record partial time only if timer actually ran
             if actualElapsed > 0 {
@@ -1097,6 +1169,19 @@ public struct TimerView: View {
                 timerService.setMode(.focus, duration: settings.focusDuration)
             }
         }
+    }
+
+    /// Advances session plan to next focus session after skipping a break
+    private func advanceSessionPlanAfterBreak() {
+        distractionCount = 0
+        var plan = sessionPlan
+        plan.nextSession()
+        sessionPlan = plan
+        currentSessionDisplay = plan.displayCurrentSession
+        if let taskId = plan.currentTaskId {
+            timerService.selectedTask = allTasks.first { $0.id == taskId }
+        }
+        timerService.setMode(.focus, duration: settings.focusDuration)
     }
 
     private func handleSessionPlanContinue() {
