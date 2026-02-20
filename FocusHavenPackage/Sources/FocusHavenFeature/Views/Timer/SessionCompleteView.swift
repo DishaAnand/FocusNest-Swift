@@ -17,6 +17,9 @@ struct SessionCompleteView: View {
     var currentSession: Int? = nil
     var totalSessions: Int? = nil
 
+    // Cumulative focus time (for break guardian — tracks total focus without breaks)
+    var continuousFocusTime: Int = 0
+
 
     private var isSessionPlan: Bool {
         currentSession != nil && totalSessions != nil
@@ -61,9 +64,13 @@ struct SessionCompleteView: View {
     private let playfulNudgeThreshold = 25 * 60
     private let mandatoryBreakThreshold = 45 * 60
 
-    // Use settings.focusDuration as fallback if duration is 0 (SwiftUI capture issue)
+    // Use cumulative focus time for break guardian thresholds
+    // Falls back to single session duration if cumulative not provided
     private var effectiveDuration: Int {
-        duration > 0 ? duration : settings.focusDuration
+        if continuousFocusTime > 0 {
+            return continuousFocusTime
+        }
+        return duration > 0 ? duration : settings.focusDuration
     }
 
     // Phase-based animation system

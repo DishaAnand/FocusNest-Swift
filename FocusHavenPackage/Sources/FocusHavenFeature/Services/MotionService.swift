@@ -94,6 +94,8 @@ public final class MotionService: @unchecked Sendable {
     // Track verified steps (only counted when actually walking)
     private var lastVerifiedSteps: Int = 0
     private var isActuallyWalking: Bool = false
+    private var lastWalkingTime: Date?
+    private let walkingGracePeriod: TimeInterval = 3.0 // seconds to wait before discarding steps
 
     // MARK: - Instant Walking Detection (Accelerometer Pattern Recognition)
 
@@ -159,6 +161,7 @@ public final class MotionService: @unchecked Sendable {
         currentActivity = "stationary"
         lastVerifiedSteps = 0
         isActuallyWalking = false
+        lastWalkingTime = nil
         // Reset instant walking detection
         isProbablyWalking = false
         hasActivityConfirmation = false
@@ -354,9 +357,11 @@ public final class MotionService: @unchecked Sendable {
         if activity.walking {
             currentActivity = "walking"
             isActuallyWalking = true
+            lastWalkingTime = Date()
         } else if activity.running {
             currentActivity = "running"
             isActuallyWalking = true  // Running also counts
+            lastWalkingTime = Date()
         } else if activity.cycling {
             currentActivity = "cycling"
             isActuallyWalking = false
@@ -383,29 +388,23 @@ public final class MotionService: @unchecked Sendable {
     private func processSteps(_ data: CMPedometerData) {
         let totalSteps = data.numberOfSteps.intValue
 
-        // Only count steps when CMMotionActivityManager confirms walking or running
-        // This prevents arm swings from being counted as steps
-        // The pedometer counts all motion, but we only want actual walking
+        // Simply count ALL pedometer steps — the pedometer is accurate enough
+        // and already filters out non-walking motion internally.
+        // Previous approach of discarding steps when "not walking" caused
+        // resumed walking after a pause to not be counted.
+        let newSteps = totalSteps - lastVerifiedSteps
 
-        if isActuallyWalking {
-            // Calculate new steps since last verified update
-            let newSteps = totalSteps - lastVerifiedSteps
-
-            if newSteps > 0 {
-                stepsTaken += newSteps
-                lastVerifiedSteps = totalSteps
-
-                // Calculate recharge based on total steps
-                let newRechargePercentage = min(100, Double(stepsTaken) * rechargePerStep)
-
-                if newRechargePercentage > rechargePercentage {
-                    rechargePercentage = newRechargePercentage
-                    checkMilestones()
-                }
-            }
-        } else {
-            // Update baseline when not walking so we don't count non-walking steps later
+        if newSteps > 0 {
+            stepsTaken += newSteps
             lastVerifiedSteps = totalSteps
+
+            // Calculate recharge based on total steps
+            let newRechargePercentage = min(100, Double(stepsTaken) * rechargePerStep)
+
+            if newRechargePercentage > rechargePercentage {
+                rechargePercentage = newRechargePercentage
+                checkMilestones()
+            }
         }
     }
 

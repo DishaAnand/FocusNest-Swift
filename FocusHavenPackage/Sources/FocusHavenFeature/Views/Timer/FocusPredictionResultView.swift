@@ -11,6 +11,8 @@ struct FocusPredictionResultView: View {
     let onExtend: (Int) -> Void
     var onDismiss: (() -> Void)? = nil // optional close button handler
 
+    // Cumulative focus time (for break guardian — tracks total focus without breaks)
+    var continuousFocusTime: Int = 0
 
     // MARK: - Break Guardian Thresholds (in seconds)
     private let playfulNudgeThreshold = 25 * 60
@@ -38,9 +40,12 @@ struct FocusPredictionResultView: View {
     @Environment(SoundService.self) private var soundService
     @Environment(UserSettings.self) private var settings
 
-    // Use settings.focusDuration as fallback if duration is 0 (SwiftUI capture issue)
+    // Use cumulative focus time for break guardian thresholds
     private var effectiveDuration: Int {
-        duration > 0 ? duration : settings.focusDuration
+        if continuousFocusTime > 0 {
+            return continuousFocusTime
+        }
+        return duration > 0 ? duration : settings.focusDuration
     }
 
     // Break Guardian computed properties

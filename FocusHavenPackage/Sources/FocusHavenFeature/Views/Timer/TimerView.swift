@@ -714,7 +714,8 @@ public struct TimerView: View {
             },
             predictedLevel: completedPredictedLevel,
             actualLevel: completedActualLevel,
-            wasCompleted: completedWasCompleted
+            wasCompleted: completedWasCompleted,
+            continuousFocusTime: continuousFocusTime
         )
     }
 
@@ -880,8 +881,8 @@ public struct TimerView: View {
                 completedSessionDuration = settings.focusDuration
                 completedDistractionCount = distractionCount
 
-                // If session >= mandatory break threshold, show autolock directly (skip summary)
-                if settings.focusDuration >= mandatoryBreakThreshold {
+                // If cumulative focus time >= mandatory break threshold, show autolock directly (skip summary)
+                if continuousFocusTime >= mandatoryBreakThreshold {
                     timerService.skipDefaultTransition = true  // Prevent break timer from auto-starting behind autolock
                     directMandatoryBreakRemaining = 5 * 60
                     showDirectMandatoryBreak = true
