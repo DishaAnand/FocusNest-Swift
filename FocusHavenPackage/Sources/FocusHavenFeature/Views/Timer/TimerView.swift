@@ -55,6 +55,9 @@ public struct TimerView: View {
     @State private var showSessionPlanUpgradePrompt = false
     @State private var sessionPlanTotalDistractions = 0
     @State private var sessionPlanTotalFocusTime = 0
+    @State private var sessionPlanTotalPredicted = 0  // Sum of all predicted levels
+    @State private var sessionPlanTotalActual = 0     // Sum of all actual focus levels
+    @State private var sessionPlanPredictionCount = 0 // How many sessions had predictions
     @State private var showFinalCelebration = false  // For last session enhanced celebration
     @State private var showCancelPlanConfirmation = false
     @State private var showSessionBanner = false  // Brief "Session X completed" banner
@@ -95,11 +98,6 @@ public struct TimerView: View {
                     if motionService.isAvailable && !showSessionComplete {
                         showRechargeMode = true
                     }
-                }
-            }
-            .onChange(of: timerService.mode) { oldMode, newMode in
-                if sessionPlan.isActive && oldMode == .breakTime && newMode == .focus {
-                    currentSessionDisplay += 1
                 }
             }
             .onChange(of: showRechargeMode) { wasShowing, isShowing in
@@ -678,7 +676,8 @@ public struct TimerView: View {
                 finishSessionPlan()
             },
             predictedLevel: completedPredictedLevel,
-            actualLevel: completedActualLevel
+            actualLevel: completedActualLevel,
+            predictionSessionCount: sessionPlanPredictionCount
         )
     }
 
@@ -787,6 +786,14 @@ public struct TimerView: View {
                     sessionPlanTotalFocusTime += settings.focusDuration
                     continuousFocusTime += settings.focusDuration
 
+                    // Accumulate prediction data if user predicted this session
+                    if let predicted = predictedFocus {
+                        let actual = calculateActualFocus()
+                        sessionPlanTotalPredicted += predicted
+                        sessionPlanTotalActual += actual
+                        sessionPlanPredictionCount += 1
+                    }
+
                     // Save record for this session
                     let record = FocusRecord(
                         duration: settings.focusDuration,
@@ -795,7 +802,7 @@ public struct TimerView: View {
                         taskTitle: timerService.selectedTask?.title,
                         wasCompleted: true,
                         predictedFocus: predictedFocus,
-                        actualFocus: nil,
+                        actualFocus: predictedFocus != nil ? calculateActualFocus() : nil,
                         distractionCount: distractionCount,
                         wasFullyRecharged: lastBreakRechargePercentage >= 100
                     )
@@ -806,15 +813,15 @@ public struct TimerView: View {
                         // Last session — show final celebration with cumulative stats, NO break
                         completedSessionDuration = sessionPlanTotalFocusTime
                         completedDistractionCount = sessionPlanTotalDistractions
-                        // Include prediction data if available
-                        if let predicted = predictedFocus {
-                            completedPredictedLevel = predicted
-                            completedActualLevel = calculateActualFocus()
+                        // Include cumulative prediction data (average across all predicted sessions)
+                        if sessionPlanPredictionCount > 0 {
+                            completedPredictedLevel = sessionPlanTotalPredicted / sessionPlanPredictionCount
+                            completedActualLevel = sessionPlanTotalActual / sessionPlanPredictionCount
                         }
                         showFinalCelebration = true
                     } else {
                         // Not last session — show brief banner, auto-start break
-                        sessionBannerNumber = sessionPlan.displayCurrentSession
+                        sessionBannerNumber = currentSessionDisplay
                         showSessionBanner = true
                         distractionCount = 0
                         resetPredictionState()
@@ -843,7 +850,7 @@ public struct TimerView: View {
                     if let taskId = plan.currentTaskId {
                         timerService.selectedTask = allTasks.first { $0.id == taskId }
                     }
-                    // Note: currentSessionDisplay is updated via onChange(of: timerService.mode)
+                    currentSessionDisplay += 1
                     timerService.setMode(.focus, duration: settings.focusDuration)
                 }
                 return
@@ -984,6 +991,9 @@ public struct TimerView: View {
         // Initialize session plan state
         sessionPlanTotalDistractions = 0
         sessionPlanTotalFocusTime = 0
+        sessionPlanTotalPredicted = 0
+        sessionPlanTotalActual = 0
+        sessionPlanPredictionCount = 0
         continuousFocusTime = 0
         distractionCount = 0
         currentSessionDisplay = 1
@@ -1001,6 +1011,9 @@ public struct TimerView: View {
         // Initialize session plan state
         sessionPlanTotalDistractions = 0
         sessionPlanTotalFocusTime = 0
+        sessionPlanTotalPredicted = 0
+        sessionPlanTotalActual = 0
+        sessionPlanPredictionCount = 0
         continuousFocusTime = 0
         distractionCount = 0
         currentSessionDisplay = 1
@@ -1061,13 +1074,13 @@ public struct TimerView: View {
             }
 
             if sessionPlan.isLastSession {
-                if sessionPlanTotalFocusTime > 0 {
-                    // Some actual focus was done — show celebration with real stats
+                if sessionPlanTotalFocusTime >= 60 {
+                    // At least 1 minute of actual focus — show celebration with real stats
                     completedSessionDuration = sessionPlanTotalFocusTime
                     completedDistractionCount = sessionPlanTotalDistractions
                     showFinalCelebration = true
                 } else {
-                    // No focus time at all — just cancel the plan silently
+                    // Less than 1 minute total — not worth celebrating, show a brief message
                     finishSessionPlan()
                 }
             } else {
@@ -1107,6 +1120,9 @@ public struct TimerView: View {
         sessionPlan.reset()
         sessionPlanTotalDistractions = 0
         sessionPlanTotalFocusTime = 0
+        sessionPlanTotalPredicted = 0
+        sessionPlanTotalActual = 0
+        sessionPlanPredictionCount = 0
         continuousFocusTime = 0
         distractionCount = 0
         predictedFocus = nil

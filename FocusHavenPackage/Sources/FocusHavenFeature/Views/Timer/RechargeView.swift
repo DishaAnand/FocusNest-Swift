@@ -8,7 +8,6 @@ struct RechargeView: View {
     @Environment(UserSettings.self) private var settings
     @Environment(\.dismiss) private var dismiss
 
-    @State private var showComplete = false
     @State private var finalRechargeLevel: Double = 0
     @State private var backgroundGlow: CGFloat = 0
     @State private var appeared = false
@@ -157,19 +156,6 @@ struct RechargeView: View {
 
                 Spacer()
             }
-        }
-        .fullScreenCover(isPresented: $showComplete) {
-            RechargeCompleteView(
-                rechargeLevel: finalRechargeLevel,
-                onContinue: {
-                    showComplete = false
-                    dismiss()
-                },
-                onDismiss: {
-                    showComplete = false
-                    dismiss()
-                }
-            )
         }
         .onAppear {
             setupRechargeMode()

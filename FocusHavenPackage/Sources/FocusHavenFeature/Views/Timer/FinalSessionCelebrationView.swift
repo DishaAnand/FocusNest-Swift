@@ -19,6 +19,7 @@ struct FinalSessionCelebrationView: View {
     // Prediction context (optional — shown when user used predict)
     var predictedLevel: Int? = nil
     var actualLevel: Int? = nil
+    var predictionSessionCount: Int = 1  // How many sessions contributed to prediction average
 
     private var hasPrediction: Bool {
         predictedLevel != nil && actualLevel != nil
@@ -304,12 +305,12 @@ struct FinalSessionCelebrationView: View {
                                     Text("\(predicted)")
                                         .font(.system(size: 24, weight: .bold, design: .rounded))
                                         .foregroundStyle(.white)
-                                    Text("Predicted")
+                                    Text(predictionSessionCount > 1 ? "Avg Predicted" : "Predicted")
                                         .font(.system(size: 10, weight: .medium))
                                         .foregroundStyle(.white.opacity(0.6))
                                         .textCase(.uppercase)
                                 }
-                                .frame(width: 85, height: 75)
+                                .frame(width: 95, height: 75)
                                 .background(
                                     RoundedRectangle(cornerRadius: 12)
                                         .fill(.orange.opacity(0.12))
@@ -327,12 +328,12 @@ struct FinalSessionCelebrationView: View {
                                     Text("\(actual)")
                                         .font(.system(size: 24, weight: .bold, design: .rounded))
                                         .foregroundStyle(.white)
-                                    Text("Actual")
+                                    Text(predictionSessionCount > 1 ? "Avg Actual" : "Actual")
                                         .font(.system(size: 10, weight: .medium))
                                         .foregroundStyle(.white.opacity(0.6))
                                         .textCase(.uppercase)
                                 }
-                                .frame(width: 85, height: 75)
+                                .frame(width: 95, height: 75)
                                 .background(
                                     RoundedRectangle(cornerRadius: 12)
                                         .fill(predictionComparisonColor.opacity(0.12))
