@@ -38,11 +38,13 @@ public final class SubscriptionService: @unchecked Sendable {
     // MARK: - Computed Properties
 
     public var buddySessionsUsed: Int {
-        UserDefaults.standard.integer(forKey: buddySessionsKey)
+        checkAndResetUsageIfNeeded()
+        return UserDefaults.standard.integer(forKey: buddySessionsKey)
     }
 
     public var sessionPlansUsed: Int {
-        UserDefaults.standard.integer(forKey: sessionPlansKey)
+        checkAndResetUsageIfNeeded()
+        return UserDefaults.standard.integer(forKey: sessionPlansKey)
     }
 
     public var buddySessionsRemaining: Int {

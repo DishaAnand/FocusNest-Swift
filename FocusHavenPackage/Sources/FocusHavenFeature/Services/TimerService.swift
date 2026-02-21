@@ -206,6 +206,12 @@ public final class TimerService: @unchecked Sendable {
         }
     }
 
+    /// Force-complete the current session, triggering onComplete callback.
+    /// Used when the user earns early exit from a break via recharge.
+    public func forceComplete() {
+        completeCurrentSession()
+    }
+
     public func skip() {
         stopTimer()
         pausedElapsedTime = 0
@@ -394,6 +400,10 @@ public final class TimerService: @unchecked Sendable {
             if remainingTime <= 0 {
                 completeCurrentSession()
             } else {
+                // Recalculate sessionStartTime so progress ring stays in sync.
+                // The elapsed time so far = totalDuration - remainingTime.
+                pausedElapsedTime = 0
+                sessionStartTime = Date().addingTimeInterval(-Double(totalDuration - remainingTime))
                 state = .running
                 startTimer()
             }

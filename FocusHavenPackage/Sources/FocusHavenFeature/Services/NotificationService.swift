@@ -57,7 +57,9 @@ public final class NotificationService: @unchecked Sendable {
         do {
             try await UNUserNotificationCenter.current().add(request)
             pendingNotificationIds.insert(identifier)
-        } catch {}
+        } catch {
+            // Notification scheduling can fail if user revoked permission
+        }
     }
 
     public func cancelTimerNotifications() {

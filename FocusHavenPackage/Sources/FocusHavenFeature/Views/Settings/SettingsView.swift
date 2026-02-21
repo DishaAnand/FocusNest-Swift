@@ -432,13 +432,19 @@ public struct SettingsView: View {
 
                                     Spacer()
 
-                                    Picker("", selection: $settings.rechargeDetectionMode) {
-                                        ForEach(RechargeDetectionMode.allCases, id: \.self) { mode in
-                                            Text(mode.displayName).tag(mode)
+                                    if UIDevice.current.userInterfaceIdiom == .pad {
+                                        Text("Any Movement")
+                                            .font(.system(size: 14))
+                                            .foregroundStyle(Theme.textSecondary)
+                                    } else {
+                                        Picker("", selection: $settings.rechargeDetectionMode) {
+                                            ForEach(RechargeDetectionMode.allCases, id: \.self) { mode in
+                                                Text(mode.displayName).tag(mode)
+                                            }
                                         }
+                                        .pickerStyle(.menu)
+                                        .tint(Theme.breakColor)
                                     }
-                                    .pickerStyle(.menu)
-                                    .tint(Theme.breakColor)
                                 }
                                 .padding(.vertical, 6)
 

@@ -56,6 +56,15 @@ public struct FocusProgressView: View {
     private var currentStreak: Int {
         var streak = 0
         var checkDate = calendar.startOfDay(for: Date())
+
+        // If no session today yet, start checking from yesterday
+        // so the streak doesn't reset to 0 every morning
+        let hasTodaySession = focusSessions.contains { calendar.isDate($0.date, inSameDayAs: checkDate) }
+        if !hasTodaySession {
+            guard let yesterday = calendar.date(byAdding: .day, value: -1, to: checkDate) else { return 0 }
+            checkDate = yesterday
+        }
+
         while true {
             let hasSession = focusSessions.contains { calendar.isDate($0.date, inSameDayAs: checkDate) }
             if hasSession {

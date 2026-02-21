@@ -37,6 +37,7 @@ public struct TimerView: View {
     @State private var lastBreakRechargePercentage: Double = 0  // Recharge from previous break for halo effect
 
     @State private var wentAwayAt: Date? = nil
+    @State private var wasScreenLocked = false
     @State private var sessionWasCompleted = true
     @State private var oceanChoppiness: Double = 0
     private let distractionThreshold: TimeInterval = 8
@@ -503,9 +504,11 @@ public struct TimerView: View {
             if newPhase != .active && oldPhase == .active {
                 // User left the app - record the time
                 wentAwayAt = Date()
+                // Check if screen is locked (protected data unavailable = locked)
+                wasScreenLocked = !UIApplication.shared.isProtectedDataAvailable
             } else if newPhase == .active && oldPhase != .active {
-                // User returned - check if they were away long enough
-                if let awayTime = wentAwayAt {
+                // User returned - only count as distraction if screen wasn't locked
+                if let awayTime = wentAwayAt, !wasScreenLocked {
                     let awayDuration = Date().timeIntervalSince(awayTime)
                     if awayDuration >= distractionThreshold {
                         distractionCount += 1
@@ -529,6 +532,13 @@ public struct TimerView: View {
                     }
                 }
                 wentAwayAt = nil
+                wasScreenLocked = false
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.protectedDataWillBecomeUnavailableNotification)) { _ in
+            // Device is being locked — don't count as distraction
+            if timerService.isRunning && !timerService.isBreak {
+                wasScreenLocked = true
             }
         }
     }
@@ -1174,6 +1184,7 @@ public struct TimerView: View {
     /// Advances session plan to next focus session after skipping a break
     private func advanceSessionPlanAfterBreak() {
         distractionCount = 0
+        continuousFocusTime = 0
         var plan = sessionPlan
         plan.nextSession()
         sessionPlan = plan

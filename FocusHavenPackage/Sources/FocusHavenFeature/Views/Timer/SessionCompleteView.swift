@@ -812,6 +812,7 @@ struct PlayfulNudgeView: View {
     @State private var brainBounce: CGFloat = 1.0
     @State private var eyesClosed = false
     @State private var steamOffset: CGFloat = 0
+    @State private var blinkTimer: Timer?
 
     var body: some View {
         VStack(spacing: 24) {
@@ -852,7 +853,7 @@ struct PlayfulNudgeView: View {
                     brainBounce = 1.05
                 }
                 // Blink animation
-                Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { _ in
+                blinkTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { _ in
                     withAnimation(.easeInOut(duration: 0.2)) {
                         eyesClosed = true
                     }
@@ -866,6 +867,10 @@ struct PlayfulNudgeView: View {
                 withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
                     steamOffset = -10
                 }
+            }
+            .onDisappear {
+                blinkTimer?.invalidate()
+                blinkTimer = nil
             }
 
             // Message

@@ -117,7 +117,6 @@ public struct JoinSessionView: View {
                 .font(Theme.captionFont)
                 .foregroundStyle(Theme.textSecondary)
             Picker("Duration", selection: $sessionDuration) {
-                Text("1 min").tag(1)
                 Text("15 min").tag(15)
                 Text("25 min").tag(25)
                 Text("45 min").tag(45)

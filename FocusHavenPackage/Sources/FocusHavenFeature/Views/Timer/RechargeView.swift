@@ -117,8 +117,8 @@ struct RechargeView: View {
                 Spacer()
                     .frame(height: 20)
 
-                // Activity indicator (walking mode only)
-                if settings.rechargeDetectionMode == .walkingOnly {
+                // Activity indicator (walking mode only, not on iPad)
+                if settings.rechargeDetectionMode == .walkingOnly && UIDevice.current.userInterfaceIdiom != .pad {
                     HStack(spacing: 12) {
                         Image(systemName: activityIcon)
                             .font(.system(size: 20))
@@ -210,7 +210,7 @@ struct RechargeView: View {
 
     private var encouragementMessage: String {
         let percentage = motionService.rechargePercentage
-        let isWalkingMode = settings.rechargeDetectionMode == .walkingOnly
+        let isWalkingMode = settings.rechargeDetectionMode == .walkingOnly && UIDevice.current.userInterfaceIdiom != .pad
 
         if isWalkingMode {
             // Walking-specific messages
@@ -251,8 +251,10 @@ struct RechargeView: View {
 
     private func setupRechargeMode() {
         // Reset and start tracking with user's preferred mode
+        // iPad doesn't have pedometer, so force anyMovement mode
+        let effectiveMode: RechargeDetectionMode = UIDevice.current.userInterfaceIdiom == .pad ? .anyMovement : settings.rechargeDetectionMode
         motionService.reset()
-        motionService.startTracking(mode: settings.rechargeDetectionMode)
+        motionService.startTracking(mode: effectiveMode)
 
         // Set up milestone haptics
         motionService.onMilestoneReached = { milestone in
@@ -296,11 +298,10 @@ struct RechargeView: View {
         finalRechargeLevel = motionService.rechargePercentage
         motionService.stopTracking()
 
-        // Stop the timer (this will trigger the break completion flow in TimerView)
-        timerService.pause()
-        timerService.reset()
+        // Force-complete the break so onComplete fires and session plans advance properly.
+        // Using pause()+reset() would skip onComplete, breaking the session plan flow.
+        timerService.forceComplete()
 
-        // Dismiss and let TimerView handle the transition
         dismiss()
     }
 }
