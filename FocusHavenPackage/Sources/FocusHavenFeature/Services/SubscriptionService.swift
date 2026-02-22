@@ -101,7 +101,8 @@ public final class SubscriptionService: @unchecked Sendable {
             let customerInfo = try await Purchases.shared.customerInfo()
             isPro = customerInfo.entitlements["pro"]?.isActive == true
         } catch {
-            isPro = false
+            // Keep previous isPro state on network errors
+            // so paying users aren't downgraded while offline
         }
     }
 

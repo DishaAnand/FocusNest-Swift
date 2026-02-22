@@ -35,10 +35,11 @@ public final class TimerService: @unchecked Sendable {
     public var skipDefaultTransition = false
 
     private var timer: Timer?
-    private var displayTimer: Timer? // High-frequency timer for smooth progress
     private var backgroundTaskId: UIBackgroundTaskIdentifier = .invalid
     private var backgroundEnterTime: Date?
     private var wasRunningBeforeBackground: Bool = false
+    private var backgroundObserver: (any NSObjectProtocol)?
+    private var foregroundObserver: (any NSObjectProtocol)?
     private let settings: UserSettings
     private let liveActivityService: LiveActivityService
     private let notificationService: NotificationService
@@ -86,15 +87,12 @@ public final class TimerService: @unchecked Sendable {
         setupBackgroundObservers()
     }
 
-    deinit {
-        NotificationCenter.default.removeObserver(self)
-    }
+    // Observer tokens (backgroundObserver, foregroundObserver) are automatically
+    // removed when this object is deallocated — no manual deinit cleanup needed.
 
     public func cleanup() {
         timer?.invalidate()
         timer = nil
-        displayTimer?.invalidate()
-        displayTimer = nil
     }
 
     public func start() {
@@ -108,16 +106,14 @@ public final class TimerService: @unchecked Sendable {
         state = .running
         startTimer()
 
-        // Start Live Activity
-        liveActivityService.startActivity(
-            remainingSeconds: remainingTime,
-            totalSeconds: totalDuration,
-            mode: mode.rawValue,
-            taskName: selectedTask?.title
-        )
-
-        // Schedule notification for timer completion
+        // Start Live Activity and schedule notification
         Task {
+            await liveActivityService.startActivity(
+                remainingSeconds: remainingTime,
+                totalSeconds: totalDuration,
+                mode: mode.rawValue,
+                taskName: selectedTask?.title
+            )
             let customSound = isBreak ? wakeUpVoiceService.getNotificationSound() : nil
             await notificationService.scheduleTimerCompletion(
                 in: remainingTime,
@@ -288,21 +284,12 @@ public final class TimerService: @unchecked Sendable {
 
     private func startTimer() {
         timer?.invalidate()
-        displayTimer?.invalidate()
 
-        // 1-second timer for countdown display and completion check
+        // 1-second timer for countdown and progress updates
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             guard let self else { return }
             Task { @MainActor [self] in
                 self.tick()
-            }
-        }
-
-        // 60fps timer for ultra-smooth progress animation
-        displayTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
-            guard let self else { return }
-            Task { @MainActor [self] in
-                self.updateProgress()
             }
         }
     }
@@ -310,8 +297,6 @@ public final class TimerService: @unchecked Sendable {
     private func stopTimer() {
         timer?.invalidate()
         timer = nil
-        displayTimer?.invalidate()
-        displayTimer = nil
     }
 
     private func updateProgress() {
@@ -321,6 +306,7 @@ public final class TimerService: @unchecked Sendable {
     private func tick() {
         guard state == .running else { return }
         remainingTime -= 1
+        updateProgress()
         onTick?()
         if remainingTime <= 0 { completeCurrentSession() }
     }
@@ -366,13 +352,13 @@ public final class TimerService: @unchecked Sendable {
     }
 
     private func setupBackgroundObservers() {
-        NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
+        backgroundObserver = NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
             guard let self else { return }
             Task { @MainActor [self] in
                 self.handleEnterBackground()
             }
         }
-        NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] _ in
+        foregroundObserver = NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] _ in
             guard let self else { return }
             Task { @MainActor [self] in
                 self.handleEnterForeground()

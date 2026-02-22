@@ -42,5 +42,6 @@ public struct CircularProgressView: View {
             }
         }
         .frame(width: size, height: size)
+        .animation(.linear(duration: 1.0), value: progress)
     }
 }

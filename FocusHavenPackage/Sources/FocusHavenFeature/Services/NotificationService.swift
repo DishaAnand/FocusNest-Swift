@@ -58,7 +58,7 @@ public final class NotificationService: @unchecked Sendable {
             try await UNUserNotificationCenter.current().add(request)
             pendingNotificationIds.insert(identifier)
         } catch {
-            // Notification scheduling can fail if user revoked permission
+            print("[Notification] Failed to schedule: \(error.localizedDescription)")
         }
     }
 

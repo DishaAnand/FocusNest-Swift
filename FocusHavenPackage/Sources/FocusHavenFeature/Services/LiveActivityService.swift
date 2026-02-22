@@ -20,35 +20,30 @@ public final class LiveActivityService {
         totalSeconds: Int,
         mode: String,
         taskName: String?
-    ) {
+    ) async {
         guard isSupported else { return }
 
-        // End any existing activity first
-        Task {
-            await endActivity()
+        // End any existing activity first, then start new one
+        await endActivity()
 
-            // Start new activity after ending old one
-            await MainActor.run {
-                let attributes = FocusTimerAttributes(taskName: taskName)
-                let endTime = Date().addingTimeInterval(TimeInterval(remainingSeconds))
-                let state = FocusTimerAttributes.ContentState(
-                    endTime: endTime,
-                    totalSeconds: totalSeconds,
-                    mode: mode,
-                    isPaused: false
-                )
+        let attributes = FocusTimerAttributes(taskName: taskName)
+        let endTime = Date().addingTimeInterval(TimeInterval(remainingSeconds))
+        let state = FocusTimerAttributes.ContentState(
+            endTime: endTime,
+            totalSeconds: totalSeconds,
+            mode: mode,
+            isPaused: false
+        )
 
-                do {
-                    let activity = try Activity.request(
-                        attributes: attributes,
-                        content: .init(state: state, staleDate: nil),
-                        pushType: nil
-                    )
-                    self.currentActivity = activity
-                } catch {
-                    // Live Activity failed to start
-                }
-            }
+        do {
+            let activity = try Activity.request(
+                attributes: attributes,
+                content: .init(state: state, staleDate: nil),
+                pushType: nil
+            )
+            self.currentActivity = activity
+        } catch {
+            print("[LiveActivity] Failed to start: \(error.localizedDescription)")
         }
     }
 

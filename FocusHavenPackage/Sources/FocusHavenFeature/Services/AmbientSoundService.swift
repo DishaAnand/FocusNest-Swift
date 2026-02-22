@@ -52,6 +52,7 @@ public final class AmbientSoundService: @unchecked Sendable {
             try audioSession.setCategory(.playback, mode: .default, options: [.mixWithOthers])
             try audioSession.setActive(true)
         } catch {
+            print("[AmbientSound] Audio session setup failed: \(error.localizedDescription)")
             return
         }
 
@@ -72,7 +73,7 @@ public final class AmbientSoundService: @unchecked Sendable {
             let success = audioPlayer?.play() ?? false
             isPlaying = success
         } catch {
-            // Audio playback failed
+            print("[AmbientSound] Playback failed: \(error.localizedDescription)")
         }
     }
 
