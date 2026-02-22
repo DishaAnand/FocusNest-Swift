@@ -96,6 +96,7 @@ public final class MotionService: @unchecked Sendable {
     private var isActuallyWalking: Bool = false
     private var lastWalkingTime: Date?
     private let walkingGracePeriod: TimeInterval = 3.0 // seconds to wait before discarding steps
+    private var trackingSessionID: UUID?  // Guard against stale pedometer callbacks after reset
 
     // MARK: - Instant Walking Detection (Accelerometer Pattern Recognition)
 
@@ -130,6 +131,7 @@ public final class MotionService: @unchecked Sendable {
         currentMode = mode
         isTracking = true
         trackingStartDate = Date()
+        trackingSessionID = UUID()
 
         switch mode {
         case .anyMovement:
@@ -149,6 +151,7 @@ public final class MotionService: @unchecked Sendable {
 
         isTracking = false
         trackingStartDate = nil
+        trackingSessionID = nil
     }
 
     /// Reset all tracking state
@@ -234,10 +237,13 @@ public final class MotionService: @unchecked Sendable {
         // Start pedometer for step counting (this drives recharge percentage)
         guard let startDate = trackingStartDate else { return }
 
+        let sessionID = trackingSessionID
         pedometer.startUpdates(from: startDate) { [weak self] pedometerData, error in
             guard let self, let data = pedometerData else { return }
 
             Task { @MainActor in
+                // Ignore stale callbacks from a previous tracking session
+                guard self.trackingSessionID == sessionID else { return }
                 self.processSteps(data)
             }
         }
@@ -375,8 +381,12 @@ public final class MotionService: @unchecked Sendable {
             if activity.confidence == .high {
                 isProbablyWalking = false
             }
+        } else if isProbablyWalking {
+            currentActivity = "walking"
+            isActuallyWalking = true
+            lastWalkingTime = Date()
         } else {
-            currentActivity = "unknown"
+            currentActivity = "stationary"
             isActuallyWalking = false
         }
 
