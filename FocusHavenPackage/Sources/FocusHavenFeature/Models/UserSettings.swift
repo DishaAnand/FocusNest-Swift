@@ -13,7 +13,6 @@ public final class UserSettings: @unchecked Sendable {
     private static let hasSeenNotificationOnboardingKey = "hasSeenNotificationOnboarding"
     private static let hasSeenWakeUpVoiceOnboardingKey = "hasSeenWakeUpVoiceOnboarding"
     private static let rechargeDetectionModeKey = "rechargeDetectionMode"
-    private static let isPremiumKey = "isPremium"
 
     public var focusDuration: Int { didSet { save() } }
     public var breakDuration: Int { didSet { save() } }
@@ -28,8 +27,6 @@ public final class UserSettings: @unchecked Sendable {
     public var hasSeenWakeUpVoiceOnboarding: Bool { didSet { save() } }
     /// Detection mode for recharge (any movement vs walking only)
     public var rechargeDetectionMode: RechargeDetectionMode { didSet { save() } }
-    /// Whether user has premium access (unlocks Universe and other features)
-    public var isPremium: Bool { didSet { save() } }
 
     public init() {
         let defaults = UserDefaults.standard
@@ -40,8 +37,6 @@ public final class UserSettings: @unchecked Sendable {
         self.soundKey = defaults.string(forKey: Self.soundKeyKey) ?? "chimes"  // RN default
         self.hasSeenNotificationOnboarding = defaults.bool(forKey: Self.hasSeenNotificationOnboardingKey)
         self.hasSeenWakeUpVoiceOnboarding = defaults.bool(forKey: Self.hasSeenWakeUpVoiceOnboardingKey)
-        self.isPremium = defaults.bool(forKey: Self.isPremiumKey)
-
         if let modeRaw = defaults.string(forKey: Self.rechargeDetectionModeKey),
            let savedMode = RechargeDetectionMode(rawValue: modeRaw) {
             self.rechargeDetectionMode = savedMode
@@ -68,7 +63,6 @@ public final class UserSettings: @unchecked Sendable {
         defaults.set(hasSeenNotificationOnboarding, forKey: Self.hasSeenNotificationOnboardingKey)
         defaults.set(hasSeenWakeUpVoiceOnboarding, forKey: Self.hasSeenWakeUpVoiceOnboardingKey)
         defaults.set(rechargeDetectionMode.rawValue, forKey: Self.rechargeDetectionModeKey)
-        defaults.set(isPremium, forKey: Self.isPremiumKey)
     }
 
     public var focusDurationMinutes: Int {

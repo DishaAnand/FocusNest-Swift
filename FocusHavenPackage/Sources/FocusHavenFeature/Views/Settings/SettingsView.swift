@@ -726,50 +726,6 @@ public struct SettingsView: View {
                         .opacity(sectionsAppeared ? 1 : 0)
                         .offset(y: sectionsAppeared ? 0 : 20)
 
-                        // MARK: - Debug (remove before release)
-                        #if DEBUG
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("DEBUG")
-                                .font(.system(size: 12, weight: .bold, design: .rounded))
-                                .foregroundStyle(.red)
-                                .padding(.horizontal, 20)
-
-                            VStack(spacing: 0) {
-                                HStack(spacing: 14) {
-                                    ZStack {
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .fill(Color.red.opacity(0.15))
-                                            .frame(width: 32, height: 32)
-                                        Image(systemName: "crown.fill")
-                                            .font(.system(size: 15, weight: .semibold))
-                                            .foregroundStyle(.orange)
-                                    }
-
-                                    Text("Premium Override")
-                                        .font(.system(size: 16))
-                                        .foregroundStyle(Theme.textPrimary)
-
-                                    Spacer()
-
-                                    @Bindable var s = settings
-                                    Toggle("", isOn: $s.isPremium)
-                                        .labelsHidden()
-                                }
-                                .padding(.vertical, 6)
-                            }
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 10)
-                            .background(
-                                RoundedRectangle(cornerRadius: 18)
-                                    .fill(Theme.backgroundSecondary)
-                                    .shadow(color: .black.opacity(0.03), radius: 8, y: 2)
-                            )
-                            .padding(.horizontal, 16)
-                        }
-                        .opacity(sectionsAppeared ? 1 : 0)
-                        .offset(y: sectionsAppeared ? 0 : 20)
-                        #endif
-
                         // Made with love footer
                         Text("Made with 💚 for focused minds")
                             .font(.system(size: 13, weight: .medium, design: .rounded))

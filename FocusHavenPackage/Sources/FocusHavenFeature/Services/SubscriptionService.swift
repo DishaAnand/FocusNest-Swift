@@ -8,19 +8,10 @@ public final class SubscriptionService: @unchecked Sendable {
     // MARK: - Pro Status
 
     public var isPro: Bool {
-        get { _isPro || debugPremiumOverride }
+        get { _isPro }
         set { _isPro = newValue }
     }
     private var _isPro: Bool = false
-
-    /// Debug override — set via UserSettings.isPremium toggle in Settings
-    private var debugPremiumOverride: Bool {
-        #if DEBUG
-        UserDefaults.standard.bool(forKey: "isPremium")
-        #else
-        false
-        #endif
-    }
     public private(set) var isLoading: Bool = false
 
     // MARK: - Usage Limits (Free Tier)
