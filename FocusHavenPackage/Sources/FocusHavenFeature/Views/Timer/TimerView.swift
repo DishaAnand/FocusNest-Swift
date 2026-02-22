@@ -29,6 +29,7 @@ public struct TimerView: View {
     @State private var lastPrediction: Int? = nil
     @State private var completedSessionDuration: Int = 0
     @State private var completedDistractionCount: Int = 0  // Captured at session end for display
+    @State private var accumulatedFocusDuration: Int = 0  // Tracks total focus time including extensions
     @State private var completedPredictedLevel: Int? = nil
     @State private var completedActualLevel: Int? = nil
     @State private var completedWasCompleted: Bool = true
@@ -561,6 +562,7 @@ public struct TimerView: View {
             if predictedFocus != nil {
                 distractionCount = 0
                 sessionWasCompleted = true
+                accumulatedFocusDuration = settings.focusDuration
                 timerService.togglePlayPause()
                 if !timerService.isBreak {
                     ambientSoundService.play()
@@ -586,6 +588,7 @@ public struct TimerView: View {
         distractionCount = 0
         sessionWasCompleted = true
         predictedFocus = nil
+        accumulatedFocusDuration = settings.focusDuration
         timerService.togglePlayPause()
         // Start ambient sound when focus session begins (not during breaks)
         if !timerService.isBreak {
@@ -722,6 +725,7 @@ public struct TimerView: View {
             },
             onExtend: { extensionSeconds in
                 showSessionComplete = false
+                accumulatedFocusDuration += extensionSeconds
                 timerService.startExtension(duration: extensionSeconds)
             },
             onDismiss: {
@@ -929,7 +933,7 @@ public struct TimerView: View {
 
                 let actualFocus = calculateActualFocus()
                 let record = FocusRecord(
-                    duration: settings.focusDuration,
+                    duration: accumulatedFocusDuration,
                     isBreak: false,
                     taskId: timerService.selectedTask?.id,
                     taskTitle: timerService.selectedTask?.title,
@@ -952,7 +956,7 @@ public struct TimerView: View {
                     completedActualLevel = nil
                     completedWasCompleted = true
                 }
-                completedSessionDuration = settings.focusDuration
+                completedSessionDuration = accumulatedFocusDuration
                 completedDistractionCount = distractionCount
 
                 // If cumulative focus time >= mandatory break threshold, show autolock directly (skip summary)
