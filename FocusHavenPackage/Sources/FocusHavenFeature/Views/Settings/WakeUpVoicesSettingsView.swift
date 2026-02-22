@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 struct WakeUpVoicesSettingsView: View {
     @Environment(WakeUpVoiceService.self) private var voiceService
     @Environment(SubscriptionService.self) private var subscriptionService
+    @Environment(NotificationService.self) private var notificationService
     @State private var showingRecordSheet = false
     @State private var showingFileImporter = false
     @State private var showingNamePrompt = false
@@ -23,6 +24,38 @@ struct WakeUpVoicesSettingsView: View {
         @Bindable var voiceService = voiceService
 
         List {
+            if !notificationService.isAuthorized {
+                Section {
+                    VStack(spacing: 12) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "bell.slash.fill")
+                                .font(.system(size: 24))
+                                .foregroundStyle(.orange)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Notifications Disabled")
+                                    .font(.system(size: 15, weight: .semibold))
+                                Text("Wake-up voices need notifications to alert you when your break ends. Enable them in Settings.")
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        Button {
+                            if let url = URL(string: UIApplication.openSettingsURLString) {
+                                UIApplication.shared.open(url)
+                            }
+                        } label: {
+                            Text("Open Settings")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                                .background(Color.orange, in: RoundedRectangle(cornerRadius: 10))
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+
             Section {
                 Toggle("Enable Wake-Up Voice", isOn: $voiceService.isEnabled)
             } footer: {
@@ -121,6 +154,12 @@ struct WakeUpVoicesSettingsView: View {
         }
         .navigationTitle("Wake-Up Voice")
         .navigationBarTitleDisplayMode(.inline)
+        .task {
+            await notificationService.checkAuthorizationStatus()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            Task { await notificationService.checkAuthorizationStatus() }
+        }
         .sheet(isPresented: $showingRecordSheet) {
             RecordVoiceView()
         }
