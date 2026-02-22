@@ -881,6 +881,9 @@ public struct TimerView: View {
                         if sessionPlanPredictionCount > 0 {
                             completedPredictedLevel = sessionPlanTotalPredicted / sessionPlanPredictionCount
                             completedActualLevel = sessionPlanTotalActual / sessionPlanPredictionCount
+                        } else {
+                            completedPredictedLevel = nil
+                            completedActualLevel = nil
                         }
                         showFinalCelebration = true
                     } else {

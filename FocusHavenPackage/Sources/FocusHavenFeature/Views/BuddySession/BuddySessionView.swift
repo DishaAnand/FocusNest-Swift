@@ -90,8 +90,10 @@ public struct BuddySessionView: View {
                     // User left the app - record the time
                     wentAwayAt = Date()
                     // Check if protected data is available - if not, device is locked
-                    // This is more reliable than brightness across iOS versions
-                    wasScreenLocked = !UIApplication.shared.isProtectedDataAvailable
+                    // Don't overwrite if notification already set wasScreenLocked = true
+                    if !wasScreenLocked {
+                        wasScreenLocked = !UIApplication.shared.isProtectedDataAvailable
+                    }
                 } else if newPhase == .active && oldPhase != .active {
                     // User returned to the app
                     Task {
@@ -117,7 +119,8 @@ public struct BuddySessionView: View {
             }
             .onAppear {
                 // If we already have a session (joined via deep link), skip to appropriate step
-                if let session = sessionService.currentSession {
+                // Only do this on initial load (.setup) — don't reset mid-session when switching tabs
+                if currentStep == .setup, let session = sessionService.currentSession {
                     switch session.state {
                     case .waiting: currentStep = .waiting
                     case .active: currentStep = .active
@@ -556,8 +559,12 @@ private struct ActiveSessionTimerView: View {
     var body: some View {
         VStack(spacing: Theme.spacingM) {
             // Your timer
-            CircularProgressView(progress: progress, size: 200, color: Theme.focusColor)
-            Text(String(format: "%02d:%02d", remainingTime / 60, remainingTime % 60)).font(Theme.timerFontSmall).monospacedDigit()
+            ZStack {
+                CircularProgressView(progress: progress, size: 200, color: Theme.focusColor)
+                Text(String(format: "%02d:%02d", remainingTime / 60, remainingTime % 60))
+                    .font(Theme.timerFontSmall)
+                    .monospacedDigit()
+            }
 
             // Buddy status card
             if let buddy = buddy {
