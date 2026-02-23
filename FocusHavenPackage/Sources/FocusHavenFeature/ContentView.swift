@@ -10,6 +10,7 @@ struct SessionIdWrapper: Identifiable {
 @MainActor
 public struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(SessionService.self) private var sessionService
     @State private var selectedTab: AppTab = .timer
     @State private var pendingSession: SessionIdWrapper?
 
@@ -69,6 +70,8 @@ public struct ContentView: View {
               let sessionId = url.pathComponents.dropFirst().first else {
             return
         }
+        // Don't open join sheet if user is already in a buddy session
+        guard sessionService.currentSession == nil else { return }
         pendingSession = SessionIdWrapper(id: sessionId)
     }
 }

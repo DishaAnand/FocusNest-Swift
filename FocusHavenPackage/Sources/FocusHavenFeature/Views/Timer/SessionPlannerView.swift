@@ -277,6 +277,11 @@ struct SessionPlannerSheet: View {
     }
 
     private func startWithPrediction() {
+        // Double-check limit before starting (safety net)
+        guard subscriptionService.canUseSessionPlanning else {
+            isPresented = false
+            return
+        }
         soundService.mediumImpact(settings: settings)
         subscriptionService.recordSessionPlanUsed()
         plan.setTaskCount(selectedCount)
@@ -291,6 +296,11 @@ struct SessionPlannerSheet: View {
     }
 
     private func startDirectly() {
+        // Double-check limit before starting (safety net)
+        guard subscriptionService.canUseSessionPlanning else {
+            isPresented = false
+            return
+        }
         soundService.mediumImpact(settings: settings)
         subscriptionService.recordSessionPlanUsed()
         plan.setTaskCount(selectedCount)

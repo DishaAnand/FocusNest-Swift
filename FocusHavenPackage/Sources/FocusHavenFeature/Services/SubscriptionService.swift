@@ -26,16 +26,61 @@ public final class SubscriptionService: @unchecked Sendable {
     private let sessionPlansKey = "subscription_sessionPlansUsed"
     private let usagePeriodStartKey = "subscription_usagePeriodStart"
 
+    /// iCloud key-value store — persists across app delete/reinstall
+    private let cloud = NSUbiquitousKeyValueStore.default
+    private let defaults = UserDefaults.standard
+
+    // MARK: - Tracked Usage Counters
+    // These stored properties let @Observable track changes so SwiftUI
+    // re-evaluates gate checks (canUseSessionPlanning etc.) after recording usage.
+
+    private var _cachedBuddySessions: Int = 0
+    private var _cachedSessionPlans: Int = 0
+
+    // MARK: - Dual Storage Helpers
+
+    /// Read the higher of iCloud or local value (handles iCloud sync delays)
+    private func readInt(forKey key: String) -> Int {
+        let cloudVal = Int(cloud.longLong(forKey: key))
+        let localVal = defaults.integer(forKey: key)
+        return max(cloudVal, localVal)
+    }
+
+    /// Write to both iCloud and local storage
+    private func writeInt(_ value: Int, forKey key: String) {
+        cloud.set(Int64(value), forKey: key)
+        cloud.synchronize()
+        defaults.set(value, forKey: key)
+    }
+
+    /// Read date from iCloud with local fallback
+    private func readDate(forKey key: String) -> Date? {
+        (cloud.object(forKey: key) as? Date) ?? (defaults.object(forKey: key) as? Date)
+    }
+
+    /// Write date to both stores
+    private func writeDate(_ date: Date, forKey key: String) {
+        cloud.set(date, forKey: key)
+        cloud.synchronize()
+        defaults.set(date, forKey: key)
+    }
+
+    /// Sync cached counters from persistent storage
+    private func syncCachedCounters() {
+        _cachedBuddySessions = readInt(forKey: buddySessionsKey)
+        _cachedSessionPlans = readInt(forKey: sessionPlansKey)
+    }
+
     // MARK: - Computed Properties
 
     public var buddySessionsUsed: Int {
         checkAndResetUsageIfNeeded()
-        return UserDefaults.standard.integer(forKey: buddySessionsKey)
+        return _cachedBuddySessions
     }
 
     public var sessionPlansUsed: Int {
         checkAndResetUsageIfNeeded()
-        return UserDefaults.standard.integer(forKey: sessionPlansKey)
+        return _cachedSessionPlans
     }
 
     public var buddySessionsRemaining: Int {
@@ -80,7 +125,9 @@ public final class SubscriptionService: @unchecked Sendable {
     // MARK: - Init
 
     public init() {
+        cloud.synchronize()
         checkAndResetUsageIfNeeded()
+        syncCachedCounters()
     }
 
     // MARK: - RevenueCat Configuration
@@ -137,21 +184,27 @@ public final class SubscriptionService: @unchecked Sendable {
     public func recordBuddySessionUsed() {
         guard !isPro else { return }
         checkAndResetUsageIfNeeded()
-        let current = UserDefaults.standard.integer(forKey: buddySessionsKey)
-        UserDefaults.standard.set(current + 1, forKey: buddySessionsKey)
+        let current = readInt(forKey: buddySessionsKey)
+        let newValue = current + 1
+        writeInt(newValue, forKey: buddySessionsKey)
+        _cachedBuddySessions = newValue
+        print("[SubscriptionService] Recorded buddy session: \(newValue)/\(maxFreeBuddySessions)")
     }
 
     public func recordSessionPlanUsed() {
         guard !isPro else { return }
         checkAndResetUsageIfNeeded()
-        let current = UserDefaults.standard.integer(forKey: sessionPlansKey)
-        UserDefaults.standard.set(current + 1, forKey: sessionPlansKey)
+        let current = readInt(forKey: sessionPlansKey)
+        let newValue = current + 1
+        writeInt(newValue, forKey: sessionPlansKey)
+        _cachedSessionPlans = newValue
+        print("[SubscriptionService] Recorded session plan: \(newValue)/\(maxFreeSessionPlans)")
     }
 
     // MARK: - Usage Reset Logic
 
     public var daysUntilReset: Int {
-        guard let startDate = UserDefaults.standard.object(forKey: usagePeriodStartKey) as? Date else {
+        guard let startDate = readDate(forKey: usagePeriodStartKey) else {
             return 30
         }
         let daysPassed = Calendar.current.dateComponents([.day], from: startDate, to: Date()).day ?? 0
@@ -159,11 +212,11 @@ public final class SubscriptionService: @unchecked Sendable {
     }
 
     private func checkAndResetUsageIfNeeded() {
-        let startDate = UserDefaults.standard.object(forKey: usagePeriodStartKey) as? Date
+        let startDate = readDate(forKey: usagePeriodStartKey)
 
         if startDate == nil {
-            // First time - set the start date
-            UserDefaults.standard.set(Date(), forKey: usagePeriodStartKey)
+            writeDate(Date(), forKey: usagePeriodStartKey)
+            syncCachedCounters()
             return
         }
 
@@ -171,11 +224,27 @@ public final class SubscriptionService: @unchecked Sendable {
         let daysPassed = Calendar.current.dateComponents([.day], from: start, to: Date()).day ?? 0
 
         if daysPassed >= 30 {
-            // Reset usage counts
-            UserDefaults.standard.set(0, forKey: buddySessionsKey)
-            UserDefaults.standard.set(0, forKey: sessionPlansKey)
-            UserDefaults.standard.set(Date(), forKey: usagePeriodStartKey)
+            writeInt(0, forKey: buddySessionsKey)
+            writeInt(0, forKey: sessionPlansKey)
+            writeDate(Date(), forKey: usagePeriodStartKey)
+            _cachedBuddySessions = 0
+            _cachedSessionPlans = 0
+        } else {
+            syncCachedCounters()
         }
     }
 
+    // MARK: - Debug Reset
+
+    #if DEBUG
+    /// Reset all usage counters (for testing only)
+    public func resetUsage() {
+        writeInt(0, forKey: buddySessionsKey)
+        writeInt(0, forKey: sessionPlansKey)
+        writeDate(Date(), forKey: usagePeriodStartKey)
+        _cachedBuddySessions = 0
+        _cachedSessionPlans = 0
+        print("[SubscriptionService] Usage reset. Plans: 0/\(maxFreeSessionPlans), Buddy: 0/\(maxFreeBuddySessions)")
+    }
+    #endif
 }

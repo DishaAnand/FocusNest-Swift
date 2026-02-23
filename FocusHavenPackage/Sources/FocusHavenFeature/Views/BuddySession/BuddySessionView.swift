@@ -429,13 +429,15 @@ public struct BuddySessionView: View {
                     buddyDistractions: buddy?.violationCount ?? 0,
                     onDone: {
                         // Save focus record with actual duration (including support time)
-                        modelContext.insert(FocusRecord(
+                        let record = FocusRecord(
                             duration: myActualDuration,
                             isBreak: false,
                             taskTitle: customTaskTitle.isEmpty ? (me?.taskTitle ?? "Focus session") : customTaskTitle,
                             wasCompleted: true,
                             wasBuddySession: true
-                        ))
+                        )
+                        record.distractionCount = me?.violationCount ?? 0
+                        modelContext.insert(record)
                         soundService.successHaptic(settings: settings)
                         finishSession()
                     }
@@ -682,7 +684,6 @@ private struct SupportModeTimerView: View {
     @State private var buddyRemainingTime: Int = 0
     @State private var buddyProgress: Double = 0.0
     @State private var timer: Timer?
-    @State private var displayTimer: Timer?
 
     private var buddy: SessionParticipant? {
         session.otherParticipants(exceptId: sessionService.deviceId).first
@@ -733,6 +734,22 @@ private struct SupportModeTimerView: View {
                 Text("You finished! Cheering on \(buddy.name)")
                     .font(Theme.captionFont)
                     .foregroundStyle(Theme.textSecondary)
+            } else {
+                // Buddy left the session — auto-complete support mode
+                VStack(spacing: Theme.spacingM) {
+                    Image(systemName: "person.slash.fill")
+                        .font(.system(size: 48))
+                        .foregroundStyle(Theme.textSecondary)
+                    Text("Your buddy left the session")
+                        .font(Theme.headlineFont)
+                    Text("Great job supporting them!")
+                        .font(Theme.captionFont)
+                        .foregroundStyle(Theme.textSecondary)
+                }
+                .onAppear {
+                    timer?.invalidate()
+                    onBuddyComplete()
+                }
             }
         }
         .onAppear {
@@ -743,28 +760,25 @@ private struct SupportModeTimerView: View {
             // 1-second timer for countdown and completion
             timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [sessionService] _ in
                 Task { @MainActor in
-                    guard let buddy = session.otherParticipants(exceptId: sessionService.deviceId).first else { return }
+                    guard let buddy = session.otherParticipants(exceptId: sessionService.deviceId).first else {
+                        // Buddy left — stop timer, trigger completion
+                        timer?.invalidate()
+                        onBuddyComplete()
+                        return
+                    }
                     let remaining = session.remainingTimeForParticipant(buddy.odid, currentTime: sessionService.serverTime)
                     if remaining > 0 {
                         buddyRemainingTime = remaining
+                        let elapsed = Double(buddy.duration) - Double(remaining)
+                        buddyProgress = min(max(elapsed / Double(buddy.duration), 0.0), 1.0)
                     } else {
                         timer?.invalidate()
-                        displayTimer?.invalidate()
                         onBuddyComplete()
                     }
                 }
             }
-            // 60fps timer for smooth progress
-            displayTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [sessionService] _ in
-                Task { @MainActor in
-                    guard let buddy = session.otherParticipants(exceptId: sessionService.deviceId).first else { return }
-                    let preciseRemaining = session.preciseRemainingTime(forParticipant: buddy.odid, currentTime: sessionService.serverTime)
-                    let preciseElapsed = Double(buddy.duration) - preciseRemaining
-                    buddyProgress = min(max(preciseElapsed / Double(buddy.duration), 0.0), 1.0)
-                }
-            }
         }
-        .onDisappear { timer?.invalidate(); displayTimer?.invalidate() }
+        .onDisappear { timer?.invalidate() }
     }
 }
 
