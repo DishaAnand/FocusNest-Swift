@@ -4,115 +4,273 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Privacy Policy - FocusHaven</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --focus-green: #61BA99;
+            --focus-green-dark: #4D9980;
+            --break-blue: #73ADD1;
+            --paused-orange: #D9A659;
+            --bg-dark: #0F1117;
+            --bg-card: #1A1C25;
+            --bg-card-hover: #22242E;
+            --text-primary: #F2F2F7;
+            --text-secondary: #A0A0AB;
+            --text-muted: #6B6B78;
+            --border: rgba(255,255,255,0.06);
+            --glow-green: rgba(97, 186, 153, 0.15);
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            line-height: 1.7;
-            color: #1d1d1f;
-            background: #f5f5f7;
+            font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.75;
+            color: var(--text-primary);
+            background: var(--bg-dark);
+            -webkit-font-smoothing: antialiased;
         }
-        .container {
-            max-width: 720px;
-            margin: 0 auto;
-            padding: 48px 24px;
+
+        .hero {
+            position: relative;
+            padding: 80px 24px 48px;
+            text-align: center;
+            overflow: hidden;
         }
-        .card {
-            background: #fff;
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -120px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(ellipse, var(--glow-green) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .hero-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 64px;
+            height: 64px;
             border-radius: 18px;
-            padding: 40px 36px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            background: linear-gradient(135deg, var(--focus-green), var(--paused-orange));
+            margin-bottom: 20px;
+            font-size: 28px;
         }
-        h1 {
-            font-size: 32px;
-            font-weight: 700;
-            margin-bottom: 4px;
-            color: #1d1d1f;
+
+        .hero h1 {
+            font-size: 38px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, var(--focus-green), var(--break-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
-        .updated {
+
+        .hero .updated {
             font-size: 14px;
-            color: #86868b;
-            margin-bottom: 32px;
+            color: var(--text-muted);
+            font-weight: 500;
         }
+
+.container {
+            max-width: 740px;
+            margin: 0 auto;
+            padding: 0 24px 64px;
+        }
+
+        .intro {
+            font-size: 16px;
+            color: var(--text-secondary);
+            text-align: center;
+            max-width: 560px;
+            margin: 0 auto 40px;
+            line-height: 1.8;
+        }
+
+        .section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 16px;
+            transition: background 0.2s ease;
+        }
+
+        .section:hover {
+            background: var(--bg-card-hover);
+        }
+
         h2 {
-            font-size: 22px;
-            font-weight: 600;
-            margin-top: 32px;
-            margin-bottom: 12px;
-            color: #1d1d1f;
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
+
+        h2 .icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 9px;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        h2 .icon.green { background: rgba(97, 186, 153, 0.15); }
+        h2 .icon.blue { background: rgba(115, 173, 209, 0.15); }
+        h2 .icon.orange { background: rgba(217, 166, 89, 0.15); }
+        h2 .icon.red { background: rgba(220, 100, 100, 0.15); }
+
         h3 {
-            font-size: 17px;
-            font-weight: 600;
+            font-size: 16px;
+            font-weight: 700;
             margin-top: 20px;
             margin-bottom: 8px;
-            color: #1d1d1f;
+            color: var(--text-primary);
         }
+
         p {
             margin-bottom: 14px;
-            color: #424245;
-            font-size: 16px;
+            color: var(--text-secondary);
+            font-size: 15px;
+            font-weight: 500;
         }
+
         ul {
             margin-bottom: 14px;
-            padding-left: 24px;
+            padding-left: 0;
+            list-style: none;
         }
+
         li {
-            margin-bottom: 6px;
-            color: #424245;
-            font-size: 16px;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+            font-size: 15px;
+            font-weight: 500;
+            padding-left: 20px;
+            position: relative;
         }
+
+        li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 10px;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--focus-green);
+        }
+
+        li strong {
+            color: var(--text-primary);
+            font-weight: 700;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
             margin: 16px 0;
-            font-size: 15px;
+            font-size: 14px;
+            border-radius: 12px;
+            overflow: hidden;
         }
+
         th {
             text-align: left;
-            padding: 10px 12px;
-            background: #f5f5f7;
-            border-bottom: 1px solid #d2d2d7;
-            font-weight: 600;
-            color: #1d1d1f;
+            padding: 12px 16px;
+            background: rgba(97, 186, 153, 0.08);
+            border-bottom: 1px solid var(--border);
+            font-weight: 700;
+            color: var(--focus-green);
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
+
         td {
-            padding: 10px 12px;
-            border-bottom: 1px solid #e8e8ed;
-            color: #424245;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-weight: 500;
         }
+
+        tr:last-child td { border-bottom: none; }
+
         a {
-            color: #0066cc;
+            color: var(--focus-green);
             text-decoration: none;
+            font-weight: 600;
+            transition: opacity 0.2s;
         }
-        a:hover { text-decoration: underline; }
+
+        a:hover { opacity: 0.8; }
+
         .footer {
             text-align: center;
-            margin-top: 32px;
+            padding: 32px 24px;
             font-size: 13px;
-            color: #86868b;
+            color: var(--text-muted);
+            font-weight: 600;
         }
-        .footer a { color: #86868b; }
+
+        .footer a { color: var(--text-muted); }
+        .footer a:hover { color: var(--focus-green); }
+
+        .footer .brand {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .footer .dot {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: var(--text-muted);
+        }
+
         @media (max-width: 600px) {
-            .container { padding: 24px 16px; }
-            .card { padding: 28px 20px; border-radius: 14px; }
-            h1 { font-size: 26px; }
-            h2 { font-size: 19px; }
+            .hero { padding: 56px 16px 32px; }
+            .hero h1 { font-size: 30px; }
+            .container { padding: 0 16px 48px; }
+            .section { padding: 24px 20px; border-radius: 14px; }
+            h2 { font-size: 18px; }
+            table { font-size: 13px; }
+            th, td { padding: 10px 12px; }
         }
     </style>
 </head>
 <body>
+    <div class="hero">
+        <div class="hero-icon">🛡️</div>
+        <h1>Privacy Policy</h1>
+        <p class="updated">Last Updated: February 18, 2026</p>
+    </div>
+
+
     <div class="container">
-        <div class="card">
-            <h1>Privacy Policy</h1>
-            <p class="updated">Last Updated: February 18, 2026</p>
+        <p class="intro">FocusHaven is a productivity application built by Disha Anand. This Privacy Policy explains how information is collected, used, and protected when you use FocusHaven.</p>
 
-            <p>Disha Anand ("we," "us," or "our") built FocusHaven as a productivity application. This Privacy Policy explains how we collect, use, and protect your information when you use FocusHaven ("the App").</p>
-
-            <h2>Information We Collect</h2>
-
-            <h3>Information Stored on Your Device</h3>
-            <p>The following data is stored locally on your device and synced across your own devices via your personal iCloud account. We do not have access to this data.</p>
+        <div class="section">
+            <h2><span class="icon green">📱</span> Information Stored on Your Device</h2>
+            <p>The following data is stored locally on your device and synced across your own devices via your personal iCloud account. The developer does not have access to this data.</p>
             <ul>
                 <li><strong>Focus session history</strong> including duration, completion status, distraction count, focus predictions and ratings, recharge status, and whether a session was a buddy session</li>
                 <li><strong>Tasks</strong> you create, including titles, completion status, and accumulated focus time</li>
@@ -120,9 +278,11 @@
                 <li><strong>Wake-up voice recordings</strong> you create for break-end alerts (stored only on your device, never uploaded)</li>
                 <li><strong>Break recharge data</strong> derived from motion sensors during break periods (only the aggregate percentage is stored)</li>
             </ul>
+        </div>
 
-            <h3>Information Collected for Buddy Sessions</h3>
-            <p>When you use the Buddy Session feature to focus with another person, the following information is temporarily stored on our servers (Firebase by Google):</p>
+        <div class="section">
+            <h2><span class="icon blue">👥</span> Buddy Session Data</h2>
+            <p>When you use the Buddy Session feature to focus with another person, the following information is temporarily stored on Firebase (Google) servers:</p>
             <ul>
                 <li><strong>Display name</strong> you choose to enter</li>
                 <li><strong>Task title</strong> you choose to share</li>
@@ -132,49 +292,61 @@
                 <li><strong>Distraction metrics</strong> including the number of times you left the app and total time away</li>
                 <li><strong>Buddy ratings</strong> (1-5 stars) if you choose to rate your session partner</li>
             </ul>
-            <p>This data is automatically deleted from our servers within 24 hours of the session ending.</p>
+            <p>This data is automatically deleted from the servers within 24 hours of the session ending.</p>
+        </div>
 
-            <h3>Information Collected for Subscriptions</h3>
-            <p>When you subscribe to FocusHaven Pro, your purchase is processed by Apple through the App Store. We use RevenueCat to manage subscription status. RevenueCat receives your purchase receipt from Apple to verify your subscription. We do not collect your payment information, Apple ID, or billing details. Please refer to <a href="https://www.revenuecat.com/privacy">RevenueCat's Privacy Policy</a> and <a href="https://www.apple.com/privacy/">Apple's Privacy Policy</a> for details on how they handle purchase data.</p>
+        <div class="section">
+            <h2><span class="icon orange">💳</span> Subscription Data</h2>
+            <p>When you subscribe to FocusHaven Pro, your purchase is processed by Apple through the App Store. RevenueCat is used to manage subscription status and receives your purchase receipt from Apple for verification. Your payment information, Apple ID, and billing details are never collected by FocusHaven. Please refer to <a href="https://www.revenuecat.com/privacy">RevenueCat's Privacy Policy</a> and <a href="https://www.apple.com/privacy/">Apple's Privacy Policy</a> for details.</p>
+        </div>
 
-            <h2>Information We Do Not Collect</h2>
+        <div class="section">
+            <h2><span class="icon green">🚫</span> Information Not Collected</h2>
             <ul>
-                <li>We do not require or collect your real name, email address, phone number, or any account credentials (there are no user accounts). Display names entered for Buddy Sessions are voluntarily chosen and may be nicknames or pseudonyms.</li>
-                <li>We do not collect your location</li>
-                <li>We do not access your camera, contacts, calendar, or health data</li>
-                <li>We do not use advertising identifiers (IDFA)</li>
-                <li>We do not use any analytics or tracking SDKs</li>
-                <li>We do not serve advertisements</li>
+                <li>No real name, email address, phone number, or account credentials are required or collected (there are no user accounts)</li>
+                <li>No location data is collected</li>
+                <li>No access to your camera, contacts, calendar, or health data</li>
+                <li>No advertising identifiers (IDFA) are used</li>
+                <li>No analytics or tracking SDKs are used</li>
+                <li>No advertisements are served</li>
             </ul>
+        </div>
 
-            <h2>How We Use Your Information</h2>
+        <div class="section">
+            <h2><span class="icon blue">⚙️</span> How We Use Your Information</h2>
             <ul>
                 <li><strong>On-device data</strong> is used solely to provide app functionality (timers, task tracking, statistics, and personalization) and is synced only within your own iCloud account</li>
                 <li><strong>Buddy session data</strong> is used solely to enable real-time collaborative focus sessions between you and your session partner</li>
                 <li><strong>Subscription data</strong> is used solely to verify your subscription status and unlock premium features</li>
             </ul>
+        </div>
 
-            <h2>Device Permissions</h2>
+        <div class="section">
+            <h2><span class="icon orange">🔐</span> Device Permissions</h2>
             <p>The App requests the following permissions, each used only for the stated purpose:</p>
             <ul>
-                <li><strong>Microphone:</strong> To record personal wake-up voice messages that play when your break ends. Recordings are stored only on your device and are never uploaded to any server.</li>
-                <li><strong>Motion &amp; Fitness:</strong> To detect physical activity during break periods and calculate a "recharge percentage." Raw sensor data is processed on-device in real time and is not stored or transmitted. Only the aggregate recharge percentage is saved locally.</li>
+                <li><strong>Microphone:</strong> To record personal wake-up voice messages that play when your break ends. Recordings are stored only on your device and are never uploaded.</li>
+                <li><strong>Motion &amp; Fitness:</strong> To detect physical activity during break periods and calculate a "recharge percentage." Raw sensor data is processed on-device in real time and is not stored or transmitted.</li>
                 <li><strong>Notifications:</strong> To alert you when your focus or break timer completes and when events occur in buddy sessions.</li>
             </ul>
+        </div>
 
-            <h2>iCloud Sync</h2>
-            <p>Your tasks and focus session history are synced across your devices using Apple's CloudKit service. This data is stored in your personal iCloud account and is not accessible to us. You can manage or delete this data through your device's iCloud settings.</p>
+        <div class="section">
+            <h2><span class="icon green">☁️</span> iCloud Sync</h2>
+            <p>Your tasks and focus session history are synced across your devices using Apple's CloudKit service. This data is stored in your personal iCloud account and is not accessible to the developer. You can manage or delete this data through your device's iCloud settings.</p>
+        </div>
 
-            <h2>Third-Party Services</h2>
+        <div class="section">
+            <h2><span class="icon blue">🔗</span> Third-Party Services</h2>
             <table>
                 <thead>
                     <tr><th>Service</th><th>Purpose</th><th>Data Shared</th></tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td>Firebase Realtime Database (Google)</td>
-                        <td>Real-time buddy session synchronization</td>
-                        <td>Display name, task title, device identifier, session status and timing</td>
+                        <td>Firebase (Google)</td>
+                        <td>Buddy session sync</td>
+                        <td>Display name, task title, device ID, session status</td>
                     </tr>
                     <tr>
                         <td>RevenueCat</td>
@@ -183,44 +355,56 @@
                     </tr>
                     <tr>
                         <td>Apple CloudKit</td>
-                        <td>Cross-device data sync</td>
-                        <td>Tasks and focus session history (within your own iCloud account)</td>
+                        <td>Cross-device sync</td>
+                        <td>Tasks &amp; session history (your iCloud)</td>
                     </tr>
                 </tbody>
             </table>
-            <p>We do not sell, rent, or share your personal information with third parties for marketing or advertising purposes.</p>
+            <p>Your personal information is never sold, rented, or shared with third parties for marketing or advertising purposes.</p>
+        </div>
 
-            <h2>Data Retention</h2>
+        <div class="section">
+            <h2><span class="icon orange">🗄️</span> Data Retention</h2>
             <ul>
                 <li><strong>On-device data</strong> persists until you delete the app or clear app data</li>
                 <li><strong>iCloud data</strong> persists until you delete it from iCloud settings or delete the app</li>
                 <li><strong>Buddy session data</strong> is automatically deleted from Firebase within 24 hours</li>
                 <li><strong>Subscription records</strong> are retained by Apple and RevenueCat per their respective policies</li>
             </ul>
+        </div>
 
-            <h2>Data Deletion</h2>
+        <div class="section">
+            <h2><span class="icon red">🗑️</span> Data Deletion</h2>
             <p>You can delete your data in the following ways:</p>
             <ul>
                 <li><strong>Wake-up voice recordings:</strong> Delete individual recordings in Settings &gt; Wake-Up Voice</li>
-                <li><strong>Tasks and session history:</strong> Delete the app to remove all local data, or manage iCloud storage in your device's Settings &gt; Apple ID &gt; iCloud</li>
-                <li><strong>Buddy session data:</strong> Leave or cancel a session to remove your participant data; all session data is auto-deleted within 24 hours regardless</li>
+                <li><strong>Tasks and session history:</strong> Delete the app to remove all local data, or manage iCloud storage in Settings &gt; Apple ID &gt; iCloud</li>
+                <li><strong>Buddy session data:</strong> Leave or cancel a session to remove your participant data; all session data is auto-deleted within 24 hours</li>
                 <li><strong>All preferences and local data:</strong> Uninstall and reinstall the app to reset everything</li>
             </ul>
             <p>Since there are no user accounts, there is no account deletion process needed. All locally stored data is removed when you delete the app.</p>
+        </div>
 
-            <h2>Children's Privacy</h2>
-            <p>FocusHaven is suitable for users of all ages (rated 4+ on the App Store). The App does not require any personal information to function. No account creation, email, or real name is required. Buddy session participation requires only a voluntarily chosen display name. We do not knowingly collect personally identifiable information from any user, including children.</p>
+        <div class="section">
+            <h2><span class="icon green">👶</span> Children's Privacy</h2>
+            <p>FocusHaven is suitable for users of all ages (rated 4+ on the App Store). The App does not require any personal information to function. No account creation, email, or real name is required. No personally identifiable information is knowingly collected from any user, including children.</p>
+        </div>
 
-            <h2>Changes to This Privacy Policy</h2>
-            <p>We may update this Privacy Policy from time to time. We will notify you of any changes by updating the "Last Updated" date at the top of this policy. We encourage you to review this Privacy Policy periodically.</p>
+        <div class="section">
+            <h2><span class="icon blue">📝</span> Changes to This Policy</h2>
+            <p>This Privacy Policy may be updated from time to time. Any changes will be reflected by updating the "Last Updated" date at the top. You are encouraged to review this Privacy Policy periodically.</p>
+        </div>
 
-            <h2>Contact Us</h2>
+        <div class="section">
+            <h2><span class="icon orange">✉️</span> Contact Us</h2>
             <p>If you have any questions about this Privacy Policy, please contact us at:</p>
             <p><strong>Email:</strong> <a href="mailto:infiniarc123@gmail.com">infiniarc123@gmail.com</a></p>
         </div>
+    </div>
 
-        <div class="footer">
-            <p>&copy; 2026 FocusHaven. <a href="../terms/">Terms of Service</a></p>
+    <div class="footer">
+        <div class="brand">
+            <span>&copy; 2026 FocusHaven</span>
         </div>
     </div>
 </body>

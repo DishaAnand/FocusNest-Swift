@@ -4,103 +4,282 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Terms of Service - FocusHaven</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --focus-green: #61BA99;
+            --focus-green-dark: #4D9980;
+            --break-blue: #73ADD1;
+            --paused-orange: #D9A659;
+            --bg-dark: #0F1117;
+            --bg-card: #1A1C25;
+            --bg-card-hover: #22242E;
+            --text-primary: #F2F2F7;
+            --text-secondary: #A0A0AB;
+            --text-muted: #6B6B78;
+            --border: rgba(255,255,255,0.06);
+            --glow-green: rgba(97, 186, 153, 0.15);
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            line-height: 1.7;
-            color: #1d1d1f;
-            background: #f5f5f7;
+            font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.75;
+            color: var(--text-primary);
+            background: var(--bg-dark);
+            -webkit-font-smoothing: antialiased;
         }
-        .container {
-            max-width: 720px;
-            margin: 0 auto;
-            padding: 48px 24px;
+
+        .hero {
+            position: relative;
+            padding: 80px 24px 48px;
+            text-align: center;
+            overflow: hidden;
         }
-        .card {
-            background: #fff;
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -120px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(ellipse, var(--glow-green) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .hero-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 64px;
+            height: 64px;
             border-radius: 18px;
-            padding: 40px 36px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            background: linear-gradient(135deg, var(--focus-green), var(--paused-orange));
+            margin-bottom: 20px;
+            font-size: 28px;
         }
-        h1 {
-            font-size: 32px;
-            font-weight: 700;
-            margin-bottom: 4px;
-            color: #1d1d1f;
+
+        .hero h1 {
+            font-size: 38px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, var(--focus-green), var(--break-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
-        .updated {
+
+        .hero .updated {
             font-size: 14px;
-            color: #86868b;
-            margin-bottom: 32px;
+            color: var(--text-muted);
+            font-weight: 500;
         }
+
+        .nav-links {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            padding: 0 24px 8px;
+        }
+
+        .nav-links a {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+        }
+
+        .nav-links a:hover {
+            color: var(--focus-green);
+            background: var(--glow-green);
+        }
+
+        .nav-links a.active {
+            color: var(--focus-green);
+            background: var(--glow-green);
+        }
+
+        .container {
+            max-width: 740px;
+            margin: 0 auto;
+            padding: 0 24px 64px;
+        }
+
+        .intro {
+            font-size: 16px;
+            color: var(--text-secondary);
+            text-align: center;
+            max-width: 560px;
+            margin: 0 auto 40px;
+            line-height: 1.8;
+        }
+
+        .section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 16px;
+            transition: background 0.2s ease;
+        }
+
+        .section:hover {
+            background: var(--bg-card-hover);
+        }
+
         h2 {
-            font-size: 22px;
-            font-weight: 600;
-            margin-top: 32px;
-            margin-bottom: 12px;
-            color: #1d1d1f;
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
+
+        h2 .icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 9px;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        h2 .icon.green { background: rgba(97, 186, 153, 0.15); }
+        h2 .icon.blue { background: rgba(115, 173, 209, 0.15); }
+        h2 .icon.orange { background: rgba(217, 166, 89, 0.15); }
+        h2 .icon.red { background: rgba(220, 100, 100, 0.15); }
+
         h3 {
-            font-size: 17px;
-            font-weight: 600;
+            font-size: 16px;
+            font-weight: 700;
             margin-top: 20px;
             margin-bottom: 8px;
-            color: #1d1d1f;
+            color: var(--text-primary);
         }
+
         p {
             margin-bottom: 14px;
-            color: #424245;
-            font-size: 16px;
+            color: var(--text-secondary);
+            font-size: 15px;
+            font-weight: 500;
         }
+
         ul {
             margin-bottom: 14px;
-            padding-left: 24px;
+            padding-left: 0;
+            list-style: none;
         }
+
         li {
-            margin-bottom: 6px;
-            color: #424245;
-            font-size: 16px;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+            font-size: 15px;
+            font-weight: 500;
+            padding-left: 20px;
+            position: relative;
         }
+
+        li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 10px;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--focus-green);
+        }
+
+        li strong {
+            color: var(--text-primary);
+            font-weight: 700;
+        }
+
         a {
-            color: #0066cc;
+            color: var(--focus-green);
             text-decoration: none;
+            font-weight: 600;
+            transition: opacity 0.2s;
         }
-        a:hover { text-decoration: underline; }
+
+        a:hover { opacity: 0.8; }
+
         .footer {
             text-align: center;
-            margin-top: 32px;
+            padding: 32px 24px;
             font-size: 13px;
-            color: #86868b;
+            color: var(--text-muted);
+            font-weight: 600;
         }
-        .footer a { color: #86868b; }
+
+        .footer a { color: var(--text-muted); }
+        .footer a:hover { color: var(--focus-green); }
+
+        .footer .brand {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .footer .dot {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: var(--text-muted);
+        }
+
         @media (max-width: 600px) {
-            .container { padding: 24px 16px; }
-            .card { padding: 28px 20px; border-radius: 14px; }
-            h1 { font-size: 26px; }
-            h2 { font-size: 19px; }
+            .hero { padding: 56px 16px 32px; }
+            .hero h1 { font-size: 30px; }
+            .container { padding: 0 16px 48px; }
+            .section { padding: 24px 20px; border-radius: 14px; }
+            h2 { font-size: 18px; }
         }
     </style>
 </head>
 <body>
+    <div class="hero">
+        <div class="hero-icon">📄</div>
+        <h1>Terms of Service</h1>
+        <p class="updated">Last Updated: February 18, 2026</p>
+    </div>
+
+    <nav class="nav-links">
+        <a href="../privacy/">Privacy</a>
+        <a href="../terms/" class="active">Terms</a>
+    </nav>
+
     <div class="container">
-        <div class="card">
-            <h1>Terms of Service</h1>
-            <p class="updated">Last Updated: February 18, 2026</p>
+        <p class="intro">Please read these Terms of Service carefully before using FocusHaven. By downloading, installing, or using the App, you agree to be bound by these Terms. FocusHaven is operated by Disha Anand.</p>
 
-            <p>Please read these Terms of Service ("Terms") carefully before using FocusHaven ("the App"), operated by Disha Anand ("we," "us," or "our").</p>
-            <p>By downloading, installing, or using the App, you agree to be bound by these Terms. If you do not agree to these Terms, do not use the App.</p>
-
-            <h2>1. Description of Service</h2>
+        <div class="section">
+            <h2><span class="icon green">📱</span> 1. Description of Service</h2>
             <p>FocusHaven is a productivity application that provides focus timers, task management, session planning, break tracking, ambient sounds, and collaborative "Buddy Sessions." The App is available on iOS devices.</p>
+        </div>
 
-            <h2>2. Eligibility</h2>
+        <div class="section">
+            <h2><span class="icon blue">👤</span> 2. Eligibility &amp; Accounts</h2>
             <p>The App is suitable for users of all ages (rated 4+ on the App Store). No account creation or personal information is required to use the App.</p>
+            <p>A randomly generated device identifier is used for buddy session functionality. This identifier is not linked to your personal identity.</p>
+        </div>
 
-            <h2>3. User Accounts</h2>
-            <p>The App does not require you to create an account. A randomly generated device identifier is used for buddy session functionality. This identifier is not linked to your personal identity.</p>
-
-            <h2>4. Subscriptions and Payments</h2>
+        <div class="section">
+            <h2><span class="icon orange">💳</span> 3. Subscriptions &amp; Payments</h2>
 
             <h3>Free Tier</h3>
             <p>The App offers core features at no cost, including:</p>
@@ -126,17 +305,19 @@
             <h3>Subscription Terms</h3>
             <ul>
                 <li>Payment is charged to your Apple ID account upon confirmation of purchase</li>
-                <li>Your subscription automatically renews unless cancelled at least 24 hours before the end of the current billing period</li>
-                <li>Your account will be charged for renewal within 24 hours prior to the end of the current period at the same price</li>
-                <li>You can manage and cancel your subscription in your device's Settings &gt; Apple ID &gt; Subscriptions</li>
-                <li>Any unused portion of a free trial period, if offered, will be forfeited when you purchase a subscription</li>
-                <li>Prices are subject to change. Any price changes will take effect at the start of the next subscription period following the date of the price change</li>
+                <li>Subscription automatically renews unless cancelled at least 24 hours before the end of the current billing period</li>
+                <li>Your account will be charged for renewal within 24 hours prior to the end of the current period</li>
+                <li>Manage and cancel in Settings &gt; Apple ID &gt; Subscriptions</li>
+                <li>Any unused portion of a free trial will be forfeited when you purchase a subscription</li>
+                <li>Prices are subject to change and take effect at the start of the next billing period</li>
             </ul>
 
             <h3>Refunds</h3>
             <p>Refunds are handled by Apple in accordance with their App Store policies. To request a refund, visit <a href="https://reportaproblem.apple.com">reportaproblem.apple.com</a>.</p>
+        </div>
 
-            <h2>5. Buddy Sessions</h2>
+        <div class="section">
+            <h2><span class="icon green">👥</span> 4. Buddy Sessions</h2>
 
             <h3>Participation</h3>
             <p>When you create or join a Buddy Session, you voluntarily share a display name and task title with your session partner. You are responsible for the information you choose to share.</p>
@@ -151,25 +332,33 @@
             </ul>
 
             <h3>Data Handling</h3>
-            <p>Buddy session data is stored temporarily on Firebase (Google) servers and is automatically deleted within 24 hours. During an active session, your session partner can see your display name, task title, focus status, and distraction metrics.</p>
+            <p>Buddy session data is stored temporarily on Firebase servers and is automatically deleted within 24 hours. During an active session, your partner can see your display name, task title, focus status, and distraction metrics.</p>
+        </div>
 
-            <h2>6. Wake-Up Voice Recordings</h2>
+        <div class="section">
+            <h2><span class="icon blue">🎙️</span> 5. Wake-Up Voice Recordings</h2>
             <p>Voice recordings you create are stored solely on your device and are used only as custom notification sounds. You retain full ownership of your recordings. We do not access, upload, or process your recordings in any way.</p>
+        </div>
 
-            <h2>7. Acceptable Use</h2>
+        <div class="section">
+            <h2><span class="icon orange">⚠️</span> 6. Acceptable Use</h2>
             <p>You agree not to:</p>
             <ul>
                 <li>Use the App for any unlawful purpose</li>
                 <li>Attempt to gain unauthorized access to our servers or systems</li>
-                <li>Interfere with or disrupt the integrity or performance of the App or its related systems</li>
+                <li>Interfere with or disrupt the integrity or performance of the App</li>
                 <li>Reverse engineer, decompile, or disassemble the App</li>
                 <li>Use automated systems or software to extract data from the App</li>
             </ul>
+        </div>
 
-            <h2>8. Intellectual Property</h2>
+        <div class="section">
+            <h2><span class="icon green">©️</span> 7. Intellectual Property</h2>
             <p>The App and its original content, features, and functionality are owned by Disha Anand and are protected by international copyright, trademark, and other intellectual property laws. The FocusHaven name, logo, and related marks are our trademarks.</p>
+        </div>
 
-            <h2>9. Third-Party Services</h2>
+        <div class="section">
+            <h2><span class="icon blue">🔗</span> 8. Third-Party Services</h2>
             <p>The App integrates with the following third-party services, each governed by their own terms:</p>
             <ul>
                 <li><a href="https://www.apple.com/legal/internet-services/itunes/">Apple App Store</a></li>
@@ -177,42 +366,43 @@
                 <li><a href="https://www.revenuecat.com/terms">RevenueCat</a></li>
                 <li><a href="https://www.apple.com/legal/internet-services/icloud/">Apple iCloud / CloudKit</a></li>
             </ul>
+        </div>
 
-            <h2>10. Disclaimer of Warranties</h2>
-            <p>The App is provided on an "AS IS" and "AS AVAILABLE" basis without warranties of any kind, whether express or implied, including but not limited to implied warranties of merchantability, fitness for a particular purpose, and non-infringement.</p>
-            <p>We do not warrant that:</p>
-            <ul>
-                <li>The App will be uninterrupted, timely, secure, or error-free</li>
-                <li>The results obtained from the App will be accurate or reliable</li>
-                <li>Any defects in the App will be corrected</li>
-                <li>Focus predictions or recharge percentages reflect actual cognitive or physical states</li>
-            </ul>
+        <div class="section">
+            <h2><span class="icon red">⚖️</span> 9. Disclaimers &amp; Liability</h2>
+            <p>The App is provided on an "AS IS" and "AS AVAILABLE" basis without warranties of any kind, whether express or implied.</p>
+            <p>We do not warrant that the App will be uninterrupted, secure, or error-free, or that focus predictions or recharge percentages reflect actual cognitive or physical states.</p>
+            <p>To the maximum extent permitted by law, Disha Anand shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of the App.</p>
+        </div>
 
-            <h2>11. Limitation of Liability</h2>
-            <p>To the maximum extent permitted by applicable law, in no event shall Disha Anand be liable for any indirect, incidental, special, consequential, or punitive damages, including but not limited to loss of data, loss of profits, or business interruption, arising out of or in connection with your use of the App.</p>
-
-            <h2>12. Indemnification</h2>
+        <div class="section">
+            <h2><span class="icon orange">🛡️</span> 10. Indemnification</h2>
             <p>You agree to indemnify and hold harmless Disha Anand from any claims, damages, losses, or expenses arising from your use of the App or violation of these Terms.</p>
+        </div>
 
-            <h2>13. Modifications to the Service</h2>
-            <p>We reserve the right to modify, suspend, or discontinue the App (or any part thereof) at any time, with or without notice. We shall not be liable to you or any third party for any modification, suspension, or discontinuation of the App.</p>
+        <div class="section">
+            <h2><span class="icon green">🔄</span> 11. Changes &amp; Modifications</h2>
+            <p>We reserve the right to modify, suspend, or discontinue the App at any time. We may update these Terms from time to time. Your continued use of the App after changes constitutes acceptance of the new Terms.</p>
+        </div>
 
-            <h2>14. Changes to These Terms</h2>
-            <p>We may update these Terms from time to time. We will notify you of any material changes by updating the "Last Updated" date. Your continued use of the App after such changes constitutes your acceptance of the new Terms.</p>
-
-            <h2>15. Governing Law</h2>
+        <div class="section">
+            <h2><span class="icon blue">🏛️</span> 12. Governing Law</h2>
             <p>These Terms shall be governed by and construed in accordance with the laws of India, without regard to its conflict of law provisions.</p>
+            <p>If any provision of these Terms is found unenforceable, it shall be limited or eliminated to the minimum extent necessary so that these Terms otherwise remain in full force and effect.</p>
+        </div>
 
-            <h2>16. Severability</h2>
-            <p>If any provision of these Terms is found to be unenforceable or invalid, that provision shall be limited or eliminated to the minimum extent necessary so that these Terms shall otherwise remain in full force and effect.</p>
-
-            <h2>17. Contact Us</h2>
+        <div class="section">
+            <h2><span class="icon orange">✉️</span> 13. Contact Us</h2>
             <p>If you have any questions about these Terms, please contact us at:</p>
             <p><strong>Email:</strong> <a href="mailto:infiniarc123@gmail.com">infiniarc123@gmail.com</a></p>
         </div>
+    </div>
 
-        <div class="footer">
-            <p>&copy; 2026 FocusHaven. <a href="../privacy/">Privacy Policy</a></p>
+    <div class="footer">
+        <div class="brand">
+            <span>&copy; 2026 FocusHaven</span>
+            <span class="dot"></span>
+            <a href="../privacy/">Privacy Policy</a>
         </div>
     </div>
 </body>
