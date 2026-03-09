@@ -111,11 +111,16 @@ public struct PaywallView: View {
     // MARK: - Pricing
 
     private func pricingSection(packages: [Package]) -> some View {
-        VStack(spacing: Theme.spacingM) {
+        let monthlyPrice = packages
+            .first { $0.storeProduct.subscriptionPeriod?.unit == .month }?
+            .storeProduct.price as Decimal?
+
+        return VStack(spacing: Theme.spacingM) {
             ForEach(packages, id: \.identifier) { package in
                 PricingCard(
                     package: package,
-                    isSelected: selectedPackage?.identifier == package.identifier
+                    isSelected: selectedPackage?.identifier == package.identifier,
+                    monthlyPrice: monthlyPrice
                 ) {
                     selectedPackage = package
                 }
@@ -167,7 +172,7 @@ public struct PaywallView: View {
 
     private var termsSection: some View {
         VStack(spacing: Theme.spacingXS) {
-            Text("Subscription auto-renews unless cancelled at least 24 hours before the end of the current period. Manage in Settings > Apple ID > Subscriptions.")
+            Text("Payment will be charged to your Apple ID account at confirmation of purchase. Subscription auto-renews unless cancelled at least 24 hours before the end of the current period. Manage in Settings > Apple ID > Subscriptions.")
                 .font(.system(size: 11))
                 .foregroundStyle(Theme.textTertiary)
                 .multilineTextAlignment(.center)
@@ -263,15 +268,45 @@ private struct FeatureRow: View {
 private struct PricingCard: View {
     let package: Package
     let isSelected: Bool
+    let monthlyPrice: Decimal?
     let onTap: () -> Void
 
     private var isAnnual: Bool {
-        package.packageType == .annual
+        package.storeProduct.subscriptionPeriod?.unit == .year
+    }
+
+    private var isMonthly: Bool {
+        package.storeProduct.subscriptionPeriod?.unit == .month
+    }
+
+    private var periodLabel: String {
+        guard let period = package.storeProduct.subscriptionPeriod else { return "" }
+        switch period.unit {
+        case .year: return "Yearly"
+        case .month: return "Monthly"
+        case .week: return "Weekly"
+        case .day: return "Daily"
+        }
+    }
+
+    private var priceSuffix: String {
+        guard let period = package.storeProduct.subscriptionPeriod else { return "" }
+        switch period.unit {
+        case .year: return "/year"
+        case .month: return "/month"
+        case .week: return "/week"
+        case .day: return "/day"
+        }
     }
 
     private var savingsText: String? {
-        guard isAnnual else { return nil }
-        return "Save 44%"
+        guard isAnnual, let monthly = monthlyPrice, monthly > 0 else { return nil }
+        let annualPrice = package.storeProduct.price as Decimal
+        let yearlyFromMonthly = monthly * 12
+        let savings = ((yearlyFromMonthly - annualPrice) / yearlyFromMonthly) * 100
+        let percent = Int(NSDecimalNumber(decimal: savings).doubleValue.rounded())
+        guard percent > 0 else { return nil }
+        return "Save \(percent)%"
     }
 
     var body: some View {
@@ -283,7 +318,7 @@ private struct PricingCard: View {
                         .foregroundStyle(Theme.textSecondary)
 
                     HStack {
-                        Text(isAnnual ? "Yearly" : "Monthly")
+                        Text(periodLabel)
                             .font(Theme.headlineFont)
                             .foregroundStyle(Theme.textPrimary)
 
@@ -298,7 +333,7 @@ private struct PricingCard: View {
                         }
                     }
 
-                    Text(package.localizedPriceString + (isAnnual ? "/year" : "/month"))
+                    Text(package.localizedPriceString + priceSuffix)
                         .font(Theme.bodyFont)
                         .foregroundStyle(Theme.textSecondary)
 
