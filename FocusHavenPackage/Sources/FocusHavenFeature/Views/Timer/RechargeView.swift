@@ -103,12 +103,12 @@ struct RechargeView: View {
                             Capsule()
                                 .fill(
                                     LinearGradient(
-                                        colors: [.green, Color(red: 0.2, green: 0.8, blue: 0.5)],
+                                        colors: [.pink, Color(red: 0.9, green: 0.4, blue: 0.6)],
                                         startPoint: .leading,
                                         endPoint: .trailing
                                     )
                                 )
-                                .shadow(color: .green.opacity(0.4), radius: 12, x: 0, y: 4)
+                                .shadow(color: .pink.opacity(0.4), radius: 12, x: 0, y: 4)
                         )
                     }
                     .transition(.scale.combined(with: .opacity))

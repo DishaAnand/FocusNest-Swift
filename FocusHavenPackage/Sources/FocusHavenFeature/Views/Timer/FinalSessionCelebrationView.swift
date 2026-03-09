@@ -286,7 +286,7 @@ struct FinalSessionCelebrationView: View {
                             icon: "eye.slash.fill",
                             value: "\(totalDistractions)",
                             label: totalDistractions == 1 ? "distraction" : "distractions",
-                            color: totalDistractions == 0 ? .green : .orange
+                            color: totalDistractions == 0 ? .pink : .orange
                         )
                     }
 
@@ -548,7 +548,7 @@ private struct TaskBreakdownRow: View {
 
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 16))
-                    .foregroundStyle(.green)
+                    .foregroundStyle(.pink)
             }
 
             // Task name

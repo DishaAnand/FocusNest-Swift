@@ -183,7 +183,7 @@ struct SessionCompleteView: View {
                         Circle()
                             .stroke(
                                 LinearGradient(
-                                    colors: [.green.opacity(0.3), .cyan.opacity(0.2)],
+                                    colors: [.pink.opacity(0.3), .pink.opacity(0.2)],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 ),
@@ -200,7 +200,7 @@ struct SessionCompleteView: View {
                         Circle()
                             .fill(
                                 RadialGradient(
-                                    colors: [.green.opacity(0.4), .green.opacity(0.1), .clear],
+                                    colors: [.pink.opacity(0.4), .pink.opacity(0.1), .clear],
                                     center: .center,
                                     startRadius: 20,
                                     endRadius: 70
@@ -216,7 +216,7 @@ struct SessionCompleteView: View {
                                 Circle()
                                     .stroke(
                                         LinearGradient(
-                                            colors: [.green, .cyan],
+                                            colors: [.pink, .pink.opacity(0.7)],
                                             startPoint: .topLeading,
                                             endPoint: .bottomTrailing
                                         ),
@@ -230,7 +230,7 @@ struct SessionCompleteView: View {
                                 .font(.system(size: 44, weight: .bold, design: .rounded))
                                 .foregroundStyle(
                                     LinearGradient(
-                                        colors: [.white, .green.opacity(0.9)],
+                                        colors: [.white, .pink.opacity(0.9)],
                                         startPoint: .top,
                                         endPoint: .bottom
                                     )
@@ -429,7 +429,7 @@ struct SessionCompleteView: View {
                                         soundService.mediumImpact(settings: settings)
                                         onExtend(15 * 60)
                                     }
-                                    ExtendOptionButton(minutes: 25, color: .green) {
+                                    ExtendOptionButton(minutes: 25, color: .pink) {
                                         soundService.mediumImpact(settings: settings)
                                         onExtend(25 * 60)
                                     }
@@ -640,7 +640,7 @@ private struct AnimatedGradientBackground: View {
                 ZStack {
                     // Green blob
                     Circle()
-                        .fill(Color.green.opacity(0.15 * intensity))
+                        .fill(Color.pink.opacity(0.15 * intensity))
                         .frame(width: 300, height: 300)
                         .blur(radius: 80)
                         .offset(
@@ -695,7 +695,7 @@ private struct OrbitingParticles: View {
                     let radius = 80.0 + Double(i) * 10.0
                     let xOffset = cos(angle) * radius
                     let yOffset = sin(angle) * radius
-                    let particleColor: Color = i % 2 == 0 ? .green.opacity(0.6) : .cyan.opacity(0.5)
+                    let particleColor: Color = i % 2 == 0 ? .pink.opacity(0.6) : .pink.opacity(0.4)
                     let size: CGFloat = CGFloat(4 + i % 3)
 
                     Circle()
@@ -730,7 +730,7 @@ private struct SessionConfetti: View {
     }
 
     private let colors: [Color] = [
-        .green, .cyan, .mint, .yellow, .orange, .pink, .purple
+        .pink, .pink.opacity(0.7), .mint, .yellow, .orange, .purple, .cyan
     ]
 
     var body: some View {
@@ -903,7 +903,7 @@ struct PlayfulNudgeView: View {
                     .padding(.vertical, 16)
                     .background(
                         RoundedRectangle(cornerRadius: 14)
-                            .fill(Color.green)
+                            .fill(Color.pink)
                     )
                 }
 
@@ -1048,7 +1048,7 @@ struct MandatoryBreakView: View {
                     Text(formattedTime)
                         .font(.system(size: 48, weight: .bold, design: .monospaced))
                         .foregroundStyle(
-                            remainingSeconds <= 60 ? .green : .white
+                            remainingSeconds <= 60 ? .pink : .white
                         )
                         .contentTransition(.numericText())
 

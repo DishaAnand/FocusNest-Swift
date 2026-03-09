@@ -1001,7 +1001,7 @@ public struct TimerView: View {
             ForEach(0..<sessionPlan.totalSessions, id: \.self) { index in
                 Circle()
                     .fill(index < currentIndex
-                          ? LinearGradient(colors: [.green, .mint], startPoint: .top, endPoint: .bottom)
+                          ? LinearGradient(colors: [.pink, .pink.opacity(0.7)], startPoint: .top, endPoint: .bottom)
                           : index == currentIndex
                           ? (timerService.isBreak
                              ? LinearGradient(colors: [Theme.breakColor, Theme.breakColor.opacity(0.7)], startPoint: .top, endPoint: .bottom)
@@ -1379,7 +1379,7 @@ private struct SessionCompleteBanner: View {
                     Circle()
                         .fill(
                             RadialGradient(
-                                colors: [.green.opacity(0.3), .green.opacity(0.05)],
+                                colors: [.pink.opacity(0.3), .pink.opacity(0.05)],
                                 center: .center,
                                 startRadius: 10,
                                 endRadius: 50
@@ -1389,7 +1389,7 @@ private struct SessionCompleteBanner: View {
 
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 52))
-                        .foregroundStyle(.green)
+                        .foregroundStyle(.pink)
                         .scaleEffect(checkScale)
                 }
 

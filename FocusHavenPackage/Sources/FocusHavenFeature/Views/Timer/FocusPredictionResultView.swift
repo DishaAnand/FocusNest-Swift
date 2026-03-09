@@ -310,7 +310,7 @@ struct FocusPredictionResultView: View {
                             icon: distractionCount == 0 ? "sparkles" : "eyes",
                             label: distractionCount == 0 ? "Deep Focus" : "Distractions",
                             value: distractionCount == 0 ? "Locked In" : "\(distractionCount) break\(distractionCount == 1 ? "" : "s")",
-                            color: distractionCount == 0 ? .green : .orange
+                            color: distractionCount == 0 ? .pink : .orange
                         )
 
                         Divider()
@@ -413,7 +413,7 @@ struct FocusPredictionResultView: View {
                                         soundService.mediumImpact(settings: settings)
                                         onExtend(15 * 60)
                                     }
-                                    PredictionExtendButton(minutes: 25, color: .green) {
+                                    PredictionExtendButton(minutes: 25, color: .pink) {
                                         soundService.mediumImpact(settings: settings)
                                         onExtend(25 * 60)
                                     }
@@ -868,7 +868,7 @@ private struct PredictionPlayfulNudgeView: View {
                     .padding(.vertical, 16)
                     .background(
                         RoundedRectangle(cornerRadius: 14)
-                            .fill(Color.green)
+                            .fill(Color.pink)
                     )
                 }
 
@@ -1012,7 +1012,7 @@ private struct PredictionMandatoryBreakView: View {
                     Text(formattedTime)
                         .font(.system(size: 48, weight: .bold, design: .monospaced))
                         .foregroundStyle(
-                            remainingSeconds <= 60 ? .green : .white
+                            remainingSeconds <= 60 ? .pink : .white
                         )
                         .contentTransition(.numericText())
 

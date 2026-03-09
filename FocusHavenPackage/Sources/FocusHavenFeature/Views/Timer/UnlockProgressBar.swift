@@ -24,9 +24,9 @@ struct UnlockProgressBar: View {
         case 50..<75:
             return .cyan
         case 75..<100:
-            return Color(red: 0.2, green: 0.9, blue: 0.7) // Cyan transitioning to green
+            return Color(red: 0.9, green: 0.4, blue: 0.6) // Transitioning to pink
         default:
-            return .green
+            return .pink
         }
     }
 
@@ -80,7 +80,7 @@ struct UnlockProgressBar: View {
             HStack(spacing: 8) {
                 Image(systemName: lockIcon)
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(isComplete ? .green : .white.opacity(0.7))
+                    .foregroundStyle(isComplete ? .pink : .white.opacity(0.7))
                     .scaleEffect(isComplete ? 1.2 : 1.0)
 
                 Text(message)

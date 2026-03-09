@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -11,14 +11,14 @@
 		AAA00003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AAA00004 /* Assets.xcassets */; };
 		AAA00005 /* FocusHavenFeature in Frameworks */ = {isa = PBXBuildFile; productRef = AAA00006 /* FocusHavenFeature */; };
 		AAA00007 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = AAA00008 /* GoogleService-Info.plist */; };
-		DDD00001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = DDD00002 /* PrivacyInfo.xcprivacy */; };
-		CCC00001 /* focus-complete.aiff in Resources */ = {isa = PBXBuildFile; fileRef = CCC00002 /* focus-complete.aiff */; };
-		CCC00003 /* break-complete.aiff in Resources */ = {isa = PBXBuildFile; fileRef = CCC00004 /* break-complete.aiff */; };
 		BBB00001 /* FocusHavenWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBB00002 /* FocusHavenWidgetsBundle.swift */; };
 		BBB00003 /* FocusTimerLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBB00004 /* FocusTimerLiveActivity.swift */; };
 		BBB00005 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BBB00006 /* WidgetKit.framework */; };
 		BBB00007 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BBB00008 /* SwiftUI.framework */; };
 		BBB00009 /* FocusHavenWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BBB00010 /* FocusHavenWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		CCC00001 /* focus-complete.aiff in Resources */ = {isa = PBXBuildFile; fileRef = CCC00002 /* focus-complete.aiff */; };
+		CCC00003 /* break-complete.aiff in Resources */ = {isa = PBXBuildFile; fileRef = CCC00004 /* break-complete.aiff */; };
+		DDD00001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = DDD00002 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -50,16 +50,16 @@
 		AAA00004 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AAA00008 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		AAA00009 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		DDD00002 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		AAA00010 /* FocusHaven.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FocusHaven.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		CCC00002 /* focus-complete.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = "focus-complete.aiff"; sourceTree = "<group>"; };
-		CCC00004 /* break-complete.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = "break-complete.aiff"; sourceTree = "<group>"; };
 		BBB00002 /* FocusHavenWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusHavenWidgetsBundle.swift; sourceTree = "<group>"; };
 		BBB00004 /* FocusTimerLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusTimerLiveActivity.swift; sourceTree = "<group>"; };
 		BBB00006 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		BBB00008 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		BBB00010 /* FocusHavenWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FocusHavenWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		BBB00011 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		CCC00002 /* focus-complete.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = "focus-complete.aiff"; sourceTree = "<group>"; };
+		CCC00004 /* break-complete.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = "break-complete.aiff"; sourceTree = "<group>"; };
+		DDD00002 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -106,15 +106,6 @@
 			path = FocusHaven;
 			sourceTree = "<group>";
 		};
-		CCC00010 /* Sounds */ = {
-			isa = PBXGroup;
-			children = (
-				CCC00002 /* focus-complete.aiff */,
-				CCC00004 /* break-complete.aiff */,
-			);
-			path = Sounds;
-			sourceTree = "<group>";
-		};
 		AAA00032 /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -141,6 +132,15 @@
 				BBB00011 /* Info.plist */,
 			);
 			path = FocusHavenWidgets;
+			sourceTree = "<group>";
+		};
+		CCC00010 /* Sounds */ = {
+			isa = PBXGroup;
+			children = (
+				CCC00002 /* focus-complete.aiff */,
+				CCC00004 /* break-complete.aiff */,
+			);
+			path = Sounds;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -417,7 +417,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.dishaanand.focushaven;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -448,7 +448,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.dishaanand.focushaven;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -474,7 +474,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.dishaanand.focushaven.widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -501,7 +501,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.dishaanand.focushaven.widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;

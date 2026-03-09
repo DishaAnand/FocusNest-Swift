@@ -23,7 +23,7 @@ struct FocusBuddy: View {
 
     private var primaryColor: Color {
         switch mood {
-        case .celebrating: return .green
+        case .celebrating: return .pink
         case .happy: return .cyan
         case .encouraging: return .purple
         case .waving: return .orange
