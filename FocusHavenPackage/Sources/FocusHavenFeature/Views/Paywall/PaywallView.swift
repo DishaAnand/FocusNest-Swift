@@ -278,6 +278,10 @@ private struct PricingCard: View {
         Button(action: onTap) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
+                    Text(package.storeProduct.localizedTitle)
+                        .font(Theme.captionFont)
+                        .foregroundStyle(Theme.textSecondary)
+
                     HStack {
                         Text(isAnnual ? "Yearly" : "Monthly")
                             .font(Theme.headlineFont)
@@ -297,6 +301,10 @@ private struct PricingCard: View {
                     Text(package.localizedPriceString + (isAnnual ? "/year" : "/month"))
                         .font(Theme.bodyFont)
                         .foregroundStyle(Theme.textSecondary)
+
+                    Text(billingPeriodText)
+                        .font(.system(size: 11))
+                        .foregroundStyle(Theme.textTertiary)
 
                     if isAnnual {
                         Text("Just \(monthlyEquivalent)/month")
@@ -320,6 +328,18 @@ private struct PricingCard: View {
             )
         }
         .buttonStyle(.plain)
+    }
+
+    private var billingPeriodText: String {
+        if let period = package.storeProduct.subscriptionPeriod {
+            switch period.unit {
+            case .month: return period.value == 1 ? "Billed every month" : "Billed every \(period.value) months"
+            case .year: return period.value == 1 ? "Billed every year" : "Billed every \(period.value) years"
+            case .week: return period.value == 1 ? "Billed every week" : "Billed every \(period.value) weeks"
+            case .day: return period.value == 1 ? "Billed every day" : "Billed every \(period.value) days"
+            }
+        }
+        return isAnnual ? "Billed every year" : "Billed every month"
     }
 
     private var monthlyEquivalent: String {
